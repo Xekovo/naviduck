@@ -60,7 +60,7 @@ DM_PORT=15236 cargo run --bin ddlprobe2    # 设计器 DDL/事务/SP_TABLEDEF
 
 ### dm-pure 缺陷与补丁（4 处）
 
-对照官方 Go 驱动（`gitee.com/chunanyong/dm`，GitHub 仓库 404）协议实现定位。补丁文件 `/tmp/dm8-verify/dm-pure-fixes.patch`（201 行，**含调试插桩，上游 PR 前需清理**）。四补丁后 UTF-8 与 GB18030 全量回归各 51 项 PASS、0 FAIL。
+对照官方 Go 驱动（`gitee.com/chunanyong/dm`，GitHub 仓库 404）协议实现定位。干净补丁 `/tmp/dm8-verify/dm-pure-pr.patch`（122 行，仅 `src/client.rs`，无调试代码）；PR 分支 `fix/protocol-lob-explain-error-status`（本地仓库 `/tmp/dm8-verify/dm-pure-pr`，commit `50956ee`），PR 描述 `/tmp/dm8-verify/PR_DESCRIPTION.md`。四补丁后 UTF-8 与 GB18030 全量回归各 51 项 PASS、0 FAIL（`result-utf8-pr.txt`/`result-gbk-pr.txt`）。
 
 1. **行外 LOB 读回为空**（核心项）：`read_offrow_lob` 的 cmd=32 请求把 offset/length 写成 i64，协议要求 int32（Go `dm_build_676.dm_build_421`），服务器读到 length=0。改为 i32；CLOB 偏移按服务器返回的字符数推进（原按请求字节数）。
 2. **EXPLAIN 挂起**：响应是 cmd=149 帧（Go `retSqlType` Dm_build_386=127+22=149），布局 int32 长度 + 计划文本，服务器随后不再发帧。dm-pure 只认 187/163，苦等至 EAGAIN。加 149 分支：解析文本按行返回单列 `PLAN` 结果集。
@@ -71,6 +71,6 @@ DM_PORT=15236 cargo run --bin ddlprobe2    # 设计器 DDL/事务/SP_TABLEDEF
 
 判据 1–4 全部通过（LOB 经补丁 1）→ **继续 dm-pure 路线**。5–9 的缺口（取消杀会话、无 SSL、DDL 隐式提交、GB18030 命名）不阻塞，逐条写进 [140-dameng.md 第 7 节「偏差」](../design/140-dameng.md#7-偏差)。
 
-**依赖策略待定**：crates.io 的 1.2.4 含上述缺陷，修复需向上游提 PR（不 fork）。上游发布修复版前 `navidog-dameng` 如何依赖 dm-pure，在阶段 2 开工前与用户确认。
+**依赖策略（已确认）**：修复向上游提 PR（不 fork）；上游发布修复版前，`navidog-dameng` 暂用 `[patch.crates-io]` 指向 PR 分支的 git 依赖，上游发版后切回 crates.io 精确版本。PR 分支由用户推送到 `github.com/ekovovo/dm8_pure_rs`（fork 自 `zhangtao103239/dm8_pure_rs`）。
 
 ## 验收记录（阶段 3，待补）

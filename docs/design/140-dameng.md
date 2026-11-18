@@ -40,7 +40,7 @@ context_selection: Schema  // 单数据库固定，SET SCHEMA 切换模式
 - SSL 页：`supports_ssl=false` → 不显示。SSH 页照常。
 - 连接超时：`ConnectParams.timeout()` 映射到 `ClientConfig.timeout`（连接与读取共用，dm-pure 无独立读取超时）。`auto_reconnect` 固定 `false`（重连由 `navidog-db` 的恢复宏编排，驱动不自作主张）。
 
-图标：决策 3 要求已授权第三方 SVG。达梦图标来源待定（候选 Devicon/Tabler 均无达梦；需找已授权来源或自绘抽象图形），**阶段 2 开工前确认**，不提取 Navicat 图标。
+图标：决策 3 要求已授权第三方 SVG。Tabler/Devicon 均无达梦，**已确认自绘抽象图形**：原创 SVG，尺寸/位置与现有数据库图标一致，不照抄达梦商标图形，不提取 Navicat 图标。
 
 ## 3. 会话与执行
 
