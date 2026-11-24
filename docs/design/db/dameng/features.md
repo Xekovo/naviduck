@@ -12,7 +12,7 @@
 | F-DM-004 | 视图 | `ALL_VIEWS.TEXT` 读定义；DDL 由 `CREATE VIEW` 拼接。实体化视图后续。 | dameng_view（待核） |
 | F-DM-005 | 过程与函数 | `ALL_PROCEDURES`/`ALL_SOURCE`；DMSQL 兼容 PL/SQL。包（PACKAGE）后续。 | dameng_function（待核） |
 | F-DM-006 | 其他对象 | 序列（`ALL_SEQUENCES`）、触发器（`ALL_TRIGGERS`）、索引（`ALL_INDEXES`）、同义词（`ALL_SYNONYMS`，后续）。类型、数据库链接、目录后续。 | dameng_others（待核） |
-| F-DM-007 | 维护 | 分析表/索引（`ANALYZE`）、重建索引（`ALTER INDEX … REBUILD`）、统计信息。 | dameng_maintain（待核） |
+| F-DM-007 | 维护 | 分析表/索引（`ANALYZE`）、重建索引（`ALTER INDEX … REBUILD`）、统计信息。后续（首版维护菜单为空，140 §6.5）。 | dameng_maintain（待核） |
 | F-DM-008 | 表空间 | DM 表空间（MAIN、SYSTEM、ROLL、TEMP 等）只读列表与属性；创建/修改后续。 | dameng_tablespace（待核） |
 | F-DM-009 | 安全性 | 用户、角色；系统权限与对象权限；维护用户（锁定、解锁、过期密码）。首版只读导航，设计器后续。 | security_dameng_user, security_dameng_role（待核） |
 | F-DM-010 | 命令列界面差异 | 首版复用通用命令列；disql 风格命令后续。 | console |
