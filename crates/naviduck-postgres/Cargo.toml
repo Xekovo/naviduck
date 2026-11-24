@@ -1,0 +1,20 @@
+[package]
+name = "naviduck-postgres"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "PostgreSQL driver and SQL dialect for naviduck."
+
+[dependencies]
+naviduck-model.workspace = true
+naviduck-sql = { path = "../naviduck-sql" }
+naviduck-db = { path = "../naviduck-db" }
+naviduck-util.workspace = true
+tokio.workspace = true
+futures.workspace = true
+tracing.workspace = true
+tokio-postgres = "0.7"
+postgres-native-tls = "0.5"
+native-tls = "0.2"

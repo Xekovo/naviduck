@@ -12,7 +12,7 @@
 
 尺寸来源：`QueryDesignSQLEditorModule`、`SQLResultDatasetModule`、`SQLResultMessageModule`、`SQLResultSummaryModule`、`SQLResultInfoModule`、`QueryDesignParamPanel`、`QueryExplainModule`、`QueryExplainVisualModule`、`QueryExplainStatModule`、`HistoryLogViewController`、`ConsoleViewController`。
 
-## 1. 驱动与分句（`navidog-db`）
+## 1. 驱动与分句（`naviduck-db`）
 
 ```rust
 pub struct Column {
@@ -108,7 +108,7 @@ pub fn split_script(sql: &str, dialect: Dialect) -> Vec<Statement>;
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-- **网格**：`navidog-grid` 的 `ResultGrid`。选区、复制、复制为、列宽、冻结、隐藏列、查找（网格有焦点时按 ⌘F）都与表查看器相同。右键菜单不提供快速筛选：结果是一次取回的结果集，没有 WHERE 窗格。表头排序仍在已取回的行里重排。不分页，结果一次全部取回，与 Navicat 一致。ponytail: 结果全部放在内存里，几百万行时很占内存；需要时再改成流式读取。
+- **网格**：`naviduck-grid` 的 `ResultGrid`。选区、复制、复制为、列宽、冻结、隐藏列、查找（网格有焦点时按 ⌘F）都与表查看器相同。右键菜单不提供快速筛选：结果是一次取回的结果集，没有 WHERE 窗格。表头排序仍在已取回的行里重排。不分页，结果一次全部取回，与 Navicat 一致。ponytail: 结果全部放在内存里，几百万行时很占内存；需要时再改成流式读取。
 - **底部栏**：左侧四个按钮：单元格编辑器（显示或隐藏网格下方的单元格编辑器）、数据分析（M10 之前禁用）、导出结果（M6 之前禁用）、固定。中间是产生这个结果的 SQL，单行截断，悬停显示全文；只读的结果在后面加“只读”。右侧是 + − ✓ ✗（只读时禁用）和网格视图、表单视图的切换。
 - **底部状态文字**：产生结果的 SQL、批量提交的多条语句和错误信息使用同一套单行显示规则：换行在栏内折成空格，超出剩余宽度时省略，悬停保留完整原文和换行。底部栏固定 28pt 高，右侧操作按钮不被状态文字挤出。
 - **固定**：固定的选项卡显示图钉图标，移到最左侧，再次运行时保留。悬停在固定的选项卡上弹出信息：时间戳、查询时间、获取时间、连接、数据库（PostgreSQL 加模式）和 SQL。再点固定按钮取消固定。
@@ -117,7 +117,7 @@ pub fn split_script(sql: &str, dialect: Dialect) -> Vec<Statement>;
   - 每一列都有来源（`Column::origin`），并且来自同一张表，同一个来源列不出现两次；
   - 这张表有主键，主键的每一列都在结果里（按 `table_columns` 的 `primary_key` 判断）。
 
-  编辑、新增、删除和提交时机与表查看器相同：离开已修改的行、点 ✓ 或按 ⌘S 提交，✗ 放弃；走同一套 `ChangeSet` 和 `Dialect::render_changes`。提交流程从表查看器里提出来，作为 `navidog-grid` 的公开函数供两边调用。提交在操作独占的短期会话上执行（`Sessions::run_operation_rel`），不占用共享元数据会话或查询编辑器会话，不受两者里手动开启的事务影响，也不会提前结束它们（偏差，Navicat 的做法待实测）。操作执行一次后关闭，关闭失败不改变已完成的写入结果。新增的行有没填的列，或某个值按表达式写入时，提交后按结果绑定的原连接/数据库/模式重新执行这条语句刷新结果；仅当编辑器当前会话与原来源完全匹配时复用，否则建立独立会话并在查询后关闭，与表查看器“修改后同步记录”一致。
+  编辑、新增、删除和提交时机与表查看器相同：离开已修改的行、点 ✓ 或按 ⌘S 提交，✗ 放弃；走同一套 `ChangeSet` 和 `Dialect::render_changes`。提交流程从表查看器里提出来，作为 `naviduck-grid` 的公开函数供两边调用。提交在操作独占的短期会话上执行（`Sessions::run_operation_rel`），不占用共享元数据会话或查询编辑器会话，不受两者里手动开启的事务影响，也不会提前结束它们（偏差，Navicat 的做法待实测）。操作执行一次后关闭，关闭失败不改变已完成的写入结果。新增的行有没填的列，或某个值按表达式写入时，提交后按结果绑定的原连接/数据库/模式重新执行这条语句刷新结果；仅当编辑器当前会话与原来源完全匹配时复用，否则建立独立会话并在查询后关闭，与表查看器“修改后同步记录”一致。
 
 ### 4.3 消息
 
@@ -172,12 +172,12 @@ SELECT * FROM nope
   - 单击节点弹出信息框（宽 171）：标题、“全部复制”和关闭按钮，下面是这个节点的全部属性（键值对）。
   - Navicat 的“下载图表为 PNG”M3 不做（偏差）。
 - **统计信息**：下拉选“每个节点类型”或“每个关系”。每个节点类型的列：节点类型、计数、耗时、耗时 (%)；每个关系的列：关联名称、扫描数量、节点类型、计数、耗时、佔关系的 %。只用于 JSON 格式的计划。
-- 计划解析、占比和统计是纯函数，放在 `navidog_util::explain`，用三种格式的计划样例做单元测试。
+- 计划解析、占比和统计是纯函数，放在 `naviduck_util::explain`，用三种格式的计划样例做单元测试。
 
 ## 6. 历史日志与 SQL 日志（F-QRY-012、F-APP-017、F-PREF-010）
 
-- **记录什么**：navidog 发给服务器的每条 SQL：查询编辑器、命令列界面、表查看器、导航树的元数据查询、对象操作。驱动里所有发出 SQL 的地方都经过同一个记录函数（包括 `list_databases` 这类不走 `execute` 的直接调用），调用方不用各自记录。
-- **QueryExec.log**：写在日志路径下（默认 `~/Library/Logs/navidog/`），每次启动时清空，与 Navicat 一样只保留本次运行。每条记录：
+- **记录什么**：naviduck 发给服务器的每条 SQL：查询编辑器、命令列界面、表查看器、导航树的元数据查询、对象操作。驱动里所有发出 SQL 的地方都经过同一个记录函数（包括 `list_databases` 这类不走 `execute` 的直接调用），调用方不用各自记录。
+- **QueryExec.log**：写在日志路径下（默认 `~/Library/Logs/naviduck/`），每次启动时清空，与 Navicat 一样只保留本次运行。每条记录：
 
   ```
   [2026-10-10 23:49:01.123][sakila 本地][42][MYSQL][0.002s]
@@ -188,7 +188,7 @@ SELECT * FROM nope
   方括号依次是时间（到毫秒）、连接名称、会话 ID（SQLite 为 0）、连接类型（驱动 ID 的大写：MYSQL、MARIADB、POSTGRESQL、SQLITE）、运行时间；下面是语句，再空一行。出错时紧跟一条表头相同的记录，正文是错误信息，与 Navicat 一样。
 - **写入**：在后台线程追加，界面不等待。内存里保留本次运行最近的 10,000 条，并标出哪些是错误，供查看器使用。ponytail: 超过 10,000 条时查看器只看得到最近的部分，完整内容在文件里。
 - **历史日志查看器**：⇧⌘H 或“工具 > 历史日志”，在对象窗格打开一个单例选项卡。只读的 SQL 编辑器显示记录，新记录追加在末尾并滚到底；用户往上滚动后不再自动滚动，滚回底部后恢复。顶部按钮：仅显示错误（只留下出错的语句和错误信息）、暂停 / 恢复（暂停期间的新记录先攒着，恢复后一起显示）。它激活时“查看”菜单有显示日期、显示时间、显示服务器名称、显示会话 ID、显示连接类型、显示运行时间，默认全部勾选，存在 `settings.json`；只影响查看器里显示的表头，不影响文件。
-- **偏好设置“高级”**：日志路径（默认 `~/Library/Logs/navidog`，“选择…”打开文件夹面板，旁边有“在 Finder 中显示”），修改后 QueryExec.log 立即换到新位置，应用日志下次启动生效；启用诊断日志（默认不勾），勾选后应用日志记录 debug 级别，否则是 info 级别。
+- **偏好设置“高级”**：日志路径（默认 `~/Library/Logs/naviduck`，“选择…”打开文件夹面板，旁边有“在 Finder 中显示”），修改后 QueryExec.log 立即换到新位置，应用日志下次启动生效；启用诊断日志（默认不勾），勾选后应用日志记录 debug 级别，否则是 info 级别。
 
 ## 7. 命令列界面（F-QRY-014）
 
@@ -214,7 +214,7 @@ SELECT * FROM nope
   (1 row)
   ```
 
-  不返回结果集的语句写 `Query OK, 1 row affected (0.01 sec)`，错误写 `ERROR 1146: Table 'sakila.nope' doesn't exist`（PostgreSQL 是 `ERROR:  relation "nope" does not exist`）。数字列右对齐，NULL 显示为 `NULL`。列宽、补空格和表头居中统一按 Unicode 显示宽度计算，覆盖中日韩宽字符、全角字符和组合字符。SQLite 不用 sqlite3 默认的竖线列表，因为不便阅读。表格格式化是纯函数，放在 `navidog-util`。
+  不返回结果集的语句写 `Query OK, 1 row affected (0.01 sec)`，错误写 `ERROR 1146: Table 'sakila.nope' doesn't exist`（PostgreSQL 是 `ERROR:  relation "nope" does not exist`）。数字列右对齐，NULL 显示为 `NULL`。列宽、补空格和表头居中统一按 Unicode 显示宽度计算，覆盖中日韩宽字符、全角字符和组合字符。SQLite 不用 sqlite3 默认的竖线列表，因为不便阅读。表格格式化是纯函数，放在 `naviduck-util`。
 - 输出区最多保留最近 10,000 行。ponytail: 更早的输出丢弃；需要时再加“保存输出”。每条语句同样写进历史日志。
 
 ## 8. 菜单与快捷键
@@ -260,7 +260,7 @@ SELECT * FROM nope
 
 - [x] 普通 SQL 每轮结束后只通知一次原连接，部分失败、取消、事务完成及执行中关闭查询/命令列窗口均覆盖；已开表和视图定义自动更新。（查询通知、关闭窗口及 `query_toolbar_refreshes_open_tables_and_view_definitions` 回归；见 [验收记录](../pr/acceptance-query-refresh.md)。）
 - [x] 多行 SQL、批量提交状态和长文本在浅色及深色的底部栏中保持单行，操作按钮不被挤出，悬停保留原文。（复用 `skin::truncated`，`batch_sql_stays_on_one_line_beside_footer_controls` 验证几何约束；查询结果截图及共用组件的悬停截图见 [验收记录](../pr/acceptance-status-overflow.md)。）
-- [x] 三种数据库：运行、运行已选择的、运行当前语句、停止都正确；多条语句各自写进消息和摘要；出错时停下并标出语句，勾选“遇到错误时继续”时执行完全部。（SQLite：`runs_scripts_into_messages_summary_and_editable_results`；MySQL、MariaDB、PostgreSQL：`NAVIDOG_LIVE=1 cargo test -p navidog-query live_editor`。停止前先确认服务端正在执行慢查询。）
+- [x] 三种数据库：运行、运行已选择的、运行当前语句、停止都正确；多条语句各自写进消息和摘要；出错时停下并标出语句，勾选“遇到错误时继续”时执行完全部。（SQLite：`runs_scripts_into_messages_summary_and_editable_results`；MySQL、MariaDB、PostgreSQL：`NAVIDUCK_LIVE=1 cargo test -p naviduck-query live_editor`。停止前先确认服务端正在执行慢查询。）
 - [x] 用 `DELIMITER $$` 创建存储过程后能调用；`-- NAME:` 改了结果选项卡的名称；超过 20 个结果集时只显示 20 个。（MySQL、MariaDB 的 `live_editor_runs_selection_current_errors_and_stop` 创建、调用、删除测试过程并验证结果名称；SQLite 编辑器测试验证 21 条均执行但只保留 20 个结果。）
 - [x] 查询参数：同名参数只问一次，原始模式不加引号，上次输入的值预先填好。
 - [x] 结果编辑：`SELECT * FROM actor` 可以编辑并提交；联接多表的结果、没有主键的表、`CALL` 返回的结果都显示“只读”。

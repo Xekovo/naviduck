@@ -26,12 +26,12 @@
 | M11 AI 助手 | 未开始 | | | |
 | M12 同步（替代 Cloud） | 未开始 | | | |
 | M13 HTTP 隧道 | 未开始 | | | |
-| M14 其他数据库 | 进行中 | `feat/dameng` | db/、140-dameng | 达梦 DM8 已接入（`navidog-dameng`，dm-pure 驱动）：连接/导航/表查看器/查询编辑器/表设计器迁移/用户只读列表，实库测试 10 项本地通过。dm-pure 1.2.4 的四处协议补丁待接自建镜像仓库（第 4 节），接上后 LOB/EXPLAIN/SET SCHEMA/取消响应的守卫自动转正。见 [验收记录](pr/acceptance-dameng.md) |
+| M14 其他数据库 | 进行中 | `feat/dameng` | db/、140-dameng | 达梦 DM8 已接入（`naviduck-dameng`，dm-pure 驱动）：连接/导航/表查看器/查询编辑器/表设计器迁移/用户只读列表，实库测试 10 项本地通过。dm-pure 1.2.4 的四处协议补丁待接自建镜像仓库（第 4 节），接上后 LOB/EXPLAIN/SET SCHEMA/取消响应的守卫自动转正。见 [验收记录](pr/acceptance-dameng.md) |
 | M15 发布 | 部分 | `codex/macos-adhoc-signing` | 150-macos-distribution | 工作流、安装包、`latest.json`、应用内更新已在仓库里；无证书时免费临时签名与验签已接入并经本机验证。正式公证仍需证书与凭据（第 4 节），配置迁移（F-REL-004）未做 |
 
 ## 2. 当前里程碑：M4（表设计器）
 
-已实现的三种数据库拆成独立 crate：`navidog-mysql`（含 MariaDB）、`navidog-postgres`、`navidog-sqlite`。`Dialect` 是 trait，扫描器只看 `Lex`。目录和补全 SQL 在各会话实现里；`navidog-db` 保留 `Driver`/`Session`/`Relational` 契约、连接与 SSH 编排、执行恢复和结果集读取。表设计的语句差异是方言上的能力方法，执行顺序仍在 `navidog-schema`。连接表单读 `DriverInfo` 的多主机、超时、连接参数和 SSL 模式。界面按方言能力方法（`like_text_cast`、`standalone_indexes`、`table_option_style`、`explain_style` 等）和 `DriverInfo` 标志分支，没有按 `Dialect::id()` 的比较。相对拆分前有三处行为变化：没有方言时查询补全为空（以前回退到 MySQL 关键字）；未绑定连接的网格按输入的原文显示，不再加引号；表设计器标签在连接消失后显示缺失连接面板，未保存的草稿关闭前要确认。验证见第 5 节。
+已实现的三种数据库拆成独立 crate：`naviduck-mysql`（含 MariaDB）、`naviduck-postgres`、`naviduck-sqlite`。`Dialect` 是 trait，扫描器只看 `Lex`。目录和补全 SQL 在各会话实现里；`naviduck-db` 保留 `Driver`/`Session`/`Relational` 契约、连接与 SSH 编排、执行恢复和结果集读取。表设计的语句差异是方言上的能力方法，执行顺序仍在 `naviduck-schema`。连接表单读 `DriverInfo` 的多主机、超时、连接参数和 SSL 模式。界面按方言能力方法（`like_text_cast`、`standalone_indexes`、`table_option_style`、`explain_style` 等）和 `DriverInfo` 标志分支，没有按 `Dialect::id()` 的比较。相对拆分前有三处行为变化：没有方言时查询补全为空（以前回退到 MySQL 关键字）；未绑定连接的网格按输入的原文显示，不再加引号；表设计器标签在连接消失后显示缺失连接面板，未保存的草稿关闭前要确认。验证见第 5 节。
 
 ### M3 收尾记录
 
@@ -40,21 +40,21 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | 任务 | 状态 | 说明 |
 | --- | --- | --- |
 | SQL 编辑器技术验证（30-query-editor 第 1 节） | 完成 | 继续用 `EditorState`；括号高亮、查找、占位符用区间装饰；5 万行上色后滚动和输入平均约 2.9ms，数据见规格第 1 节 |
-| 驱动扩展：列来源、会话 ID、PostgreSQL NOTICE、MySQL 读取超时、PostgreSQL 取消走 TLS | 完成 | 31 第 1 节。所有发出的 SQL 经 `navidog_db::log` 记录；`list_databases` 改为默认方法走 `execute` |
+| 驱动扩展：列来源、会话 ID、PostgreSQL NOTICE、MySQL 读取超时、PostgreSQL 取消走 TLS | 完成 | 31 第 1 节。所有发出的 SQL 经 `naviduck_db::log` 记录；`list_databases` 改为默认方法走 `execute` |
 | 分句器返回区间并支持 `DELIMITER` | 完成 | `split_script` 按方言处理引号、`#` 注释、`$tag$` 和 E 字符串 |
-| `navidog-query`：查询选项卡、目标选择、运行、停止、查询参数 | 完成 | 30 第 2 节，31 第 2、3 节 |
-| 结果：结果选项卡、消息、摘要、固定、位置、命名、可编辑结果、保留之前的查询结果 | 完成 | 提交流程提成 `navidog_grid::commit`；结果有单元格编辑器和只读表单视图。保留结果时标签有关闭按钮；右键动作挂在查询编辑器上 |
+| `naviduck-query`：查询选项卡、目标选择、运行、停止、查询参数 | 完成 | 30 第 2 节，31 第 2、3 节 |
+| 结果：结果选项卡、消息、摘要、固定、位置、命名、可编辑结果、保留之前的查询结果 | 完成 | 提交流程提成 `naviduck_grid::commit`；结果有单元格编辑器和只读表单视图。保留结果时标签有关闭按钮；右键动作挂在查询编辑器上 |
 | 查询分析和状态 [My] | 完成 | 31 第 4.5 节 |
-| 查询解释：网格、文本、JSON、可视化、统计信息 | 完成 | 计划解析、占比、统计和布局在 `navidog_util::explain` |
+| 查询解释：网格、文本、JSON、可视化、统计信息 | 完成 | 计划解析、占比、统计和布局在 `naviduck_util::explain` |
 | 编辑：查找替换、格式菜单、美化 SQL、简化 SQL、剪贴板堆栈、缩放、语法配色实测 | 部分 | 功能都已完成；语法配色与 Navicat 的并排实测未做，偏好设置可自定义 |
-| 代码补全与代码补全信息 | 完成 | `navidog_db::outline`，关键字和内置函数在 `navidog-db` 的方言里 |
-| 代码段，信息窗格的预览、代码段、标识符页 | 完成 | 存储在 `navidog_app_state::snippets` |
-| 保存查询、对象分类“查询”、外部文件 | 完成 | `navidog_model::queries` |
+| 代码补全与代码补全信息 | 完成 | `naviduck_db::outline`，关键字和内置函数在 `naviduck-db` 的方言里 |
+| 代码段，信息窗格的预览、代码段、标识符页 | 完成 | 存储在 `naviduck_app_state::snippets` |
+| 保存查询、对象分类“查询”、外部文件 | 完成 | `naviduck_model::queries` |
 | 自动恢复 | 完成 | 正常退出不询问，随布局恢复（30 第 8 节） |
 | 偏好设置：编辑器、代码补全、自动恢复、高级页的日志选项 | 完成 | 30 第 9 节，31 第 6 节 |
 | 历史日志、QueryExec.log | 完成 | 31 第 6 节 |
 | 命令列界面 | 完成 | 31 第 7 节 |
-| SQL 输入处的自动补全 | 完成 | 筛选文本、命令列、代码段编辑框和表设计器里写 SQL 的框共用 `navidog-sql` 的排序与命中高亮；见 [验收记录](pr/acceptance-sql-field-completion.md) |
+| SQL 输入处的自动补全 | 完成 | 筛选文本、命令列、代码段编辑框和表设计器里写 SQL 的框共用 `naviduck-sql` 的排序与命中高亮；见 [验收记录](pr/acceptance-sql-field-completion.md) |
 | 批量删除后底部 SQL 状态文字溢出修复 | 完成 | 共享单行组件处理显式换行并保留悬停原文，表查看器与查询结果固定底栏高度；见 [验收记录](pr/acceptance-status-overflow.md) |
 | TLS 依赖审计补丁更新 | 完成 | `rustls-webpki` 升至 0.103.16、`webpki-roots` 升至 1.0.10；audit 与 deny 均通过，未新增忽略项；见 [验收记录](pr/acceptance-status-overflow.md) |
 | 查询执行后的对象与表格联动刷新 | 完成 | `codex/query-auto-refresh`；同连接已加载目录、DDL 和安全表格自动更新，编辑/事务保留，关闭查询窗口后仍通知；226 项测试、39 张本地截图及三项性能检查通过，见 [验收记录](pr/acceptance-query-refresh.md) |
@@ -81,7 +81,7 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 
 | 任务 | 状态 | 验证与说明 |
 | --- | --- | --- |
-| 阶段 1：内置命令影子目录 | 完成 | `CommandRegistry` 登记菜单级内置命令及连接、导航分类命令；标题按 crate-local i18n 在语言切换后重新解析。`cargo test -p navidog --test command_catalog` 检查唯一 ID、完整标题、可解析快捷键和真实 Action；`scripts/check-i18n.sh` 通过 |
+| 阶段 1：内置命令影子目录 | 完成 | `CommandRegistry` 登记菜单级内置命令及连接、导航分类命令；标题按 crate-local i18n 在语言切换后重新解析。`cargo test -p naviduck --test command_catalog` 检查唯一 ID、完整标题、可解析快捷键和真实 Action；`scripts/check-i18n.sh` 通过 |
 | 阶段 2：命令面板 | 未开始 | 只读目录并 dispatch 现有 typed Action；不改菜单、快捷键和 `on_action` 执行路径 |
 | 阶段 3：Quick Open | 未开始 | 复用 `CommandTarget` 解析连接、数据库和对象；带参数命令不进普通命令列表 |
 | 阶段 4：快捷键投影 | 未开始 | 替换手写 `bind_keys` 前必须先覆盖上下文谓词与同一 Action 的多绑定 |
@@ -93,11 +93,11 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 
 | 任务 | 状态 | 验证与说明 |
 | --- | --- | --- |
-| R-04 / D-05 统一 SQL 扫描与词法 | 完成 | 新 `navidog-sql` 的 `span::spans` 是唯一词法层（字符串/引号标识符/注释/`$tag$`/`[$name]` 参数/括号深度/语句边界，含 MySQL `DELIMITER` 与 `BEGIN…END`）；分句、参数、格式菜单、表格筛选、表设计解析共用它，各消费者的跳过函数已删。回归在 `navidog-sql` 的 span 测试与 `navidog-grid` 的跨消费者一致性测试 |
+| R-04 / D-05 统一 SQL 扫描与词法 | 完成 | 新 `naviduck-sql` 的 `span::spans` 是唯一词法层（字符串/引号标识符/注释/`$tag$`/`[$name]` 参数/括号深度/语句边界，含 MySQL `DELIMITER` 与 `BEGIN…END`）；分句、参数、格式菜单、表格筛选、表设计解析共用它，各消费者的跳过函数已删。回归在 `naviduck-sql` 的 span 测试与 `naviduck-grid` 的跨消费者一致性测试 |
 | D-08 / A-06 Catalog/OutlineCache 统一缓存 | 完成 | `ScopeCache<K,T>` 泛型化；Catalog 五类缓存用 typed key + `LoadId`，`require/require_all/reload_all/require_selection` 是唯一加载入口，objects 面板的 `ensure_loaded` 与 `stalled_load` 已删。目录生命周期、失败重试、延迟代际测试在 `catalog.rs`/`catalog_lifecycle.rs`/`database_refresh.rs` |
-| A-01 拆 app-state | 完成 | `navidog-core` 删除，GPUI 状态迁到 `navidog-app-state`，纯数据留在 `navidog-model`；322 处 import 按模块迁移，无兼容 facade |
-| A-02 core/驱动去 gpui | 完成 | `navidog-db` 只依赖 model；`navidog-headless` 用 model+db 跑 SQLite；`scripts/check-deps.sh` 在 CI 检查依赖方向并禁止 `crates/navidog-core` 回潮 |
-| A-03 table_design 拆出 | 完成 | 新 `navidog-schema` 持有表草稿/表单/迁移计划，复用 R-04 的词法层；`rg 'table_design' crates/navidog-db/src` 为空，实库 DDL 测试随模块迁移 |
+| A-01 拆 app-state | 完成 | `naviduck-core` 删除，GPUI 状态迁到 `naviduck-app-state`，纯数据留在 `naviduck-model`；322 处 import 按模块迁移，无兼容 facade |
+| A-02 core/驱动去 gpui | 完成 | `naviduck-db` 只依赖 model；`naviduck-headless` 用 model+db 跑 SQLite；`scripts/check-deps.sh` 在 CI 检查依赖方向并禁止 `crates/naviduck-core` 回潮 |
+| A-03 table_design 拆出 | 完成 | 新 `naviduck-schema` 持有表草稿/表单/迁移计划，复用 R-04 的词法层；`rg 'table_design' crates/naviduck-db/src` 为空，实库 DDL 测试随模块迁移 |
 | A-07 god object/超长文件 | 完成 | viewer/results/editor/form/model/update 主文件分别为 768/348/922/534/139/27 行，全部 < 1000（update < 600）；`TableSession`/`TableView`、`ResultSession`、storage/edit/projection、`enum AfterCommit` 均已拆出；纯搬家，断言未改 |
 | A-10 Connection `profiles + active` | 完成 | `profiles: Vec<Profile>` + `active` 取代字段交换；`connections.json` 写旧布局、读两种布局；7+ 配置文件/重名/空名/两种 JSON/panic 恢复都有测试 |
 | S-07 共享 i18n 后端 | 完成（方案 1） | 保持 crate-local 契约；动态 key 必须登记 `scripts/i18n-dynamic-keys.txt`（19 条），`check-i18n.sh` 检查；契约写入 00-overview |
@@ -110,11 +110,11 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | --- | --- | --- |
 | 阶段 0 技术验证与规格 PR | 完成 | 九项验证 + 四补丁定位见验收记录；规格 `140-dameng.md`、`db/dameng/features.md` |
 | 能力层（界面零分支） | 完成 | `DialectFeatures` 三新字段、`ExplainStyle::TextLines`、设计器方言钩子、`DefinitionFamily::Dameng` 各臂、`session_setup` 识别 `SET SCHEMA`（`0012f4e`） |
-| `navidog-dameng` crate | 完成 | dialect/words/metadata/driver + locales；方言、目录 SQL、类型映射、错误码映射 23 项单元测试；plan 测试在 `navidog-schema`（迁移语句四项） |
-| 共享层接线 | 完成 | `plan.rs` 调 `add_column`/`modify_column`（PG/MySQL/SQLite 回归不变）；`navidog-session::init` 注册；`check-deps.sh` 加名单；自绘图标 `icons/db/dameng.svg` |
+| `naviduck-dameng` crate | 完成 | dialect/words/metadata/driver + locales；方言、目录 SQL、类型映射、错误码映射 23 项单元测试；plan 测试在 `naviduck-schema`（迁移语句四项） |
+| 共享层接线 | 完成 | `plan.rs` 调 `add_column`/`modify_column`（PG/MySQL/SQLite 回归不变）；`naviduck-session::init` 注册；`check-deps.sh` 加名单；自绘图标 `icons/db/dameng.svg` |
 | 用户工具只读列表 | 完成 | `Unavailable` + `account_list_sql=Some` 时渲染只读列表（隐藏新建/设计、禁双击）；SQLite 原因文本行为不变；`security_plan` 测试补 Dameng 契约 |
 | 迁移不可回滚提示 | 完成 | 预览页在 `transactional_ddl=false` 时显示固定提示（达梦与 MySQL 同样适用，能力驱动不按产品分支） |
-| 实库测试 | 完成 | `NAVIDOG_DM_LIVE=1` 10 项本地通过：连接/错误密码、目录八方法、中文、LOB、事务与 DDL 隐式提交、取消杀会话、SET SCHEMA、分页、EXPLAIN、lazy fetch、设计器迁移语法；DM 镜像不进 CI（许可），LOB/EXPLAIN/SET SCHEMA 三项在未打补丁的 dm-pure 上自动跳过 |
+| 实库测试 | 完成 | `NAVIDUCK_DM_LIVE=1` 10 项本地通过：连接/错误密码、目录八方法、中文、LOB、事务与 DDL 隐式提交、取消杀会话、SET SCHEMA、分页、EXPLAIN、lazy fetch、设计器迁移语法；DM 镜像不进 CI（许可），LOB/EXPLAIN/SET SCHEMA 三项在未打补丁的 dm-pure 上自动跳过 |
 | dm-pure 补丁接线 | 未开始 | 补丁文件随 /tmp 清理已丢失，需按验收记录重建四补丁并推送到自建镜像 `ekovovo/dm8_pure_rs`（仓库尚未创建），再经 `[patch.crates-io]` git 依赖接线；上游恢复后提 PR |
 
 ### M4 表设计器
@@ -123,7 +123,7 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | 任务 | 状态 | 说明 |
 | --- | --- | --- |
 | 规格与开发分支 | 完成 | 从 `codex/m3-completion` 的 `4bb20ea` 创建 `codex/m4-table-designer`；规格先单独提交 |
-| `navidog-designer` 与导航入口 | 完成 | 对象工具栏新建/设计、表右键和表下元素入口；独立选项卡、关闭守卫、草稿随布局恢复；作者 review 已补对象身份、设计/数据分别复用、查看器菜单与快捷键 |
+| `naviduck-designer` 与导航入口 | 完成 | 对象工具栏新建/设计、表右键和表下元素入口；独立选项卡、关闭守卫、草稿随布局恢复；作者 review 已补对象身份、设计/数据分别复用、查看器菜单与快捷键 |
 | 字段、约束、索引、选项与 SQL 预览 | 部分 | 八列字段网格、类型/长度/默认值等属性控件、结构化索引/外键/检查已完成；表达式和高级 SQL 框已接补全。三种方言选项表单和迁移已接入，存储引擎私有属性仍经高级定义编辑 |
 | 迁移计划与保存 | 完成 | 三种方言及 MariaDB 实库验证；SQLite 重建先把旧表改名为 `_表_old_日期` 并留下，不删除；预览页去掉保存、改为执行；外键校验/依赖检查；外部结构变化拒绝覆盖；失败保留草稿 |
 | 界面与本机检查 | 完成 | headless 编辑/预览/执行/失败恢复、条目重载重排、关闭守卫与无改动关闭；浅深色截图与第 5 节检查，详见验收记录 |
@@ -156,7 +156,7 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | F-APP-018 关于与检查更新 | 完成 | update 单元测试、目测 | 两个渠道都读 nightly 上的 `latest.json`（没有则试最新稳定版；`releases` 是各版本列表），不含预发布时跳过预发布和 nightly。摘要为空则拒绝安装。下载校验 SHA-256，对话框显示下载进度，下载中可取消。nightly 用清单里的 `built_at` 和本构建时间严格比较，相同则已是最新。安装开始后改为不定进度，文案是挂载、复制、验证签名、替换或打开安装包。没有本机安装包时按钮是打开发布页，清单读取失败记 warn。启动检查最多每两天一次，失败不记检查时间。手动检查：没有活动窗口时用最前面的窗口；还没有发布版本单独提示。就地替换先把新包放到旁边，失败时删掉半成品再移回旧包。重新启动等当前进程退出后再打开。关于页：nightly 显示渠道和构建时间；tag 构建在编译前把 workspace 版本改成 tag |
 | F-APP-019 欢迎界面 | 部分 | snapshot | 有空状态提示；首次启动引导窗口未做 |
 | F-PREF-001 偏好设置窗口 | 完成 | 目测 | |
-| F-PREF-002 常规 | 完成 | settings 单元测试、theme 单元测试 | 主题（Navidog、Default，缺省 Default）、外观、语言、自动连接、自动检查更新、包含预发布版本、显示模式下的对象、显示表下的对象、显示系统对象（缺省开，与查看菜单「显示隐藏项目」同一项）。已经写进 settings.json 的值不会被改掉 |
+| F-PREF-002 常规 | 完成 | settings 单元测试、theme 单元测试 | 主题（Naviduck、Default，缺省 Default）、外观、语言、自动连接、自动检查更新、包含预发布版本、显示模式下的对象、显示表下的对象、显示系统对象（缺省开，与查看菜单「显示隐藏项目」同一项）。已经写进 settings.json 的值不会被改掉 |
 | F-PREF-010 高级 | 部分 | | 设置位置、主密码已完成；日志选项未做 |
 | F-CONN-001 新建连接：选择类型 | 完成 | snapshot | |
 | F-CONN-002 连接表单：常规 | 完成 | ui 测试、snapshot | |
@@ -193,7 +193,7 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | F-PREF-003 选项卡 | 完成 | 目测 | 在新窗口中打开、启动画面列表 |
 | F-PREF-005 记录 | 完成 | settings 单元测试、model 单元测试、目测 | 限制记录、每页记录数、自动开始事务、修改后同步、点击编辑、网格字号、行底纹（缺省无）、无主键提示。字体系族仍是默认字体；数据分析颜色在 M10（第 4 节） |
 | F-CONN-015 管理连接窗口 | 完成 | ui 测试 | 搜索匹配名称、类型、主机、端口、用户名、分组并高亮。工具栏直接调用连接命令。表格超出窗口时显示横向滚动条 |
-| F-CONN-016 通过 URI 新建连接 | 完成 | uri 单元测试 | 支持 mysql://、mariadb://、postgres(ql):// 和带 `type` 的 navidog URI |
+| F-CONN-016 通过 URI 新建连接 | 完成 | uri 单元测试 | 支持 mysql://、mariadb://、postgres(ql):// 和带 `type` 的 naviduck URI |
 | F-CONN-019 重载 [My] | 完成 | reload 单元测试、MySQL 8.4 / MariaDB 11 实测 | 只提供两者都支持的 FLUSH 选项，见第 4 节 |
 | F-CONN-021 连接配置文件 | 完成 | connection、store 单元测试、ui 测试 | 右键“切换连接配置文件”；PostgreSQL 多节点在常规页，live 测试覆盖。切换时编辑器选项卡保留并重新连上 |
 | F-NAV-001 连接树（到对象层级） | 完成 | navigator 单元测试、database_refresh UI 测试、snapshot | PostgreSQL 多一层模式。打开连接后已展开的节点会重新加载；查询完成后刷新同连接已加载目录及打开的 DDL，旧请求不覆盖新缓存。目录在渲染中被读取时，树比较修订号后重绘。单击或方向键选到别的对象时回到“对象”选项卡 |
@@ -234,7 +234,7 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | 功能 | 状态 | 验证 | 说明 |
 | --- | --- | --- | --- |
 | F-QRY-001 查询编辑器 | 完成 | query editor 测试、snapshot | 行号、折叠、括号高亮、自动换行、缩放；编辑器偏好即时生效。不自动补右括号 |
-| F-QRY-002 代码补全 | 完成 | completion 单元测试（含 `a_completed_word_gains_a_space_and_a_snippet_keeps_its_text`、`a_completion_replaces_the_whole_identifier_and_keeps_space_outside_quotes`）、sqlite 测试、live 测试、outline 单元测试、`a_column_name_uses_the_property_color` | `.` 之后按数据库、表、别名给出候选；前缀、连续包含、跨字符三档排序（`mocfg` → `mount_cfgs`），命中的字符涂蓝；替换整个标识符，词末尾加一个空格，已有引号不套第二层，代码段按原文插入。字段名记到主题的 `property` 色，子句片段里的标识符同样。Tab 确认、Esc 打开；补全信息在连接目录的 `.outline/`。排序在 `navidog-sql`，筛选文本、命令列、代码段编辑框和表设计器共用。补全浮层没有图标（偏差） |
+| F-QRY-002 代码补全 | 完成 | completion 单元测试（含 `a_completed_word_gains_a_space_and_a_snippet_keeps_its_text`、`a_completion_replaces_the_whole_identifier_and_keeps_space_outside_quotes`）、sqlite 测试、live 测试、outline 单元测试、`a_column_name_uses_the_property_color` | `.` 之后按数据库、表、别名给出候选；前缀、连续包含、跨字符三档排序（`mocfg` → `mount_cfgs`），命中的字符涂蓝；替换整个标识符，词末尾加一个空格，已有引号不套第二层，代码段按原文插入。字段名记到主题的 `property` 色，子句片段里的标识符同样。Tab 确认、Esc 打开；补全信息在连接目录的 `.outline/`。排序在 `naviduck-sql`，筛选文本、命令列、代码段编辑框和表设计器共用。补全浮层没有图标（偏差） |
 | F-QRY-003 查找与替换 | 完成 | find 单元测试、query editor 测试 | 模式下拉里有正则表达式、大小写符合、整个字；递增搜索始终开着，到末尾不回绕。查找框回车是下一个，替换框回车是替换当前并跳到下一个 |
 | F-QRY-004 SQL 格式 | 完成 | sql_format 单元测试、query editor 测试 | 缩排、注释、大小写、美化 SQL（sqlformat，记号序列不变）、简化 SQL，每条命令一步撤销 |
 | F-QRY-005 剪贴板堆栈 | 完成 | format 单元测试、query editor 测试 | 10 项，⇧⌘V 连按依次替换 |
@@ -295,7 +295,7 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 
 | 功能 | 状态 | 验证 | 说明 |
 | --- | --- | --- | --- |
-| F-REL-001 打包 | 部分 | publish 工作流（`main` 推送与每日定时；安装包经 artifact 汇总后统一替换 `nightly`）；PR 预览构建产出 macOS aarch64 DMG artifact（7 天）；`scripts/check-macos-bundle-icon.sh` | macOS DMG、Windows zip / MSI / `.msi.zip`、Linux deb / rpm / AppImage / tarball，附 `latest.json` 和 `SHA256SUMS`。`cargo bundle` 的图标路径相对仓库根目录，打包后检查 `navidog.icns`。未在每台机器上安装验证 |
+| F-REL-001 打包 | 部分 | publish 工作流（`main` 推送与每日定时；安装包经 artifact 汇总后统一替换 `nightly`）；PR 预览构建产出 macOS aarch64 DMG artifact（7 天）；`scripts/check-macos-bundle-icon.sh` | macOS DMG、Windows zip / MSI / `.msi.zip`、Linux deb / rpm / AppImage / tarball，附 `latest.json` 和 `SHA256SUMS`。`cargo bundle` 的图标路径相对仓库根目录，打包后检查 `naviduck.icns`。未在每台机器上安装验证 |
 | F-REL-002 签名与公证 | 部分 | 本机真实签名/篡改/DMG 回归、完整应用首帧；publish/lint 配置检查 | 无证书时本地打包和发布共用免费临时签名脚本，严格验签失败则停止；完整签名应用经过 DMG 复制、整包替换仍可启动。两架构 CI 已接入回归，远端未跑；正式签名与公证未实测。见 [验收记录](pr/acceptance-macos-signing.md) |
 | F-REL-003 自动更新 | 完成 | update 单元测试 | 与 F-APP-018 同一条路径：读 `latest.json` 的 `releases` 并校验 SHA-256。tag 的发布说明由 changelogithub 写入清单。tag 在清单上传成功后取消 draft。tag 构建在编译前把 workspace 版本改成 tag，不改仓库里的 Cargo.toml |
 | F-REL-004 迁移或升级 | 未开始 | | 配置目录还没有版本迁移 |
@@ -305,7 +305,7 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | 项目 | 引入于 | 计划处理 |
 | --- | --- | --- |
 | dm-pure 1.2.4 四处协议缺陷未打补丁（行外 LOB 读空、EXPLAIN 挂起、SET SCHEMA/CALL 挂起、错误消息偶发前缀）；补丁托管仓库 `ekovovo/dm8_pure_rs` 尚未创建 | M14 | 按验收记录「dm-pure 缺陷与补丁」重建四补丁推送到自建镜像，根 Cargo.toml 加 `[patch.crates-io]`；接线前实库测试对 LOB/EXPLAIN/SET SCHEMA 自动跳过 |
-| DM 实库测试为本地可选，不进 CI（DM 开发版许可仅限学习/测试/开发，1 年试用） | M14 | `NAVIDOG_DM_LIVE=1` + `DM_PORT` 手动执行；起容器命令见 live.rs 文件头 |
+| DM 实库测试为本地可选，不进 CI（DM 开发版许可仅限学习/测试/开发，1 年试用） | M14 | `NAVIDUCK_DM_LIVE=1` + `DM_PORT` 手动执行；起容器命令见 live.rs 文件头 |
 | 迁移预览的不可回滚提示按 `transactional_ddl=false` 能力显示，MySQL 预览页也因此新增同一提示（此前没有） | M14 | 能力驱动、文案事实正确；与 Navicat 并排实测后如需收敛再按能力细分 |
 | 连接表单/导航树/表查看器/查询编辑器对 DM 的整体界面目测未做（需要本机连 DM 实例走查） | M14 | 下一轮连同 CS=0 与 mode 2/4 实例一起验收 |
 | 表设计器已恢复字段网格和结构化表单；引擎私有属性表单、字段拖放和运行态 Navicat 并排仍未做 | M4 | ⌘↑ / ⌘↓ 移动字段。并排对照不阻塞本里程碑 |
@@ -319,7 +319,7 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | 修改标记颜色（已修改单元格、待删除行）是暂定值 | M2 | 与 Navicat 并排实测后替换 |
 | SQL 编辑器的语法配色未与 Navicat 并排实测 | M2 | 与 Navicat 并排实测后替换 `themes/navicat.json`；偏好设置“编辑器”页可以自定义 |
 | 表查看器的总行数查询和数据查询共用一个会话，按顺序执行 | M2 | 大表 COUNT 拖慢翻页时另开会话 |
-| 关闭有未提交修改的表查看器时，gpui-kit 的关闭按钮隐藏，标题里用 ● 代替：gpui-kit 没有关闭前询问的钩子，靠 `Panel::closable` 拒绝关闭再由 `navidog_ui::tabs` 的关闭守卫询问 | M2 | gpui-kit 提供关闭前钩子后改用它 |
+| 关闭有未提交修改的表查看器时，gpui-kit 的关闭按钮隐藏，标题里用 ● 代替：gpui-kit 没有关闭前询问的钩子，靠 `Panel::closable` 拒绝关闭再由 `naviduck_ui::tabs` 的关闭守卫询问 | M2 | gpui-kit 提供关闭前钩子后改用它 |
 | MySQL 的 UPDATE 不检查是否匹配到行：它报告的是实际改变的行数 | M2 | 需要时对会话打开 `CLIENT_FOUND_ROWS` |
 | 关闭弹出的编辑器窗口时直接放回主窗口，Navicat 会询问 | M2 | 保证未提交的修改不丢失；需要询问时再加对话框 |
 | 对象选项卡里虚拟组显示为“组标题 + 缩进的成员”，Navicat 是可进入的文件夹 | M2 | 与 Navicat 并排实测后调整 |
@@ -358,7 +358,7 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | 命令列界面分输出区和输入区，不支持 `\d`、`.tables` 等客户端命令 | M3 | 需要时加显示宽度表 |
 | 弹出窗口里的查询编辑器没有代码段和标识符页 | M3 | 无 |
 | MySQL 的“写入超时”仍只保存 | M3 | mysql_async 提供发送超时后接上 |
-| `navidog-schema` 的表选项解析（`mysql_span`/`pg_storage`/`pg_clause`）仍在通用 crate 里，只按 `TableOptionStyle` 分派；表设计在 `enriches_from_catalog` / `rebuilds_tables` 下仍直接执行 PostgreSQL catalog SQL 和 SQLite 重建 SQL（`sqlite_schema`、`sqlite_sequence`、`PRAGMA`）；关键字表是手抄的保留字集合，不是脚本从官方文件生成 | 拆 crate | 接第四个数据库前把选项解析和上述 SQL 搬进方言方法（会形成 schema → 方言 crate 的依赖，需要在 00-overview 里先定方向），并让关键字表由脚本生成 |
+| `naviduck-schema` 的表选项解析（`mysql_span`/`pg_storage`/`pg_clause`）仍在通用 crate 里，只按 `TableOptionStyle` 分派；表设计在 `enriches_from_catalog` / `rebuilds_tables` 下仍直接执行 PostgreSQL catalog SQL 和 SQLite 重建 SQL（`sqlite_schema`、`sqlite_sequence`、`PRAGMA`）；关键字表是手抄的保留字集合，不是脚本从官方文件生成 | 拆 crate | 接第四个数据库前把选项解析和上述 SQL 搬进方言方法（会形成 schema → 方言 crate 的依赖，需要在 00-overview 里先定方向），并让关键字表由脚本生成 |
 | 已有视图/函数/事件仍按整段 DDL 打开；用户面板不能改已有账号；查找结果不能双击；PostgreSQL 已有分区子表不加载；触发器表单没有事件和语句级；库/模式选项不标脏。列重排丢触发器、命名约束/`serial` 重建失败、二次保存被拒、移窗取消监控、分区名、监控语义和查找 SQL 已在 `9dccbb6` 修掉。其后补了冲突检查读失败、空基线禁止再保存、新建列不改序列归属，以及 MySQL 区分大小写正则。PostgreSQL 重建已改按真实归属转移序列，见[验收记录](pr/acceptance-postgres-sequence-ownership.md) | M4 | 按 [pr/review-pr-31.md](pr/review-pr-31.md) 第 7 节的未修清单做。相关功能行仍标「完成」，不在本轮整批改成「部分」 |
 
 ## 5. 验证
@@ -371,13 +371,13 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | 裸值检查 | `scripts/check-raw-px.sh` | CI 执行 |
 | i18n 检查 | `scripts/check-i18n.sh` | CI 执行；字面量 key 必须在本 crate 定义，动态 key 必须登记在 `scripts/i18n-dynamic-keys.txt` |
 | 方言分支检查 | `scripts/check-dialect-branches.sh` | CI 执行；生产代码不得比较 `dialect.id()`，方言差异写成能力方法，界面能力写成 `DriverInfo` 标志 |
-| 依赖方向检查 | `scripts/check-deps.sh` | CI 执行；model/db/sql/schema/util/sql-log/headless/mysql/postgres/sqlite 的 normal 依赖不得出现 `gpui`，`crates/navidog-core` 不得回潮 |
+| 依赖方向检查 | `scripts/check-deps.sh` | CI 执行；model/db/sql/schema/util/sql-log/headless/mysql/postgres/sqlite 的 normal 依赖不得出现 `gpui`，`crates/naviduck-core` 不得回潮 |
 | 依赖审计 | `cargo deny --all-features check`、`cargo audit` | CI 的 security-audit 工作流执行，配置在根目录 `deny.toml` 和 `.cargo/audit.toml`；只有直接依赖的 unmaintained 会失败，无补丁的 `RUSTSEC-2023-0071`（rsa）在两边都忽略 |
 | 单元测试与 headless UI 测试 | `cargo test --workspace` | CI 执行 |
-| 实库测试 | `docker compose up -d --wait && NAVIDOG_LIVE=1 cargo test -p navidog-db -p navidog-schema -p navidog-query --lib --test live --locked` | CI 的 integration 工作流和本地都执行；`--lib` 包含操作写入完成后元数据断连恢复的三驱动回归和 `navidog-schema` 的表设计 DDL 回归，测完执行 `docker compose down` |
-| 截图 | `cargo test -p navidog --test snapshot` | 本地执行，输出 `target/snapshots/` |
-| 结果网格性能 | `cargo run --release -p navidog-grid --example spike` | 本地执行，需要 Metal |
-| 导航树性能 | `cargo run --release -p navidog-navigator --example tree_spike` | 本地执行，需要 Metal |
-| SQL 编辑器性能 | `cargo run --release -p navidog-query --example editor_spike` | 本地执行，需要 Metal；`NAVIDOG_SPIKE_LINES` 改行数，截图写到 `target/editor-spike-*.png` |
-| 查询解释实库测试 | `docker compose up -d --wait && NAVIDOG_LIVE=1 cargo test -p navidog-query live_plans` | 本地执行；MySQL 8、MariaDB 11、PostgreSQL 16 的计划都能解析 |
-| 达梦实库测试（本地可选） | `NAVIDOG_DM_LIVE=1 cargo test -p navidog-dameng --test live` | 手动起 DM8 容器后执行（命令见 live.rs 文件头），测完 `docker stop dm8-utf8 && docker rm dm8-utf8`；LOB/EXPLAIN/SET SCHEMA 三项在未打补丁的 dm-pure 上自动跳过 |
+| 实库测试 | `docker compose up -d --wait && NAVIDUCK_LIVE=1 cargo test -p naviduck-db -p naviduck-schema -p naviduck-query --lib --test live --locked` | CI 的 integration 工作流和本地都执行；`--lib` 包含操作写入完成后元数据断连恢复的三驱动回归和 `naviduck-schema` 的表设计 DDL 回归，测完执行 `docker compose down` |
+| 截图 | `cargo test -p naviduck --test snapshot` | 本地执行，输出 `target/snapshots/` |
+| 结果网格性能 | `cargo run --release -p naviduck-grid --example spike` | 本地执行，需要 Metal |
+| 导航树性能 | `cargo run --release -p naviduck-navigator --example tree_spike` | 本地执行，需要 Metal |
+| SQL 编辑器性能 | `cargo run --release -p naviduck-query --example editor_spike` | 本地执行，需要 Metal；`NAVIDUCK_SPIKE_LINES` 改行数，截图写到 `target/editor-spike-*.png` |
+| 查询解释实库测试 | `docker compose up -d --wait && NAVIDUCK_LIVE=1 cargo test -p naviduck-query live_plans` | 本地执行；MySQL 8、MariaDB 11、PostgreSQL 16 的计划都能解析 |
+| 达梦实库测试（本地可选） | `NAVIDUCK_DM_LIVE=1 cargo test -p naviduck-dameng --test live` | 手动起 DM8 容器后执行（命令见 live.rs 文件头），测完 `docker stop dm8-utf8 && docker rm dm8-utf8`；LOB/EXPLAIN/SET SCHEMA 三项在未打补丁的 dm-pure 上自动跳过 |

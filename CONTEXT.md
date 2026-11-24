@@ -1,6 +1,6 @@
-# navidog 术语表
+# naviduck 术语表
 
-navidog 是用 gpui-kit 复刻 Navicat Premium 17（macOS）的数据库管理客户端。本文件统一代码、文档和评审中使用的词汇；新增术语先写进这里再使用。
+naviduck 是用 gpui-kit 复刻 Navicat Premium 17（macOS）的数据库管理客户端。本文件统一代码、文档和评审中使用的词汇；新增术语先写进这里再使用。
 
 ## 界面区域
 
@@ -36,7 +36,7 @@ navidog 是用 gpui-kit 复刻 Navicat Premium 17（macOS）的数据库管理�
 | 表查看器 | `TableViewer` | 打开一张表的数据所使用的编辑器选项卡，内含结果网格、筛选排序栏和导航栏。 |
 | 修改集合 | `ChangeSet` | 结果网格中尚未提交的更新、新增和删除，由方言转成 SQL 后执行。 |
 | 查询 | `Query` | 用户保存的 SQL 文件，属于某个连接下的某个数据库或模式。 |
-| 历史日志 | `HistoryLog` | navidog 执行过的所有 SQL 的记录。 |
+| 历史日志 | `HistoryLog` | naviduck 执行过的所有 SQL 的记录。 |
 | 查询编辑器 | `QueryEditor` | 编辑和运行 SQL 的编辑器选项卡。可以对应一个已保存的查询，也可以是无标题的。 |
 | 结果选项卡 | `ResultTab` | 查询编辑器结果区里的选项卡：每个结果集一个，另有消息、摘要和解释。固定的结果选项卡在再次运行后保留。 |
 | 执行计划 | explain plan | 数据库给出的语句执行步骤，由“解释”命令取得，不执行语句本身。 |
@@ -53,7 +53,7 @@ navidog 是用 gpui-kit 复刻 Navicat Premium 17（macOS）的数据库管理�
 | 术语 | 含义 |
 | --- | --- |
 | 基线 | 被复刻的参照：Navicat Premium 17.3.5（macOS）在 macOS 26 上的界面和行为。 |
-| token | `navidog-ui` 中具名的设计数值（尺寸、颜色、字号）。界面代码只能引用 token，不能写裸数值。 |
+| token | `naviduck-ui` 中具名的设计数值（尺寸、颜色、字号）。界面代码只能引用 token，不能写裸数值。 |
 | 来源 | 每个 token 数值的出处：nib（控件路径）、AX（运行时测量）或语义色（AppKit 颜色名）。 |
 | 偏差 | 与基线有意不同的行为或外观。每条偏差都要写进对应模块规格并给出理由。 |
 | 参考资料 | 由 `cargo xtask` 和 `tools/*.swift` 从本机 Navicat 导出、存放在 gitignore 的 `reference/` 目录中的本地资料，禁止提交。 |

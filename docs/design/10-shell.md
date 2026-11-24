@@ -6,16 +6,16 @@
 
 ## 1. 启动流程
 
-外壳 `navidog` 的 `main` 依次执行：
+外壳 `naviduck` 的 `main` 依次执行：
 
-1. 初始化 `tracing`，日志写入 `~/Library/Logs/navidog/navidog.log`，按天滚动。
+1. 初始化 `tracing`，日志写入 `~/Library/Logs/naviduck/naviduck.log`，按天滚动。
 2. 调用 `rust_i18n::extend!(gpui_component)`，从偏好设置中读取语言（默认跟随系统，`zh-*` 用简体中文，其余用英文）。
-3. `application().with_assets(NavidogAssets)`，其中 `NavidogAssets` 先查找 navidog 自有的图标，找不到再回退 gpui-kit 的 `Assets`。
+3. `application().with_assets(NaviduckAssets)`，其中 `NaviduckAssets` 先查找 naviduck 自有的图标，找不到再回退 gpui-kit 的 `Assets`。
 4. 在 `run` 回调中依次执行：
    1. `gpui_kit::init(cx)`；
-   2. `cx.set_app_identity(...)`，Bundle ID 为 `ci.nn.navidog`。Dock 图标用 `crates/navidog/resources/navidog.svg`。本地 `scripts/bundle-macos.sh` 把它做成 `navidog.icns` 放进应用包。GitHub Actions 的 `cargo bundle` 在仓库根目录解析图标路径，使用 `crates/navidog/icons/navidog.icns`；打包后检查 `Contents/Resources/navidog.icns` 存在，且 `CFBundleIconFile` 为 `navidog.icns`。`cargo run` 启动时用同一张 SVG 调用 `setApplicationIconImage`（gpui 在 macOS 上忽略窗口的 `icon`）；
+   2. `cx.set_app_identity(...)`，Bundle ID 为 `com.ekovovo.naviduck`。Dock 图标用 `crates/naviduck/resources/naviduck.svg`。本地 `scripts/bundle-macos.sh` 把它做成 `naviduck.icns` 放进应用包。GitHub Actions 的 `cargo bundle` 在仓库根目录解析图标路径，使用 `crates/naviduck/icons/naviduck.icns`；打包后检查 `Contents/Resources/naviduck.icns` 存在，且 `CFBundleIconFile` 为 `naviduck.icns`。`cargo run` 启动时用同一张 SVG 调用 `setApplicationIconImage`（gpui 在 macOS 上忽略窗口的 `icon`）；
    3. 加载主题（默认 gpui-kit 的 Default；偏好设置可选 Navicat），`font_size` 设为 13，外观跟随系统或使用偏好设置中固定的外观；
-   4. 初始化各 crate：`navidog_app_state::init`、`navidog_db::init`（启动 tokio 运行时）、`navidog_connection::init`；
+   4. 初始化各 crate：`naviduck_app_state::init`、`naviduck_db::init`（启动 tokio 运行时）、`naviduck_connection::init`；
    5. 先 `cx.bind_keys(...)`，再 `cx.set_menus(...)`；
    6. 打开主窗口。
 5. 主窗口打开后，自动打开设置了“自动连接”的连接（F-CONN-012）。
@@ -24,7 +24,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ ● ● ●                      navidog                          │ 标题栏（红绿灯 + 居中标题）
+│ ● ● ●                      naviduck                          │ 标题栏（红绿灯 + 居中标题）
 │ [连接▾] [新建查询] │ [表] [视图] [函数] [用户] [其它▾] [查询] ... │ 主工具栏（Expanded）
 ├────────────┬───────────────────────────────────┬─────────────┤
 │ 导航窗格   │ [对象] [tab2] [tab3]               │ 信息窗格    │
@@ -36,7 +36,7 @@
 ```
 
 - 窗口选项来自 `TitleBar::window_options()`，并设置 `app_owns_titlebar_drag: true`。默认内容尺寸为 `window.default_size`（1240 × 800），最小尺寸 800 × 500（暂定，待 AX）。
-- 标题栏：macOS 原生红绿灯，标题居中显示“navidog”。标题栏和主工具栏共用 `color.window_bg` 背景，两者之间没有分隔线；工具栏下方有一条 `color.separator` 分隔线。
+- 标题栏：macOS 原生红绿灯，标题居中显示“naviduck”。标题栏和主工具栏共用 `color.window_bg` 背景，两者之间没有分隔线；工具栏下方有一条 `color.separator` 分隔线。
 - 窗口位置和尺寸在关闭时用 `window.window_bounds()` 读取，写入 `state.json`；下次启动时作为 `WindowOptions.window_bounds` 恢复。
 - 关闭主窗口时，如果有未保存的编辑器选项卡，逐个询问是否保存。退出应用（⌘Q）同样处理。
 - 关闭最后一个窗口后进程仍留在程序坞。点程序坞图标，或选「窗口 > 显示主窗口」，会把仍在的主窗口（含最小化）带到前面；主窗口已经关掉时，按关闭前写入 `state.json` 的布局再开一个，不再做启动时的更新检查、自动连接、启动选项卡和崩溃恢复。
@@ -57,7 +57,7 @@
 - 未实现的按钮显示为禁用状态，而不是隐藏，以保持布局与基线一致。实际按钮集合和顺序要在 AX 实测后核对。
 - 每个按钮对应一个 Action，与菜单项共用（例如“连接”对应 `NewConnection`）。
 - “查看 > 显示工具栏”（⌥⌘T）切换工具栏的显示，状态持久化。
-- 实现：使用 `gpui-component` 的 `Toolbar`；按钮外观由 `navidog-ui` 的 `ToolbarItem` 皮肤提供，因为 `Toolbar` 默认的 Small 尺寸不支持“图标在上、文字在下”。
+- 实现：使用 `gpui-component` 的 `Toolbar`；按钮外观由 `naviduck-ui` 的 `ToolbarItem` 皮肤提供，因为 `Toolbar` 默认的 Small 尺寸不支持“图标在上、文字在下”。
 
 ## 4. Dock 布局（F-APP-001、F-APP-006、F-APP-007）
 
@@ -69,7 +69,7 @@
 - 分隔线宽 `pane.divider`，颜色为 `color.separator`。
 - ⌘1 和 ⌘2 分别折叠或展开左侧和右侧 dock。
 - 布局在退出时通过 `DockArea::dump` 写入 `state.json`，启动时通过 `DockArea::load` 恢复；如果版本不兼容或恢复失败，回退到默认布局。
-- **偏差**：Navicat 的窗格位置是固定的，navidog 允许把面板拖到其他停靠位置。这是立项时确认的有意偏差。“窗口 > 重置布局”恢复默认布局。
+- **偏差**：Navicat 的窗格位置是固定的，naviduck 允许把面板拖到其他停靠位置。这是立项时确认的有意偏差。“窗口 > 重置布局”恢复默认布局。
 
 ## 5. 对象窗格（M1 部分）
 
@@ -93,7 +93,7 @@
 └── 数据库 c
 ```
 
-- 顶层直接是组和连接，没有“我的连接”根节点。按 `navigation_pane.html`，Navicat 只在登录 Navicat Cloud 之后才显示“我的连接”分区；navidog 在 M12 加入同步目录后，再以同样的方式分区显示。
+- 顶层直接是组和连接，没有“我的连接”根节点。按 `navigation_pane.html`，Navicat 只在登录 Navicat Cloud 之后才显示“我的连接”分区；naviduck 在 M12 加入同步目录后，再以同样的方式分区显示。
 - M1 的树到数据库为止；PostgreSQL 的模式和各类对象在 M2 加入。
 - 行高 `navigator.row.height`，每级缩进 `navigator.row.indent`，图标 `navigator.row.icon`。
 - 连接图标按数据库类型区分，未打开的连接图标为灰色。设置了连接颜色时，在行尾显示色块（行尾还是图标着色，待 AX 实测核对）。
@@ -145,26 +145,26 @@ M1 实现以下菜单。各菜单的完整结构参考 `reference/tree/MainMenu.
 
 | 菜单 | 菜单项 |
 | --- | --- |
-| navidog | 关于 navidog、偏好设置…（⌘,）、检查更新…、服务、隐藏 navidog（⌘H）、隐藏其他（⌥⌘H）、全部显示、退出 navidog（⌘Q） |
+| naviduck | 关于 naviduck、偏好设置…（⌘,）、检查更新…、服务、隐藏 naviduck（⌘H）、隐藏其他（⌥⌘H）、全部显示、退出 naviduck（⌘Q） |
 | 文件 | 新建 ▸ 连接 ▸（数据库类型）、新建组；导入连接…（M6，暂不显示）；关闭选项卡（⌘W）；关闭窗口（⇧⌘W） |
 | 编辑 | 撤销、重做、剪切、拷贝、粘贴、删除、全选（系统标准，用于输入框） |
 | 查看 | 导航窗格 ▸（显示导航窗格 ⌘1、隐藏连接组、在顶部显示筛选）；信息窗格 ▸（显示信息窗格 ⌘2）；显示状态栏；显示工具栏（⌥⌘T）；进入全屏（⌃⌘F） |
 | 窗口 | 最小化（⌘M）、缩放、重置布局、显示主窗口、全部置于顶层 |
-| 帮助 | navidog 帮助（打开项目主页）、反馈问题 |
+| 帮助 | naviduck 帮助（打开项目主页）、反馈问题 |
 
 所有菜单项都是 Action，菜单栏调用 `cx.set_menus` 之前必须先调用 `cx.bind_keys`，否则菜单里不会显示快捷键。
 
-内置菜单命令同时在 `navidog::menu_catalog` 登记到 `CommandRegistry`。这一层当前是影子目录：标题、分组、快捷键文本、搜索词和目标先统一，菜单与快捷键的实际执行仍由 `set_menus`、`bind_keys` 和窗口根上的 `on_action` 负责；业务回调仍属于各 feature crate。后续命令面板、Quick Open 和快捷键设置都从这份目录取数据，不再另建命令清单。动态收藏夹、最近对象、数据库类型子菜单和 checked 状态仍由菜单代码生成。
+内置菜单命令同时在 `naviduck::menu_catalog` 登记到 `CommandRegistry`。这一层当前是影子目录：标题、分组、快捷键文本、搜索词和目标先统一，菜单与快捷键的实际执行仍由 `set_menus`、`bind_keys` 和窗口根上的 `on_action` 负责；业务回调仍属于各 feature crate。后续命令面板、Quick Open 和快捷键设置都从这份目录取数据，不再另建命令清单。动态收藏夹、最近对象、数据库类型子菜单和 checked 状态仍由菜单代码生成。
 
 「检查更新」和「关于」在菜单回调里可能没有活动窗口（macOS 的 `mainWindow` 为空），这时用最前面的窗口。手动检查有新版本时打开对话框；已是最新、还没有发布版本、检查失败各显示一条通知。启动时的自动检查不提示后两种。
 
-「关于 navidog」显示版本和一句说明。nightly 构建显示 `nightly (YYYY-MM-DD HH:MM UTC)`，时间是编译时写入的 `NAVIDOG_BUILD_TIMESTAMP`，和 GitHub nightly 发布说明里的构建时间是同一次时钟，不显示 Cargo.toml 里的 `0.0.1`。稳定构建显示编译进二进制的版本号。打 `v*` tag 时，CI 在编译前把 workspace 版本改成去掉 `v` 的 tag（不提交），关于页、更新比较和安装包元数据都跟这个 tag 走；仓库里的 Cargo.toml 可以停在 `0.0.1`。本地构建显示 Cargo.toml 的版本。
+「关于 naviduck」显示版本和一句说明。nightly 构建显示 `nightly (YYYY-MM-DD HH:MM UTC)`，时间是编译时写入的 `NAVIDUCK_BUILD_TIMESTAMP`，和 GitHub nightly 发布说明里的构建时间是同一次时钟，不显示 Cargo.toml 里的 `0.0.1`。稳定构建显示编译进二进制的版本号。打 `v*` tag 时，CI 在编译前把 workspace 版本改成去掉 `v` 的 tag（不提交），关于页、更新比较和安装包元数据都跟这个 tag 走；仓库里的 Cargo.toml 可以停在 `0.0.1`。本地构建显示 Cargo.toml 的版本。
 
-包含预发布时，nightly 用 `latest.json` 里该条的 `built_at` 和本构建的 `NAVIDOG_BUILD_TIMESTAMP` 比较，严格晚于本构建才提供；不看 GitHub 的发布时间。`built_at` 就是这次发布写进二进制的那一个时间，缺失或无法解析则不把这条 nightly 当作新版本。打 tag 重建清单时，nightly 那一行的 `built_at` 从已发布的 nightly 清单抄来，不用这次 tag 的构建时间。
+包含预发布时，nightly 用 `latest.json` 里该条的 `built_at` 和本构建的 `NAVIDUCK_BUILD_TIMESTAMP` 比较，严格晚于本构建才提供；不看 GitHub 的发布时间。`built_at` 就是这次发布写进二进制的那一个时间，缺失或无法解析则不把这条 nightly 当作新版本。打 tag 重建清单时，nightly 那一行的 `built_at` 从已发布的 nightly 清单抄来，不用这次 tag 的构建时间。
 
 点「更新」后，对话框里的按钮换成进度条，旁边可以取消。取消发生在数据块之间，半成品会删掉，不会安装，也不弹失败通知。有总大小时显示百分比和已下载 / 总大小：总量优先用响应的 `Content-Length`，否则用 `latest.json` 的 `size`；两者都没有时显示不定进度。安装已经开始后不再提供取消，进度条改为不定进度，文案按当前步骤切换：挂载磁盘映像、复制应用、验证签名、替换应用。就地替换失败而交给系统打开安装包时，以及 Windows 和 Linux，显示正在打开安装包。这一段不显示下载百分比。没有读到本机安装包时说明原因，按钮是「打开发布页」。下载失败、校验失败和交给系统安装仍用通知；macOS 就地替换成功后仍是重新启动对话框。
 
-应用菜单（navidog）始终在最左。其余菜单随对象窗格里激活的选项卡变化，由该选项卡在 `set_active` 时记下表面，外壳据此重建菜单栏：
+应用菜单（naviduck）始终在最左。其余菜单随对象窗格里激活的选项卡变化，由该选项卡在 `set_active` 时记下表面，外壳据此重建菜单栏：
 
 | 激活的选项卡 | 从左到右 |
 | --- | --- |
@@ -176,27 +176,27 @@ M1 实现以下菜单。各菜单的完整结构参考 `reference/tree/MainMenu.
 
 ## 10. 偏好设置窗口（F-PREF-001、F-PREF-002、F-PREF-010）
 
-- ⌘, 打开独立窗口（单例，640 × 480），左侧是分类列表，右侧是设置页。主题是标签加下拉（Navidog、Default）。外观和语言各占一行（标签加横向选项，对应 Navicat 的弹出菜单）。主窗口等是小节标题，下面是左对齐的复选框，不再套用连接表单的标签列。记录页的“限制记录”和每页条数在同一行。
+- ⌘, 打开独立窗口（单例，640 × 480），左侧是分类列表，右侧是设置页。主题是标签加下拉（Naviduck、Default）。外观和语言各占一行（标签加横向选项，对应 Navicat 的弹出菜单）。主窗口等是小节标题，下面是左对齐的复选框，不再套用连接表单的标签列。记录页的“限制记录”和每页条数在同一行。
 - M1 包含两个分类：
-  - **常规**：主题（Navidog、Default；Default 是 gpui-kit 自带的 shadcn 主题，与外观独立；缺省是 Default，已经写进 `settings.json` 的 `navidog` 不会被改掉）、外观（跟随系统、浅色、深色）、语言（跟随系统、简体中文、English）、启动时自动打开“自动连接”的连接、显示系统对象（默认开，与查看菜单的「显示隐藏项目」是同一项，见 20-objects）。检查更新一节有两个复选框：自动检查更新（默认开，启动时最多每两天一次）；包含预发布版本（同时提供预发布版本和 `main` 上的 nightly，nightly 构建默认开，可手动关掉）；
+  - **常规**：主题（Naviduck、Default；Default 是 gpui-kit 自带的 shadcn 主题，与外观独立；缺省是 Default，已经写进 `settings.json` 的 `naviduck` 不会被改掉）、外观（跟随系统、浅色、深色）、语言（跟随系统、简体中文、English）、启动时自动打开“自动连接”的连接、显示系统对象（默认开，与查看菜单的「显示隐藏项目」是同一项，见 20-objects）。检查更新一节有两个复选框：自动检查更新（默认开，启动时最多每两天一次）；包含预发布版本（同时提供预发布版本和 `main` 上的 nightly，nightly 构建默认开，可手动关掉）；
   - **高级**：设置位置（只读显示配置目录，带“在 Finder 中显示”按钮）、主密码（设置、修改、清除）。
-- 修改立即生效：切换主题时换上对应的浅色/深色主题对，再调用 `Theme::change`；Default 把 `font_size` 钉在 13、等宽字号钉在 12。切换外观时调用 `Theme::change`；切换语言时调用 `set_locale` 和 `cx.refresh_windows()`。设置保存在 `settings.json`（`theme` 为 `navidog` 或 `default`）。
+- 修改立即生效：切换主题时换上对应的浅色/深色主题对，再调用 `Theme::change`；Default 把 `font_size` 钉在 13、等宽字号钉在 12。切换外观时调用 `Theme::change`；切换语言时调用 `set_locale` 和 `cx.refresh_windows()`。设置保存在 `settings.json`（`theme` 为 `naviduck` 或 `default`）。
 
 ## 11. 配置文件
 
-所有文件都在 `~/Library/Application Support/navidog/` 下（`NAVIDOG_HOME` 可覆盖）。不打开某个连接也要读的留在顶层；只有用到该连接时才读写的放进 `profiles/<连接 ID>/`。
+所有文件都在 `~/Library/Application Support/naviduck/` 下（`NAVIDUCK_HOME` 可覆盖）。不打开某个连接也要读的留在顶层；只有用到该连接时才读写的放进 `profiles/<连接 ID>/`。
 
 顶层：
 
 | 文件 | 内容 | 所属 |
 | --- | --- | --- |
-| `settings.json` | 偏好设置（主题、外观、语言、记录、编辑器、启动画面、对象列表隐藏列等）。不含某一个连接的列宽 | `navidog-app-state` |
-| `state.json` | 窗口位置尺寸、Dock 布局、各窗格显示状态 | `navidog` |
-| `connections.json` | 全部连接和连接组（密码字段加密），见 [11-connection.md](11-connection.md)。组不属于某一个连接 | `navidog-app-state`（数据在 `navidog-model`） |
-| `favorites.json` | 收藏夹和最近打开。菜单直接读，不打开连接 | `navidog-app-state` |
-| `snippets.json` | 自定义代码段，按数据库类型，不按连接 | `navidog-app-state` |
-| `autosave/` | 未保存查询的自动恢复。启动时读，不打开连接 | `navidog-query` |
-| `plugins/` | 插件目录（M5） | `navidog-plugin` |
+| `settings.json` | 偏好设置（主题、外观、语言、记录、编辑器、启动画面、对象列表隐藏列等）。不含某一个连接的列宽 | `naviduck-app-state` |
+| `state.json` | 窗口位置尺寸、Dock 布局、各窗格显示状态 | `naviduck` |
+| `connections.json` | 全部连接和连接组（密码字段加密），见 [11-connection.md](11-connection.md)。组不属于某一个连接 | `naviduck-app-state`（数据在 `naviduck-model`） |
+| `favorites.json` | 收藏夹和最近打开。菜单直接读，不打开连接 | `naviduck-app-state` |
+| `snippets.json` | 自定义代码段，按数据库类型，不按连接 | `naviduck-app-state` |
+| `autosave/` | 未保存查询的自动恢复。启动时读，不打开连接 | `naviduck-query` |
+| `plugins/` | 插件目录（M5） | `naviduck-plugin` |
 
 `profiles/<连接 ID>/`（连接表单里的设置位置；删除连接时整个目录删掉）：
 

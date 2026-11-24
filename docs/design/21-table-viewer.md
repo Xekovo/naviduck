@@ -1,6 +1,6 @@
 # M2 规格：表查看器与结果网格
 
-覆盖功能：F-DATA-001 ~ F-DATA-014、F-OBJ-008（打开表）、F-INFO-007。结果网格将来会被查询结果（M3）复用，所以放在单独的 crate `navidog-grid` 中。
+覆盖功能：F-DATA-001 ~ F-DATA-014、F-OBJ-008（打开表）、F-INFO-007。结果网格将来会被查询结果（M3）复用，所以放在单独的 crate `naviduck-grid` 中。
 
 行为来源：`data_viewer.html`、`data_rdbms.html`、`data_edit.html`、`data_filter.html`、`data_filter_wizard.html`、`data_sort_find.html`、`data_format.html`、`data_navigation_bar.html`、`data_raw.html`、`data_assistant_editors.html`、`data_field_comment.html`。
 
@@ -27,7 +27,7 @@
 
 判定规则：在 10 万行、20 列的数据上，矩形选择、键盘扩选、就地编辑都能工作，并且滚动时单帧不超过 8.3ms，就采用 `DataTable` 加外层补充；否则基于 `gpui-base` 的 `Table` 原语和 `VirtualList` 自建 `ResultGrid`。不管选哪种，对外接口都一样（第 2 节），选择不影响上层代码。
 
-**结论：采用 `DataTable` 加外层补充。** 验证程序是 `cargo run --release -p navidog-grid --example spike`（1440 × 900 的 headless Metal 窗口，10 万行 × 20 列，每次滚动后测一帧的布局与绘制时间，各 300 帧）。
+**结论：采用 `DataTable` 加外层补充。** 验证程序是 `cargo run --release -p naviduck-grid --example spike`（1440 × 900 的 headless Metal 窗口，10 万行 × 20 列，每次滚动后测一帧的布局与绘制时间，各 300 帧）。
 
 初次测量时数据行是 20pt：
 
@@ -54,13 +54,13 @@
 
 - release 用 `opt-level = "s"`（体积优先）。上表是这个选择的滚动代价：`"s"` 比默认的 3 慢约 20%，不把 opt-level 改回 3。相对初次的 6.1ms 仍然更慢：可见行更多，表头要画类型行，单元格也更重。8.3ms 的预算平均略超、约一半的帧超时，仍继续用 `DataTable`。下一步可以把表查看器的工具栏和底部栏拆成单独缓存的子视图，滚动时只重绘网格。
 - 偶发的超时帧来自首次排版没见过的文本（每行内容都不同），自建网格同样要经过这一步，所以不影响结论。debug 构建平均约 10.8ms。
-- 矩形选择、⇧ + 方向键扩选、就地编辑、复制都由 `crates/navidog-grid/tests/grid.rs` 通过真实的点击和按键验证。
+- 矩形选择、⇧ + 方向键扩选、就地编辑、复制都由 `crates/naviduck-grid/tests/grid.rs` 通过真实的点击和按键验证。
 - 实现中与上表设想不同的两点：
   - `DataTable` 只在按下和抬起是同一格时发出 `SelectCell`，所以选区在单元格的 `on_mouse_down` 中更新，拖拽通过 `on_mouse_move` 扩展。只有这次按下发生在单元格上才扩展；拖动表头经过单元格不改选区；
   - 行号列是 delegate 的第 0 列（固定在左侧），显示当前行、已修改、新增和待删除的标记，不显示行号，与 Navicat 一致。
 - 已知差异：每个可排序列的表头都会显示 `DataTable` 的默认排序图标，而 Navicat 只在已排序的列上显示。
 
-## 2. `navidog-grid` 对外接口
+## 2. `naviduck-grid` 对外接口
 
 ```rust
 pub struct GridData {
@@ -88,7 +88,7 @@ pub struct ChangeSet {
 }
 ```
 
-`ChangeSet` 转成 SQL 的工作由 `navidog-db` 中各方言的 `Dialect::render_changes` 完成，并配有单元测试覆盖：标识符引用、NULL 值、二进制值、没有主键的表。
+`ChangeSet` 转成 SQL 的工作由 `naviduck-db` 中各方言的 `Dialect::render_changes` 完成，并配有单元测试覆盖：标识符引用、NULL 值、二进制值、没有主键的表。
 
 ## 3. 表查看器布局
 

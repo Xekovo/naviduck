@@ -20,13 +20,13 @@
 
 | 检查 | 结果 |
 | --- | --- |
-| `cargo test -p navidog-util --lib byte_sizes` | 通过 |
-| `cargo test -p navidog-app-state --lib settings` | 6 项通过，含缺省主题、行底纹和系统对象 |
-| `cargo test -p navidog-ui --lib switching_family` | 通过；Default 主题的选中色等于 `list_active` |
-| `cargo test -p navidog-navigator --lib profile_joins` | 通过 |
-| `cargo test -p navidog-connection --lib a_locked_save_asks_for_the_master_password` | 通过 |
-| `cargo test -p navidog-connection --lib failed_password_save_still_uses_credentials_once` | 通过 |
-| `cargo test -p navidog --test close_prompt` | 通过；同一进程里覆盖单表提交，以及两个脏查询的关闭全部、放弃后继续、取消后停止 |
+| `cargo test -p naviduck-util --lib byte_sizes` | 通过 |
+| `cargo test -p naviduck-app-state --lib settings` | 6 项通过，含缺省主题、行底纹和系统对象 |
+| `cargo test -p naviduck-ui --lib switching_family` | 通过；Default 主题的选中色等于 `list_active` |
+| `cargo test -p naviduck-navigator --lib profile_joins` | 通过 |
+| `cargo test -p naviduck-connection --lib a_locked_save_asks_for_the_master_password` | 通过 |
+| `cargo test -p naviduck-connection --lib failed_password_save_still_uses_credentials_once` | 通过 |
+| `cargo test -p naviduck --test close_prompt` | 通过；同一进程里覆盖单表提交，以及两个脏查询的关闭全部、放弃后继续、取消后停止 |
 | `cargo clippy`（改动的 crate，`--all-targets -- -D warnings`） | 通过 |
 | `scripts/check-i18n.sh`、`scripts/check-dialect-branches.sh`、`scripts/check-raw-px.sh`、`scripts/check-deps.sh` | 通过 |
 | `cargo fmt --all --check` | 通过 |
@@ -39,7 +39,7 @@
 
 Lint 工作流在 macOS（两种架构）、Linux 和 Windows 上同时止于 `-D warnings`；四个日志指向同一批问题：
 
-- `crates/navidog-navigator/src/objects.rs`：`hidden_selection` 的两处调用把已经是 `&Sessions` 的 `sessions` 又借了一层，`clippy::needless_borrow`。去掉多余的 `&`。
-- `crates/navidog-query/src/save.rs`：`NamePrompt` 新增的 `cancel: Rc<dyn Fn(&mut Window, &mut App)>` 触发 `clippy::type_complexity`，提成 `type Cancelled`，与同文件的 `Named` 及 `navidog-navigator` 的 `ToggleMaximize` 写法一致。这一处原先被前面的错误挡住，修掉前两处才暴露。
+- `crates/naviduck-navigator/src/objects.rs`：`hidden_selection` 的两处调用把已经是 `&Sessions` 的 `sessions` 又借了一层，`clippy::needless_borrow`。去掉多余的 `&`。
+- `crates/naviduck-query/src/save.rs`：`NamePrompt` 新增的 `cancel: Rc<dyn Fn(&mut Window, &mut App)>` 触发 `clippy::type_complexity`，提成 `type Cancelled`，与同文件的 `Named` 及 `naviduck-navigator` 的 `ToggleMaximize` 写法一致。这一处原先被前面的错误挡住，修掉前两处才暴露。
 
 两处都只改写法，行为不变。修复后按 CI 的顺序重跑了全工作区的 clippy 和测试；此前 CI 在 clippy 就停了，`test` 步骤的结论是空白的。

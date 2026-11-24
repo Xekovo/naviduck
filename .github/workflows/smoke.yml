@@ -36,13 +36,13 @@ jobs:
         with:
           key: macos-build-aarch64-apple-darwin
       - name: build
-        run: cargo build --release -p navidog --features mimalloc
+        run: cargo build --release -p naviduck --features mimalloc
       - name: smoke test (first frame must paint)
         timeout-minutes: 5
         env:
-          NAVIDOG_SMOKE_TEST: "1"
-          NAVIDOG_HOME: ${{ runner.temp }}/navidog-smoke
-        run: ./target/release/navidog
+          NAVIDUCK_SMOKE_TEST: "1"
+          NAVIDUCK_HOME: ${{ runner.temp }}/naviduck-smoke
+        run: ./target/release/naviduck
 
   linux:
     runs-on: ubuntu-22.04
@@ -61,21 +61,21 @@ jobs:
         with:
           key: Linux-x86_64-unknown-linux-gnu-build
       - name: build
-        run: cargo build --release -p navidog --features mimalloc
+        run: cargo build --release -p naviduck --features mimalloc
       - name: smoke test (window must open)
         timeout-minutes: 5
         env:
-          NAVIDOG_SMOKE_TEST: "1"
-          NAVIDOG_SMOKE_GATE: window
-          NAVIDOG_HOME: ${{ runner.temp }}/navidog-smoke
-        run: xvfb-run -a ./target/release/navidog
+          NAVIDUCK_SMOKE_TEST: "1"
+          NAVIDUCK_SMOKE_GATE: window
+          NAVIDUCK_HOME: ${{ runner.temp }}/naviduck-smoke
+        run: xvfb-run -a ./target/release/naviduck
       - name: smoke test (first frame must paint)
         continue-on-error: true
         timeout-minutes: 5
         env:
-          NAVIDOG_SMOKE_TEST: "1"
-          NAVIDOG_HOME: ${{ runner.temp }}/navidog-smoke-frame
-        run: xvfb-run -a ./target/release/navidog
+          NAVIDUCK_SMOKE_TEST: "1"
+          NAVIDUCK_HOME: ${{ runner.temp }}/naviduck-smoke-frame
+        run: xvfb-run -a ./target/release/naviduck
 
   windows:
     runs-on: windows-latest
@@ -92,13 +92,13 @@ jobs:
       - name: build
         env:
           RUSTFLAGS: "-C target-feature=+crt-static"
-        run: cargo build --release -p navidog --target x86_64-pc-windows-msvc --features mimalloc
+        run: cargo build --release -p naviduck --target x86_64-pc-windows-msvc --features mimalloc
       - name: smoke test (first frame must paint)
         timeout-minutes: 5
         shell: pwsh
         env:
-          NAVIDOG_SMOKE_TEST: "1"
-          NAVIDOG_HOME: ${{ runner.temp }}/navidog-smoke
+          NAVIDUCK_SMOKE_TEST: "1"
+          NAVIDUCK_HOME: ${{ runner.temp }}/naviduck-smoke
         run: |
-          $p = Start-Process -FilePath .\target\x86_64-pc-windows-msvc\release\navidog.exe -Wait -PassThru
+          $p = Start-Process -FilePath .\target\x86_64-pc-windows-msvc\release\naviduck.exe -Wait -PassThru
           if ($p.ExitCode -ne 0) { Write-Error "smoke test failed: exit code $($p.ExitCode)"; exit 1 }

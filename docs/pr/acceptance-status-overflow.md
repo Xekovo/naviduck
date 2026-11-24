@@ -23,14 +23,14 @@
 
 | 检查 | 结果 |
 | --- | --- |
-| `cargo test -p navidog-ui --test truncated --locked` | 修复前可复现溢出；修复后通过。浅色及深色分别覆盖 LF、CRLF 和长中文/emoji SQL，断言单行高度、底栏边界及右侧按钮位置 |
-| `NAVIDOG_LIVE=1 cargo test --workspace --locked` | 203 项通过，无失败或忽略；包含 MySQL、MariaDB、PostgreSQL、SSH、查询编辑器与执行计划实库测试 |
+| `cargo test -p naviduck-ui --test truncated --locked` | 修复前可复现溢出；修复后通过。浅色及深色分别覆盖 LF、CRLF 和长中文/emoji SQL，断言单行高度、底栏边界及右侧按钮位置 |
+| `NAVIDUCK_LIVE=1 cargo test --workspace --locked` | 203 项通过，无失败或忽略；包含 MySQL、MariaDB、PostgreSQL、SSH、查询编辑器与执行计划实库测试 |
 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | 通过；间接依赖仍有 future-incompatibility 提示 |
 | `cargo fmt --all --check`、`scripts/check-raw-px.sh`、`git diff --check` | 通过 |
-| `cargo test -p navidog --test snapshot --locked` | 通过，逐张检查本次生成的 33 张 Metal/headless 截图；新增 6 张真实批量删除的浅深色、窄内容区和悬停截图 |
-| `cargo run --release -p navidog-grid --example spike --locked` | 10 万行 × 20 列：逐行/跳跃滚动平均 2.77/3.73ms，600 帧均未超过 8.3ms |
-| `cargo run --release -p navidog-navigator --example tree_spike --locked` | 逐行/跳跃滚动平均 0.52/0.71ms，600 帧均未超过 8.3ms |
-| `cargo run --release -p navidog-query --example editor_spike --locked` | 5 万行 SQL：滚动、带装饰滚动、连续输入平均 1.49–1.57ms，1200 帧均未超过 8.3ms |
+| `cargo test -p naviduck --test snapshot --locked` | 通过，逐张检查本次生成的 33 张 Metal/headless 截图；新增 6 张真实批量删除的浅深色、窄内容区和悬停截图 |
+| `cargo run --release -p naviduck-grid --example spike --locked` | 10 万行 × 20 列：逐行/跳跃滚动平均 2.77/3.73ms，600 帧均未超过 8.3ms |
+| `cargo run --release -p naviduck-navigator --example tree_spike --locked` | 逐行/跳跃滚动平均 0.52/0.71ms，600 帧均未超过 8.3ms |
+| `cargo run --release -p naviduck-query --example editor_spike --locked` | 5 万行 SQL：滚动、带装饰滚动、连续输入平均 1.49–1.57ms，1200 帧均未超过 8.3ms |
 | `cargo audit`、`cargo deny --all-features check` | 更新后均通过：deny 的 advisories、bans、licenses、sources 全部通过；audit 仍有 9 条策略允许的间接依赖 unmaintained 警告，原有 `rsa` 例外保持不变，未新增忽略项 |
 
 实库检查前启动仓库的 Docker Compose 测试服务，检查后已关闭。所有数据库交互与截图使用独立测试数据，没有操作用户的连接或数据库。

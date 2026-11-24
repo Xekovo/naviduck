@@ -1,0 +1,12 @@
+[package]
+name = "naviduck-test-support"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+gpui-kit = { workspace = true, features = ["test-support"] }
+naviduck-db = { path = "../naviduck-db" }
+naviduck-sqlite = { path = "../naviduck-sqlite" }

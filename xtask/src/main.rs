@@ -34,7 +34,7 @@ fn main() {
 type Result<T> = std::result::Result<T, String>;
 
 fn manifest(args: &[String]) -> Result<()> {
-    use navidog_util::update_manifest::{Asset, Manifest};
+    use naviduck_util::update_manifest::{Asset, Manifest};
 
     let mut meta = None;
     let mut version = None;

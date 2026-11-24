@@ -23,7 +23,7 @@
 | `cargo clippy --workspace --all-targets --offline -- -D warnings` | 通过 |
 | `scripts/check-raw-px.sh`、`scripts/check-i18n.sh`、`scripts/check-dialect-branches.sh`、`scripts/check-deps.sh` | 通过 |
 | `cargo test --workspace --offline` | 通过。打开未改动的对象设计器时关闭按钮曾被藏起来，`dirty()` 按已加载对象判断之后 `close_tabs` 通过 |
-| `docker compose up -d --wait && NAVIDOG_LIVE=1 cargo test -p navidog-db -p navidog-schema -p navidog-query --lib --test live --offline`，随后 `docker compose down` | 通过。含 `live_type_names_round_trip_from_the_server` 和 `live_table_design_create_alter_rename_and_constraints` |
-| `cargo test -p navidog --test snapshot --offline` | 通过。浅色和深色的对象设计器、用户面板已逐张查看：新建视图有名称、定义和 SQL 预览；SQLite 用户面板只显示未编入认证扩展的说明 |
+| `docker compose up -d --wait && NAVIDUCK_LIVE=1 cargo test -p naviduck-db -p naviduck-schema -p naviduck-query --lib --test live --offline`，随后 `docker compose down` | 通过。含 `live_type_names_round_trip_from_the_server` 和 `live_table_design_create_alter_rename_and_constraints` |
+| `cargo test -p naviduck --test snapshot --offline` | 通过。浅色和深色的对象设计器、用户面板已逐张查看：新建视图有名称、定义和 SQL 预览；SQLite 用户面板只显示未编入认证扩展的说明 |
 
 规格验收清单里需要实库往返的条目仍未勾选：排除约束、触发器、分区的执行往返；视图替换与预览数据、实体化视图刷新、函数运行、事件、库/模式/附加、扩展/序列/类型往返；用户创建、授权撤销、维护、依赖页、结束进程、查找双击。这些路径有计划测试或界面，没有单独的实库往返。

@@ -1,6 +1,6 @@
 # 设计 token 表
 
-`navidog-ui` 中的每个 token 都必须在本表登记，并写明来源。界面代码只引用 token 名，不写数值（规则见 [00-overview.md](00-overview.md#5-gpui-kit-规范在本项目中的落地)）。
+`naviduck-ui` 中的每个 token 都必须在本表登记，并写明来源。界面代码只引用 token 名，不写数值（规则见 [00-overview.md](00-overview.md#5-gpui-kit-规范在本项目中的落地)）。
 
 ## 1. 单位与换算
 
@@ -171,7 +171,7 @@
 
 ## 8. 颜色
 
-Navicat 的 nib 中几乎所有颜色都是 AppKit 语义色。在 718 个 nib 中，`textBackgroundColor`、`controlTextColor`、`controlColor`、`labelColor` 各出现两千多次，`gridColor`、`separatorColor` 出现数百次。所以 navidog 的颜色 token 直接对应语义色，取值为本机 macOS 26.6 上的实测结果，格式为 `#RRGGBBAA`。
+Navicat 的 nib 中几乎所有颜色都是 AppKit 语义色。在 718 个 nib 中，`textBackgroundColor`、`controlTextColor`、`controlColor`、`labelColor` 各出现两千多次，`gridColor`、`separatorColor` 出现数百次。所以 naviduck 的颜色 token 直接对应语义色，取值为本机 macOS 26.6 上的实测结果，格式为 `#RRGGBBAA`。
 
 | token | AppKit 来源 | 浅色 | 深色 |
 | --- | --- | --- | --- |

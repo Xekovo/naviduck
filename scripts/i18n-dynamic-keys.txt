@@ -3,37 +3,37 @@
 # `scripts/check-i18n.sh` only validates literal keys. A key built with `format!` or chosen by
 # an `if` is invisible to it, so every such call site is listed here as `<path> TAB <first
 # argument>`; adding one is a deliberate act. Keep the list short: prefer a literal key, or a
-# helper in `navidog-ui` (see `navidog_ui::db_error_text`) when the text is shared across crates.
+# helper in `naviduck-ui` (see `naviduck_ui::db_error_text`) when the text is shared across crates.
 # See docs/design/00-overview.md, i18n contract.
 
-crates/navidog-designer/src/panel/grid.rs	format!("designer.{}", self.headers[i])
-crates/navidog-designer/src/panel/grid.rs	format!("designer.{}", self.headers[col])
-crates/navidog-designer/src/panel/options.rs	format!("designer.option_{key}")
-crates/navidog-designer/src/panel/options.rs	if self.dialect.features().inline_table_options { "designer.table_options_mysql_help" } else { "designer.table_options_help" }
-crates/navidog-designer/src/panel/view.rs	if fields { "designer.add" } else { "designer.add_object" }
-crates/navidog-designer/src/panel/view.rs	if fields { "designer.delete" } else { "designer.delete_object" }
-crates/navidog-designer/src/panel/view.rs	format!("designer.{key}")
-crates/navidog-designer/src/panel/view.rs	format!("designer.{}", ENTRY_KEYS[ix])
-crates/navidog-designer/src/panel/more.rs	format!("designer.{body_key}")
-crates/navidog-designer/src/panel/more.rs	format!("designer.{key}")
-crates/navidog-designer/src/object.rs	format!("designer.kind_{}", self.kind.key())
-crates/navidog-designer/src/object.rs	format!("designer.{key}")
-crates/navidog-designer/src/object.rs	format!("designer.opt_{key}")
-crates/navidog-designer/src/tools.rs	format!("designer.tool_{}", self.tool.key())
-crates/navidog-designer/src/tools.rs	format!("designer.kind_{kind_key}")
-crates/navidog-designer/src/tools.rs	format!("designer.tool_mode_{key}")
-crates/navidog-designer/src/tools.rs	format!("designer.{label}")
-crates/navidog-navigator/src/info.rs	format!("col.{k}")
-crates/navidog-navigator/src/info.rs	format!("kind.{}", o.kind.key())
-crates/navidog-navigator/src/navigator/menus.rs	format!("nav.color_{c}")
-crates/navidog-navigator/src/navigator/mod.rs	format!("kind.{}", kind.key())
-crates/navidog-navigator/src/navigator/tree.rs	format!("nav.child_{}", child.key())
-crates/navidog-navigator/src/objects.rs	format!("col.{k}")
-crates/navidog-navigator/src/objects.rs	format!("col.{c}")
-crates/navidog-navigator/src/objects.rs	format!("col.{key}")
-crates/navidog-navigator/src/snippets.rs	*l
-crates/navidog-ui/src/lib.rs	key
-crates/navidog/src/main_window.rs	*label
-crates/navidog/src/menu_catalog.rs	key
-crates/navidog-connection/src/lib.rs	key
-crates/navidog-navigator/src/lib.rs	key
+crates/naviduck-designer/src/panel/grid.rs	format!("designer.{}", self.headers[i])
+crates/naviduck-designer/src/panel/grid.rs	format!("designer.{}", self.headers[col])
+crates/naviduck-designer/src/panel/options.rs	format!("designer.option_{key}")
+crates/naviduck-designer/src/panel/options.rs	if self.dialect.features().inline_table_options { "designer.table_options_mysql_help" } else { "designer.table_options_help" }
+crates/naviduck-designer/src/panel/view.rs	if fields { "designer.add" } else { "designer.add_object" }
+crates/naviduck-designer/src/panel/view.rs	if fields { "designer.delete" } else { "designer.delete_object" }
+crates/naviduck-designer/src/panel/view.rs	format!("designer.{key}")
+crates/naviduck-designer/src/panel/view.rs	format!("designer.{}", ENTRY_KEYS[ix])
+crates/naviduck-designer/src/panel/more.rs	format!("designer.{body_key}")
+crates/naviduck-designer/src/panel/more.rs	format!("designer.{key}")
+crates/naviduck-designer/src/object.rs	format!("designer.kind_{}", self.kind.key())
+crates/naviduck-designer/src/object.rs	format!("designer.{key}")
+crates/naviduck-designer/src/object.rs	format!("designer.opt_{key}")
+crates/naviduck-designer/src/tools.rs	format!("designer.tool_{}", self.tool.key())
+crates/naviduck-designer/src/tools.rs	format!("designer.kind_{kind_key}")
+crates/naviduck-designer/src/tools.rs	format!("designer.tool_mode_{key}")
+crates/naviduck-designer/src/tools.rs	format!("designer.{label}")
+crates/naviduck-navigator/src/info.rs	format!("col.{k}")
+crates/naviduck-navigator/src/info.rs	format!("kind.{}", o.kind.key())
+crates/naviduck-navigator/src/navigator/menus.rs	format!("nav.color_{c}")
+crates/naviduck-navigator/src/navigator/mod.rs	format!("kind.{}", kind.key())
+crates/naviduck-navigator/src/navigator/tree.rs	format!("nav.child_{}", child.key())
+crates/naviduck-navigator/src/objects.rs	format!("col.{k}")
+crates/naviduck-navigator/src/objects.rs	format!("col.{c}")
+crates/naviduck-navigator/src/objects.rs	format!("col.{key}")
+crates/naviduck-navigator/src/snippets.rs	*l
+crates/naviduck-ui/src/lib.rs	key
+crates/naviduck/src/main_window.rs	*label
+crates/naviduck/src/menu_catalog.rs	key
+crates/naviduck-connection/src/lib.rs	key
+crates/naviduck-navigator/src/lib.rs	key

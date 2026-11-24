@@ -5047,24 +5047,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "navidog"
+name = "naviduck"
 version = "0.0.1"
 dependencies = [
  "gpui-kit",
  "mimalloc",
- "navidog-app-state",
- "navidog-connection",
- "navidog-db",
- "navidog-designer",
- "navidog-grid",
- "navidog-model",
- "navidog-navigator",
- "navidog-query",
- "navidog-session",
- "navidog-sqlite",
- "navidog-test-support",
- "navidog-ui",
- "navidog-util",
+ "naviduck-app-state",
+ "naviduck-connection",
+ "naviduck-db",
+ "naviduck-designer",
+ "naviduck-grid",
+ "naviduck-model",
+ "naviduck-navigator",
+ "naviduck-query",
+ "naviduck-session",
+ "naviduck-sqlite",
+ "naviduck-test-support",
+ "naviduck-ui",
+ "naviduck-util",
  "objc2 0.6.5",
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",
@@ -5080,11 +5080,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "navidog-app-state"
+name = "naviduck-app-state"
 version = "0.0.1"
 dependencies = [
  "gpui-kit",
- "navidog-model",
+ "naviduck-model",
  "rust-i18n",
  "serde",
  "serde_json",
@@ -5095,49 +5095,49 @@ dependencies = [
 ]
 
 [[package]]
-name = "navidog-connection"
+name = "naviduck-connection"
 version = "0.0.1"
 dependencies = [
  "gpui-kit",
- "navidog-app-state",
- "navidog-db",
- "navidog-model",
- "navidog-session",
- "navidog-ui",
+ "naviduck-app-state",
+ "naviduck-db",
+ "naviduck-model",
+ "naviduck-session",
+ "naviduck-ui",
  "rust-i18n",
  "serde_json",
  "tracing",
 ]
 
 [[package]]
-name = "navidog-dameng"
+name = "naviduck-dameng"
 version = "0.0.1"
 dependencies = [
  "dm-pure",
  "futures",
  "hex",
- "navidog-db",
- "navidog-model",
- "navidog-sql",
+ "naviduck-db",
+ "naviduck-model",
+ "naviduck-sql",
  "rust-i18n",
  "tokio",
  "tracing",
 ]
 
 [[package]]
-name = "navidog-db"
+name = "naviduck-db"
 version = "0.0.1"
 dependencies = [
  "chrono",
  "futures",
- "navidog-model",
- "navidog-mysql",
- "navidog-postgres",
- "navidog-session",
- "navidog-sql",
- "navidog-sql-log",
- "navidog-sqlite",
- "navidog-util",
+ "naviduck-model",
+ "naviduck-mysql",
+ "naviduck-postgres",
+ "naviduck-session",
+ "naviduck-sql",
+ "naviduck-sql-log",
+ "naviduck-sqlite",
+ "naviduck-util",
  "russh",
  "rust-i18n",
  "serde",
@@ -5149,48 +5149,48 @@ dependencies = [
 ]
 
 [[package]]
-name = "navidog-designer"
+name = "naviduck-designer"
 version = "0.0.1"
 dependencies = [
  "anyhow",
  "gpui-kit",
  "lsp-types",
- "navidog-app-state",
- "navidog-db",
- "navidog-model",
- "navidog-postgres",
- "navidog-schema",
- "navidog-session",
- "navidog-sql",
- "navidog-sqlite",
- "navidog-ui",
- "navidog-util",
+ "naviduck-app-state",
+ "naviduck-db",
+ "naviduck-model",
+ "naviduck-postgres",
+ "naviduck-schema",
+ "naviduck-session",
+ "naviduck-sql",
+ "naviduck-sqlite",
+ "naviduck-ui",
+ "naviduck-util",
  "rust-i18n",
  "serde",
  "serde_json",
 ]
 
 [[package]]
-name = "navidog-grid"
+name = "naviduck-grid"
 version = "0.0.1"
 dependencies = [
  "anyhow",
  "chrono",
  "gpui-kit",
  "lsp-types",
- "navidog-app-state",
- "navidog-dameng",
- "navidog-db",
- "navidog-model",
- "navidog-mysql",
- "navidog-postgres",
- "navidog-schema",
- "navidog-session",
- "navidog-sql",
- "navidog-sqlite",
- "navidog-test-support",
- "navidog-ui",
- "navidog-util",
+ "naviduck-app-state",
+ "naviduck-dameng",
+ "naviduck-db",
+ "naviduck-model",
+ "naviduck-mysql",
+ "naviduck-postgres",
+ "naviduck-schema",
+ "naviduck-session",
+ "naviduck-sql",
+ "naviduck-sqlite",
+ "naviduck-test-support",
+ "naviduck-ui",
+ "naviduck-util",
  "rust-i18n",
  "serde_json",
  "tokio",
@@ -5198,20 +5198,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "navidog-headless"
+name = "naviduck-headless"
 version = "0.0.1"
 dependencies = [
- "navidog-dameng",
- "navidog-db",
- "navidog-model",
- "navidog-sqlite",
+ "naviduck-dameng",
+ "naviduck-db",
+ "naviduck-model",
+ "naviduck-sqlite",
  "serde_json",
  "tempfile",
  "tokio",
 ]
 
 [[package]]
-name = "navidog-model"
+name = "naviduck-model"
 version = "0.0.1"
 dependencies = [
  "argon2 0.5.3",
@@ -5230,37 +5230,37 @@ dependencies = [
 ]
 
 [[package]]
-name = "navidog-mysql"
+name = "naviduck-mysql"
 version = "0.0.1"
 dependencies = [
  "futures",
  "mysql_async",
- "navidog-db",
- "navidog-model",
- "navidog-sql",
+ "naviduck-db",
+ "naviduck-model",
+ "naviduck-sql",
  "tokio",
  "tracing",
 ]
 
 [[package]]
-name = "navidog-navigator"
+name = "naviduck-navigator"
 version = "0.0.1"
 dependencies = [
  "anyhow",
  "chrono",
  "gpui-kit",
  "lsp-types",
- "navidog-app-state",
- "navidog-db",
- "navidog-model",
- "navidog-mysql",
- "navidog-postgres",
- "navidog-session",
- "navidog-sql",
- "navidog-sqlite",
- "navidog-test-support",
- "navidog-ui",
- "navidog-util",
+ "naviduck-app-state",
+ "naviduck-db",
+ "naviduck-model",
+ "naviduck-mysql",
+ "naviduck-postgres",
+ "naviduck-session",
+ "naviduck-sql",
+ "naviduck-sqlite",
+ "naviduck-test-support",
+ "naviduck-ui",
+ "naviduck-util",
  "rust-i18n",
  "serde",
  "serde_json",
@@ -5270,15 +5270,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "navidog-postgres"
+name = "naviduck-postgres"
 version = "0.0.1"
 dependencies = [
  "futures",
  "native-tls",
- "navidog-db",
- "navidog-model",
- "navidog-sql",
- "navidog-util",
+ "naviduck-db",
+ "naviduck-model",
+ "naviduck-sql",
+ "naviduck-util",
  "postgres-native-tls",
  "tokio",
  "tokio-postgres",
@@ -5286,25 +5286,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "navidog-query"
+name = "naviduck-query"
 version = "0.0.1"
 dependencies = [
  "anyhow",
  "chrono",
  "gpui-kit",
  "lsp-types",
- "navidog-app-state",
- "navidog-db",
- "navidog-grid",
- "navidog-model",
- "navidog-mysql",
- "navidog-postgres",
- "navidog-session",
- "navidog-sql",
- "navidog-sqlite",
- "navidog-test-support",
- "navidog-ui",
- "navidog-util",
+ "naviduck-app-state",
+ "naviduck-db",
+ "naviduck-grid",
+ "naviduck-model",
+ "naviduck-mysql",
+ "naviduck-postgres",
+ "naviduck-session",
+ "naviduck-sql",
+ "naviduck-sqlite",
+ "naviduck-test-support",
+ "naviduck-ui",
+ "naviduck-util",
  "regex",
  "rust-i18n",
  "serde",
@@ -5315,37 +5315,37 @@ dependencies = [
 ]
 
 [[package]]
-name = "navidog-schema"
+name = "naviduck-schema"
 version = "0.0.1"
 dependencies = [
  "chrono",
- "navidog-dameng",
- "navidog-db",
- "navidog-model",
- "navidog-mysql",
- "navidog-postgres",
- "navidog-sql",
- "navidog-sqlite",
+ "naviduck-dameng",
+ "naviduck-db",
+ "naviduck-model",
+ "naviduck-mysql",
+ "naviduck-postgres",
+ "naviduck-sql",
+ "naviduck-sqlite",
  "serde",
  "serde_json",
  "tokio",
 ]
 
 [[package]]
-name = "navidog-session"
+name = "naviduck-session"
 version = "0.0.1"
 dependencies = [
  "chrono",
  "futures",
  "gpui-kit",
- "navidog-app-state",
- "navidog-dameng",
- "navidog-db",
- "navidog-model",
- "navidog-mysql",
- "navidog-postgres",
- "navidog-sql",
- "navidog-sqlite",
+ "naviduck-app-state",
+ "naviduck-dameng",
+ "naviduck-db",
+ "naviduck-model",
+ "naviduck-mysql",
+ "naviduck-postgres",
+ "naviduck-sql",
+ "naviduck-sqlite",
  "serde",
  "tempfile",
  "tokio",
@@ -5353,15 +5353,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "navidog-sql"
+name = "naviduck-sql"
 version = "0.0.1"
 dependencies = [
- "navidog-model",
+ "naviduck-model",
  "regex",
 ]
 
 [[package]]
-name = "navidog-sql-log"
+name = "naviduck-sql-log"
 version = "0.0.1"
 dependencies = [
  "chrono",
@@ -5370,13 +5370,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "navidog-sqlite"
+name = "naviduck-sqlite"
 version = "0.0.1"
 dependencies = [
  "futures",
- "navidog-db",
- "navidog-model",
- "navidog-sql",
+ "naviduck-db",
+ "naviduck-model",
+ "naviduck-sql",
  "rusqlite",
  "rust-i18n",
  "tokio",
@@ -5384,33 +5384,33 @@ dependencies = [
 ]
 
 [[package]]
-name = "navidog-test-support"
+name = "naviduck-test-support"
 version = "0.0.1"
 dependencies = [
  "gpui-kit",
- "navidog-db",
- "navidog-sqlite",
+ "naviduck-db",
+ "naviduck-sqlite",
 ]
 
 [[package]]
-name = "navidog-ui"
+name = "naviduck-ui"
 version = "0.0.1"
 dependencies = [
  "gpui-kit",
  "hex",
- "navidog-sql",
+ "naviduck-sql",
  "rust-i18n",
  "serde_json",
  "tracing",
 ]
 
 [[package]]
-name = "navidog-util"
+name = "naviduck-util"
 version = "0.0.1"
 dependencies = [
  "chrono",
  "hex",
- "navidog-sql",
+ "naviduck-sql",
  "semver",
  "serde",
  "serde_json",
@@ -11032,7 +11032,7 @@ checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
 name = "xtask"
 version = "0.0.0"
 dependencies = [
- "navidog-util",
+ "naviduck-util",
  "nibarchive",
  "serde",
  "serde_json",

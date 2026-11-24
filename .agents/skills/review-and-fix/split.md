@@ -19,7 +19,7 @@
 
    ```json
    {
-     "source": "crates/navidog-grid/src/viewer.rs",
+     "source": "crates/naviduck-grid/src/viewer.rs",
      "type": "TableViewer",
      "modules": {
        "find": {"doc": "Find and replace on the loaded page (F-DATA-007).",

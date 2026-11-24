@@ -1,0 +1,19 @@
+[package]
+name = "naviduck-headless"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Compile check that naviduck-model and naviduck-db work without the GPUI stack."
+
+[dependencies]
+naviduck-model = { path = "../naviduck-model" }
+naviduck-db = { path = "../naviduck-db" }
+naviduck-sqlite = { path = "../naviduck-sqlite" }
+naviduck-dameng = { path = "../naviduck-dameng" }
+tokio.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile = "3"

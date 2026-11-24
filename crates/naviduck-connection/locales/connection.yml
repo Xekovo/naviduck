@@ -1,0 +1,407 @@
+_version: 2
+conn:
+  bad_port:
+    en: "Enter a valid port for %{field}."
+    zh-CN: "请为%{field}输入有效端口。"
+  bad_number:
+    en: "Enter a valid number for %{field}."
+    zh-CN: "请为%{field}输入有效数字。"
+  bad_member:
+    en: "Invalid server address: %{line}"
+    zh-CN: "服务器地址无效：%{line}"
+  new_connection:
+    en: New Connection
+    zh-CN: 新建连接
+  new_connection_of:
+    en: "New Connection (%{driver})"
+    zh-CN: "新建连接 (%{driver})"
+  edit_connection_title:
+    en: "Edit Connection - %{name}"
+    zh-CN: "编辑连接 - %{name}"
+  select_type:
+    en: "Select a connection type:"
+    zh-CN: "选择连接类型:"
+  category_all:
+    en: All
+    zh-CN: 全部
+  category_relational:
+    en: Relational
+    zh-CN: 关系型
+  category_nosql:
+    en: NoSQL
+    zh-CN: NoSQL
+  category_cloud:
+    en: Cloud
+    zh-CN: 云
+  new_from_uri:
+    en: New Connection from URI
+    zh-CN: 通过 URI 新建连接
+  uri_hint:
+    en: "mysql://, postgres:// or naviduck:// URI"
+    zh-CN: "mysql://、postgres:// 或 naviduck:// URI"
+  uri_invalid:
+    en: Not a database URI Naviduck understands
+    zh-CN: 无法识别的数据库 URI
+  manage_title:
+    en: Manage Connections
+    zh-CN: 管理连接
+  manage_search:
+    en: Search Connection Information
+    zh-CN: 搜索连接信息
+  manage_type:
+    en: Type
+    zh-CN: 类型
+  manage_group:
+    en: Group
+    zh-CN: 分组
+  manage_edit:
+    en: Edit Connection
+    zh-CN: 编辑连接
+  manage_star:
+    en: Star / Unstar
+    zh-CN: 标星 / 取消标星
+  manage_hide:
+    en: Hide / Unhide
+    zh-CN: 隐藏 / 取消隐藏
+  edit:
+    en: Edit Connection
+    zh-CN: 编辑连接
+  duplicate:
+    en: Duplicate Connection
+    zh-CN: 复制连接
+  open:
+    en: Open Connection
+    zh-CN: 打开连接
+  close:
+    en: Close Connection
+    zh-CN: 关闭连接
+  refresh:
+    en: Refresh
+    zh-CN: 刷新
+  new_group:
+    en: New Group
+    zh-CN: 新建组
+  node_type:
+    en: Node Type
+    zh-CN: 节点类型
+  node_single:
+    en: Single
+    zh-CN: 单个
+  node_multiple:
+    en: Multiple
+    zh-CN: 多个
+  members:
+    en: Member
+    zh-CN: 成员
+  members_required:
+    en: "Add at least one member (host:port, one per line)"
+    zh-CN: 至少添加一个成员（每行一个 主机:端口）
+  host_preference:
+    en: Host Type Preference
+    zh-CN: 主机类型偏好
+  pref_any:
+    en: Any
+    zh-CN: 任何
+  pref_read_write:
+    en: Read-Write
+    zh-CN: 读写
+  pref_read_only:
+    en: Read-Only
+    zh-CN: 只读
+  profile_default:
+    en: Default
+    zh-CN: 默认
+  new_profile:
+    en: New Profile
+    zh-CN: 新建配置文件
+  profile_name:
+    en: Profile Name
+    zh-CN: 配置文件名
+  confirm_delete_profile:
+    en: Delete profile "%{name}"?
+    zh-CN: 确定要删除配置文件“%{name}”吗？
+  reload:
+    en: Reload
+    zh-CN: 重载
+  reload_title:
+    en: Reload (FLUSH) Options
+    zh-CN: 重载（FLUSH）选项
+  reload_done:
+    en: Reloaded
+    zh-CN: 已重载
+  reload_failed:
+    en: Reload failed
+    zh-CN: 重载失败
+  search:
+    en: Search
+    zh-CN: 搜索
+  next:
+    en: Next
+    zh-CN: 下一步
+  cancel:
+    en: Cancel
+    zh-CN: 取消
+  ok:
+    en: OK
+    zh-CN: 确定
+  test:
+    en: Test Connection
+    zh-CN: 测试连接
+  test_cancel:
+    en: Cancel test
+    zh-CN: 取消测试
+  test_in_progress:
+    en: Testing connection...
+    zh-CN: 测试连接...
+  test_ok:
+    en: Connection Successful
+    zh-CN: 连接成功
+  test_ok_version:
+    en: "Connection successful. Server version: %{version}"
+    zh-CN: "连接成功 服务器版本: %{version}"
+  test_failed:
+    en: Connection Failed
+    zh-CN: 连接失败
+  tab_general:
+    en: General
+    zh-CN: 常规
+  tab_advanced:
+    en: Advanced
+    zh-CN: 高级
+  tab_databases:
+    en: Databases
+    zh-CN: 数据库
+  tab_ssl:
+    en: SSL
+    zh-CN: SSL
+  tab_ssh:
+    en: SSH
+    zh-CN: SSH
+  tab_remark:
+    en: Remark
+    zh-CN: 备注
+  name:
+    en: Connection Name
+    zh-CN: 连接名称
+  add_to:
+    en: Add To
+    zh-CN: 添加到
+  my_connections:
+    en: My Connections
+    zh-CN: 我的连接
+  host:
+    en: Host
+    zh-CN: 主机
+  port:
+    en: Port
+    zh-CN: 端口
+  initial_database:
+    en: Initial Database
+    zh-CN: 初始数据库
+  user:
+    en: User Name
+    zh-CN: 用户名
+  password:
+    en: Password
+    zh-CN: 密码
+  save_password:
+    en: Save password
+    zh-CN: 保存密码
+  password_note:
+    en: "* All passwords are encrypted and stored on this Mac"
+    zh-CN: "* 所有密码都加密保存在本机"
+  sqlite_type:
+    en: Type
+    zh-CN: 类型
+  sqlite_existing:
+    en: Existing Database File
+    zh-CN: 现有的数据库文件
+  sqlite_new:
+    en: New SQLite 3
+    zh-CN: 新建 SQLite 3
+  database_file:
+    en: Database File
+    zh-CN: 数据库文件
+  choose:
+    en: Choose…
+    zh-CN: 选择…
+  settings_location:
+    en: Settings Location
+    zh-CN: 设置位置
+  reveal_in_finder:
+    en: Show in Finder
+    zh-CN: 在 Finder 中显示
+  charset:
+    en: Client Character Set
+    zh-CN: 客户端字符集
+  encoding:
+    en: Encoding
+    zh-CN: 编码
+  keepalive:
+    en: "Keepalive interval (sec):"
+    zh-CN: "保持连接间隔（秒）:"
+  connect_timeout:
+    en: "Connection Timeout (sec):"
+    zh-CN: "连接超时（秒）:"
+  read_timeout:
+    en: "Read Timeout (sec):"
+    zh-CN: "读取超时（秒）:"
+  write_timeout:
+    en: "Write Timeout (sec):"
+    zh-CN: "写入超时（秒）:"
+  compression:
+    en: Use compression
+    zh-CN: 使用压缩
+  auto_connect:
+    en: Auto connect
+    zh-CN: 自动连接
+  socket:
+    en: "Use socket file:"
+    zh-CN: "使用套接字文件:"
+  session_limit:
+    en: "Limit connection sessions:"
+    zh-CN: "限制连接会话:"
+  params:
+    en: Connection Parameters
+    zh-CN: 连接参数
+  initial_queries:
+    en: Initial Queries
+    zh-CN: 初始查询
+  auto:
+    en: Auto
+    zh-CN: 自动
+  use_custom_db_list:
+    en: Use custom database list
+    zh-CN: 使用自定义数据库列表
+  col_auto_open:
+    en: Auto Open
+    zh-CN: 自动打开
+  col_name:
+    en: Name
+    zh-CN: 名称
+  col_file:
+    en: Database File
+    zh-CN: 数据库文件
+  new_database_name:
+    en: Database name
+    zh-CN: 数据库名称
+  use_ssl:
+    en: Use SSL
+    zh-CN: 使用 SSL
+  ssl_mode:
+    en: SSL Mode
+    zh-CN: SSL 模式
+  use_auth:
+    en: Use authentication
+    zh-CN: 使用验证
+  client_key:
+    en: Client Key
+    zh-CN: 客户端密钥
+  client_cert:
+    en: Client Certificate
+    zh-CN: 客户端证书
+  ca_cert:
+    en: CA Certificate
+    zh-CN: CA 证书
+  root_cert:
+    en: Root Certificate
+    zh-CN: 根证书
+  verify_ca:
+    en: Verify server certificate against CA
+    zh-CN: 验证针对 CA 的服务器证书
+  cipher:
+    en: Specified Cipher
+    zh-CN: 指定密码
+  crl:
+    en: Certificate Revocation List
+    zh-CN: 证书撤消列表
+  use_ssh:
+    en: Use SSH tunnel
+    zh-CN: 使用 SSH 隧道
+  verify_host_key:
+    en: Verify host key (known_hosts)
+    zh-CN: 校验主机密钥（known_hosts）
+  auth_method:
+    en: Authentication Method
+    zh-CN: 验证方法
+  auth_password:
+    en: Password
+    zh-CN: 密码
+  auth_public_key:
+    en: Public Key
+    zh-CN: 公钥
+  auth_both:
+    en: Password and Public Key
+    zh-CN: 密码和公钥
+  private_key:
+    en: Private Key
+    zh-CN: 私钥
+  passphrase:
+    en: Passphrase
+    zh-CN: 通行短语
+  save_passphrase:
+    en: Save passphrase
+    zh-CN: 保存通行短语
+  copy_suffix:
+    en: copy
+    zh-CN: 副本
+  confirm_delete:
+    en: "Are you sure you want to delete connection “%{name}”?"
+    zh-CN: "确定要删除连接“%{name}”吗？"
+  confirm_delete_group:
+    en: "Are you sure you want to delete group “%{name}”? Its connections will be moved to the parent group."
+    zh-CN: "确定要删除组“%{name}”吗？组内的连接会移到上一级。"
+  delete:
+    en: Delete
+    zh-CN: 删除
+  reopen_required:
+    en: Changes take effect after the connection is reopened.
+    zh-CN: 需要重新打开连接才能生效。
+  reopen_now:
+    en: Reopen Now
+    zh-CN: 立即重新打开
+  reopen:
+    en: Reopen
+    zh-CN: 重新打开
+  confirm_reopen:
+    en: "Reopen connection “%{name}”?"
+    zh-CN: "重新打开连接“%{name}”？"
+  reopen_warning:
+    en: Transactions, locks, and temporary objects cannot be restored. Executed writes may have an unknown outcome. Query text, tabs, and unsaved row changes will be kept. Check the database state before submitting those changes again.
+    zh-CN: 事务、锁和临时对象无法恢复，已执行写入的结果可能未知。查询文本、选项卡和未提交的行修改会保留。再次提交这些修改前，请先核对数据库状态。
+  password_not_saved:
+    en: "The password was not saved and will only be used for this connection attempt. %{detail}"
+    zh-CN: "密码未保存，仅用于本次连接。%{detail}"
+  later:
+    en: Later
+    zh-CN: 稍后
+  open_failed:
+    en: Failed to open connection
+    zh-CN: 无法打开连接
+  duplicate_failed:
+    en: Failed to duplicate connection
+    zh-CN: 无法复制连接
+  ask_password_title:
+    en: "Enter password for “%{name}”"
+    zh-CN: "输入“%{name}”的密码"
+  ssh_password:
+    en: SSH Password
+    zh-CN: SSH 密码
+  unlock_title:
+    en: Unlock Naviduck
+    zh-CN: 解锁 Naviduck
+  unlock_prompt:
+    en: Enter the master password to decrypt saved passwords.
+    zh-CN: 输入主密码以解密保存的密码。
+  master_password:
+    en: Master Password
+    zh-CN: 主密码
+  unlock:
+    en: Unlock
+    zh-CN: 解锁
+  unlock_failed:
+    en: Incorrect master password
+    zh-CN: 主密码不正确
+  required_name:
+    en: Connection name is required
+    zh-CN: 请输入连接名称

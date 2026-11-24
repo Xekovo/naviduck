@@ -1,0 +1,30 @@
+[package]
+name = "naviduck-db"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Driver traits, runtime and SSH tunnels for naviduck. Product drivers live in their own crates."
+
+[dependencies]
+naviduck-model.workspace = true
+naviduck-sql-log = { path = "../naviduck-sql-log" }
+naviduck-util.workspace = true
+naviduck-sql = { path = "../naviduck-sql" }
+rust-i18n.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+futures.workspace = true
+tracing.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+russh = { version = "0.65", default-features = false, features = ["flate2", "ring", "rsa"] }
+
+[dev-dependencies]
+naviduck-session = { path = "../naviduck-session" }
+naviduck-mysql = { path = "../naviduck-mysql" }
+naviduck-postgres = { path = "../naviduck-postgres" }
+naviduck-sqlite = { path = "../naviduck-sqlite" }
+tempfile = "3"

@@ -1,6 +1,6 @@
-# navidog 设计总览
+# naviduck 设计总览
 
-navidog 用 [gpui-kit](https://gpui-kit.com/zh-CN/docs/) 全家桶（GPUI、`gpui-base`、`gpui-component`、`gpui-shell`）复刻 Navicat Premium 17.3.5 macOS 版，浅色和深色外观都复刻。本文是所有设计文档的入口：先读这里，再按里程碑读对应的模块规格。
+naviduck 用 [gpui-kit](https://gpui-kit.com/zh-CN/docs/) 全家桶（GPUI、`gpui-base`、`gpui-component`、`gpui-shell`）复刻 Navicat Premium 17.3.5 macOS 版，浅色和深色外观都复刻。本文是所有设计文档的入口：先读这里，再按里程碑读对应的模块规格。
 
 ## 1. 文档地图
 
@@ -13,7 +13,7 @@ navidog 用 [gpui-kit](https://gpui-kit.com/zh-CN/docs/) 全家桶（GPUI、`gpu
 | [01-feature-inventory.md](01-feature-inventory.md) | 全量功能清单（编号、摘要、验收要点、Navicat 帮助页、里程碑） |
 | [02-design-tokens.md](02-design-tokens.md) | 设计 token 表（每项附来源） |
 | [05-architecture-foundations.md](05-architecture-foundations.md) | 会话执行安全、配置保存事务与结果数据归属 |
-| [03-plugin-api.md](03-plugin-api.md) | 注册表、插件 manifest、HostModule `navidog`、JS 驱动协议 |
+| [03-plugin-api.md](03-plugin-api.md) | 注册表、插件 manifest、HostModule `naviduck`、JS 驱动协议 |
 | [10-shell.md](10-shell.md) | M1：主窗口、工具栏、Dock、菜单栏、状态栏 |
 | [11-connection.md](11-connection.md) | M1：连接管理与连接对话框 |
 | [12-secrets.md](12-secrets.md) | 密码加密：本机密钥、主密码，以及各系统上的表现 |
@@ -42,7 +42,7 @@ navidog 用 [gpui-kit](https://gpui-kit.com/zh-CN/docs/) 全家桶（GPUI、`gpu
 | `cargo xtask help-index` | `reference/help-index.json` | 400 个中文帮助页的文件名与标题，功能清单的数据源 |
 | `swift tools/colors-dump.swift` | `reference/colors.json` | AppKit 语义色在浅色和深色下的 sRGB 值 |
 | `swift tools/ax-dump.swift` | `reference/ax/*.json` | 运行中 Navicat 的窗口元素几何和完整菜单栏，需要给终端授予“辅助功能”权限 |
-| `cargo test -p navidog --test snapshot` | `target/snapshots/*.png` | 用 Metal headless 渲染器把 navidog 主窗口和对话框画成 PNG（浅色、深色），供并排目测，不需要屏幕录制权限 |
+| `cargo test -p naviduck --test snapshot` | `target/snapshots/*.png` | 用 Metal headless 渲染器把 naviduck 主窗口和对话框画成 PNG（浅色、深色），供并排目测，不需要屏幕录制权限 |
 | `swift tools/window-shot.swift <进程名> <png>` | 指定的 PNG | 截取运行中应用（例如 Navicat）的主窗口，需要给终端授予“屏幕录制”权限 |
 
 帮助页原文位于 `/Applications/Navicat Premium.app/Contents/Resources/zh-Hans.lproj/Navicat Help/`，规格中只引用文件名（例如 `con_ssh_settings.html`），不复制原文。中文界面文案参考 `zh-Hans.lproj/*.strings` 中的术语，由我们自己写入 `locales/`，不批量导入。
@@ -54,30 +54,30 @@ navidog 用 [gpui-kit](https://gpui-kit.com/zh-CN/docs/) 全家桶（GPUI、`gpu
 **产品**
 1. 基线：Navicat Premium 17.3.5 macOS 版，浅色、深色都复刻。
 2. “像素级”的含义：不做截图对比。尺寸取自 nib 和 AX，颜色取自 AppKit 语义色；每个 token 标明来源；里程碑验收时并排目测。
-3. 不提取 Navicat 的图标和 logo。界面图标用 Lucide；四种数据库图标用已授权的第三方 SVG（MySQL 为 Tabler，MariaDB、PostgreSQL、SQLite 为 Devicon），尺寸和位置与参考一致，图形不照抄 Navicat。logo 用 navidog 自己的。
+3. 不提取 Navicat 的图标和 logo。界面图标用 Lucide；四种数据库图标用已授权的第三方 SVG（MySQL 为 Tabler，MariaDB、PostgreSQL、SQLite 为 Devicon），尺寸和位置与参考一致，图形不照抄 Navicat。logo 用 naviduck 自己的。
 4. 功能范围：所有功能都写进[功能清单](01-feature-inventory.md)，分里程碑实现。范围覆盖 MySQL、PostgreSQL、SQLite 适用的全部功能，外加 AI 助手和替代 Navicat Cloud 的同步功能。其他数据库的专属功能也完整写进 [db/](db/)。
 5. 一期数据库：MySQL/MariaDB、PostgreSQL、SQLite。
 6. 平台：macOS 首发并做像素校准（最低 macOS 15，gpui-kit 的要求）；Windows 和 Linux 保持可编译，不承诺视觉。
 7. 界面语言：简体中文和英文。
 8. 插件：基于 `gpui-shell`，开放命令和菜单、导入导出格式、单元格格式化器、JS 驱动、Dock 面板五类扩展点。
-9. 插件只从本地目录 `~/Library/Application Support/navidog/plugins/` 加载，manifest 声明能力，首次启用时弹窗授权，不做插件市场。
+9. 插件只从本地目录 `~/Library/Application Support/naviduck/plugins/` 加载，manifest 声明能力，首次启用时弹窗授权，不做插件市场。
 10. 与“更合理的做法”冲突时以 Navicat 为准，偏差写进模块规格并给出理由。已知偏差：主窗口用 Dock，允许拖拽停靠，而 Navicat 是固定窗格。
 11. 许可证 Apache-2.0，禁止引入 GPL 依赖。
-12. Bundle ID：`ci.nn.navidog`。
-13. 不做遥测和远程崩溃上报，日志用 `tracing` 写到 `~/Library/Logs/navidog/`；SQL 历史日志按 Navicat 的方式单独记录。
+12. Bundle ID：`com.ekovovo.naviduck`。
+13. 不做遥测和远程崩溃上报，日志用 `tracing` 写到 `~/Library/Logs/naviduck/`；SQL 历史日志按 Navicat 的方式单独记录。
 14. 自动更新：应用内只下载 nightly release 上的 `latest.json`（还没有 nightly 时改读最新稳定版的同一文件）。文件里的 `releases` 是各版本列表，顶层仍是这一份 release 自己的版本和安装包。不含预发布时跳过预发布和 nightly；打开预发布渠道时同时提供 tag 预发布和 `main` 上的滚动 nightly。下载后用清单里的 SHA-256 校验再安装。启动时最多每两天检查一次，可关掉；下载只在用户点更新时发生。不做 Sparkle。tag 的发布说明由 changelogithub 从 Conventional Commits 生成并写进这份清单；nightly 仍是带构建时间的一句说明。
 
 **技术**
 1. 依赖 `gpui-kit = "0.8"`，提交 `Cargo.lock`。gpui-kit 自己精确锁定 `gpui-pre`，不要单独覆盖任何 `gpui-pre-*`。
 2. rem 基准 `theme.font_size = 13px`（macOS 控件默认字号）。
-3. 裸 `px(...)` 和原始颜色只允许出现在 `navidog-ui` 的 token 和主题定义里，由 CI 检查（见第 5 节）。
-4. 组件层采用渐进策略：先用 `gpui-component` 加 Navicat 主题；主题调不到实测值的控件，在 `navidog-ui` 中基于 `gpui-base` 原语重写外观，行为、焦点和无障碍语义沿用原语。
+3. 裸 `px(...)` 和原始颜色只允许出现在 `naviduck-ui` 的 token 和主题定义里，由 CI 检查（见第 5 节）。
+4. 组件层采用渐进策略：先用 `gpui-component` 加 Navicat 主题；主题调不到实测值的控件，在 `naviduck-ui` 中基于 `gpui-base` 原语重写外观，行为、焦点和无障碍语义沿用原语。
 5. 组件能力缺口：先在组件外层补（delegate、自定义渲染）；补不了就基于 `gpui-base` 自建；禁止 fork gpui-kit。结果网格和对象树在 M2 开始时先各做 1 到 2 天的技术验证。
 6. 菜单：右键菜单用 `NativeMenu`（macOS 上就是 `NSMenu`）；菜单栏用 `cx.set_menus`，调用前必须先 `cx.bind_keys`；只有必须参与 GPUI 浮层组合的地方才用 GPUI 浮层：一般用 `PopupMenu`，代码补全用编辑器自带的补全菜单。
 7. 主窗口布局：`gpui-component` 的 `DockArea`，默认布局照 Navicat 排列，用 `dump/load` 持久化；插件面板注册为 Dock Panel。
 8. 驱动层：自定义 trait 加原生驱动（`mysql_async`、`tokio-postgres`、`rusqlite`）。核心是 `Driver` 和 `Session` 两个 trait，按类别分出 `Relational`、`Document`、`KeyValue` 三个 trait，一期只实现 `Relational`。
-9. 异步：`navidog-db` 里放一个全局 tokio 多线程运行时；SQLite 走阻塞线程；界面侧用 `cx.spawn` 加 channel 等结果，状态显式区分 idle、loading、loaded、failed，丢弃过期结果。
-10. 连接配置存成 JSON，放在 `~/Library/Application Support/navidog/`。密码字段默认用本机密钥加密：macOS 放登录钥匙串，Windows 放凭据管理器，Linux 放配置目录里权限 `0600` 的文件。用户可设置主密码，此时用 Argon2 派生密钥、XChaCha20-Poly1305 加密，启动时解锁一次。
+9. 异步：`naviduck-db` 里放一个全局 tokio 多线程运行时；SQLite 走阻塞线程；界面侧用 `cx.spawn` 加 channel 等结果，状态显式区分 idle、loading、loaded、failed，丢弃过期结果。
+10. 连接配置存成 JSON，放在 `~/Library/Application Support/naviduck/`。密码字段默认用本机密钥加密：macOS 放登录钥匙串，Windows 放凭据管理器，Linux 放配置目录里权限 `0600` 的文件。用户可设置主密码，此时用 Argon2 派生密钥、XChaCha20-Poly1305 加密，启动时解锁一次。
 11. 一期连接方式：常规、高级、数据库、SSL、SSH（`russh`）；HTTP 隧道放到 M13，服务端脚本自己写。
 12. 注册表从 M1 起建立，内置功能也通过插件将来使用的同一套注册表注册。
 
@@ -92,35 +92,35 @@ navidog 用 [gpui-kit](https://gpui-kit.com/zh-CN/docs/) 全家桶（GPUI、`gpu
 
 ```mermaid
 flowchart TD
-  shell["navidog (app shell)"] --> featConn[navidog-connection]
-  shell --> featNav[navidog-navigator]
-  shell --> featGrid[navidog-grid]
-  shell --> featQuery[navidog-query]
+  shell["naviduck (app shell)"] --> featConn[naviduck-connection]
+  shell --> featNav[naviduck-navigator]
+  shell --> featGrid[naviduck-grid]
+  shell --> featQuery[naviduck-query]
   shell --> featMore["...其他 feature crate"]
-  shell --> plugin[navidog-plugin]
-  featConn --> ui[navidog-ui]
+  shell --> plugin[naviduck-plugin]
+  featConn --> ui[naviduck-ui]
   featNav --> ui
   featGrid --> ui
   featQuery --> ui
-  featConn --> db[navidog-db]
+  featConn --> db[naviduck-db]
   featGrid --> db
-  featGrid --> util[navidog-util]
+  featGrid --> util[naviduck-util]
   featQuery --> featGrid
   featQuery --> db
-  plugin --> appState[navidog-app-state]
+  plugin --> appState[naviduck-app-state]
   plugin --> gpuiShell[gpui-shell]
-  appState --> model[navidog-model]
+  appState --> model[naviduck-model]
   db --> model
-  db --> sql[navidog-sql]
+  db --> sql[naviduck-sql]
   sql --> model
   util --> sql
-  mysql[navidog-mysql] --> db
-  pg[navidog-postgres] --> db
-  sqlite[navidog-sqlite] --> db
-  session[navidog-session] --> mysql
+  mysql[naviduck-mysql] --> db
+  pg[naviduck-postgres] --> db
+  sqlite[naviduck-sqlite] --> db
+  session[naviduck-session] --> mysql
   session --> pg
   session --> sqlite
-  schema[navidog-schema] --> db
+  schema[naviduck-schema] --> db
   appState --> kit["gpui-kit 0.8"]
 ```
 
@@ -128,37 +128,37 @@ flowchart TD
 
 | crate | 职责 | 创建时机 |
 | --- | --- | --- |
-| `navidog` | 应用外壳：初始化、窗口、Dock 默认布局、菜单栏、主工具栏骨架、组合各 feature crate。不放功能逻辑。 | M1 |
-| `navidog-ui` | Navicat 主题 JSON、具名 token、AppKit 外观皮肤、图标资源 | M1 |
-| `navidog-model` | 纯数据模型：连接、分组、对象引用、密钥与加密、配置路径、保存的查询、列宽。不依赖 GPUI，可被 headless 工具和驱动直接使用 | M1 |
-| `navidog-app-state` | GPUI 应用状态：`Settings`、`ConnectionStore`、`Workspace` 选择、收藏、虚拟组、代码段、跨 feature 命令、对象 URI、驱动注册表 | M1 |
-| `navidog-sql` | 方言 trait（词法标志、标识符、字面量、分页、变更 SQL、对象种类、系统库、关键字、事务和 DROP/RENAME）、能力集合 `DialectFeatures` 和唯一的 SQL 扫描器。扫描器只接收 `Lex`，不认识产品名 | M2 |
-| `navidog-session` | 驱动注册表与会话、元数据缓存状态机（`ScopeCache`）、代码补全信息缓存。注册四个内置驱动 | M1 |
-| `navidog-schema` | 表草稿的解析、编辑和迁移的执行顺序。产品相关的语句由方言能力方法决定，不依赖界面，也不承担驱动协议 | M4 |
-| `navidog-sql-log` | SQL 日志文件的写入与轮转 | M3 |
-| `navidog-headless` | 依赖 `navidog-model`、`navidog-db` 和 `navidog-sqlite` 的编译与运行检查，证明驱动栈不链接 GPUI | M2 |
-| `navidog-util` | 不依赖界面和驱动的纯函数：SQL 类型名归类、enum/set 列表、十六进制和 JSON 文本、执行计划的树和布局 | M2 |
-| `navidog-db` | 驱动 trait、`Relational` / `Document` / `KeyValue`、错误、tokio 运行时、SSH 隧道、结果集读取。不包含具体数据库的协议实现 | M1 |
-| `navidog-mysql` | MySQL 与 MariaDB 的协议、方言、目录 SQL 和关键字。两个 `Driver`，同一套方言 | — |
-| `navidog-postgres` | PostgreSQL 的协议、方言、目录 SQL 和关键字 | — |
-| `navidog-sqlite` | SQLite 的协议、方言、目录 SQL 和关键字 | — |
-| `navidog-plugin` | gpui-shell 宿主：manifest、授权、HostModule `navidog` | M1 建空壳，M5 实现 |
-| `navidog-connection` | 连接对话框、连接管理、导航树中的连接节点操作 | M1 |
-| `navidog-navigator` | 导航窗格、对象选项卡、信息窗格 | M2 |
-| `navidog-grid` | 结果网格、表查看器 | M2 |
-| `navidog-query` | 查询编辑器、结果、执行计划、命令列界面、历史日志查看器；查询创建工具在 M7 加入 | M3 |
-| `navidog-designer` | 表、视图、函数等对象设计器 | M4 |
-| `navidog-transfer` | 导入导出、数据传输、数据同步、结构同步 | M6、M8 |
-| `navidog-model` | 模型与 ER 图 | M7 |
-| `navidog-automation` | 备份还原、自动运行 | M9 |
-| `navidog-bi` | BI 数据源、图表、仪表板 | M10 |
-| `navidog-ai` | AI 助手 | M11 |
+| `naviduck` | 应用外壳：初始化、窗口、Dock 默认布局、菜单栏、主工具栏骨架、组合各 feature crate。不放功能逻辑。 | M1 |
+| `naviduck-ui` | Navicat 主题 JSON、具名 token、AppKit 外观皮肤、图标资源 | M1 |
+| `naviduck-model` | 纯数据模型：连接、分组、对象引用、密钥与加密、配置路径、保存的查询、列宽。不依赖 GPUI，可被 headless 工具和驱动直接使用 | M1 |
+| `naviduck-app-state` | GPUI 应用状态：`Settings`、`ConnectionStore`、`Workspace` 选择、收藏、虚拟组、代码段、跨 feature 命令、对象 URI、驱动注册表 | M1 |
+| `naviduck-sql` | 方言 trait（词法标志、标识符、字面量、分页、变更 SQL、对象种类、系统库、关键字、事务和 DROP/RENAME）、能力集合 `DialectFeatures` 和唯一的 SQL 扫描器。扫描器只接收 `Lex`，不认识产品名 | M2 |
+| `naviduck-session` | 驱动注册表与会话、元数据缓存状态机（`ScopeCache`）、代码补全信息缓存。注册四个内置驱动 | M1 |
+| `naviduck-schema` | 表草稿的解析、编辑和迁移的执行顺序。产品相关的语句由方言能力方法决定，不依赖界面，也不承担驱动协议 | M4 |
+| `naviduck-sql-log` | SQL 日志文件的写入与轮转 | M3 |
+| `naviduck-headless` | 依赖 `naviduck-model`、`naviduck-db` 和 `naviduck-sqlite` 的编译与运行检查，证明驱动栈不链接 GPUI | M2 |
+| `naviduck-util` | 不依赖界面和驱动的纯函数：SQL 类型名归类、enum/set 列表、十六进制和 JSON 文本、执行计划的树和布局 | M2 |
+| `naviduck-db` | 驱动 trait、`Relational` / `Document` / `KeyValue`、错误、tokio 运行时、SSH 隧道、结果集读取。不包含具体数据库的协议实现 | M1 |
+| `naviduck-mysql` | MySQL 与 MariaDB 的协议、方言、目录 SQL 和关键字。两个 `Driver`，同一套方言 | — |
+| `naviduck-postgres` | PostgreSQL 的协议、方言、目录 SQL 和关键字 | — |
+| `naviduck-sqlite` | SQLite 的协议、方言、目录 SQL 和关键字 | — |
+| `naviduck-plugin` | gpui-shell 宿主：manifest、授权、HostModule `naviduck` | M1 建空壳，M5 实现 |
+| `naviduck-connection` | 连接对话框、连接管理、导航树中的连接节点操作 | M1 |
+| `naviduck-navigator` | 导航窗格、对象选项卡、信息窗格 | M2 |
+| `naviduck-grid` | 结果网格、表查看器 | M2 |
+| `naviduck-query` | 查询编辑器、结果、执行计划、命令列界面、历史日志查看器；查询创建工具在 M7 加入 | M3 |
+| `naviduck-designer` | 表、视图、函数等对象设计器 | M4 |
+| `naviduck-transfer` | 导入导出、数据传输、数据同步、结构同步 | M6、M8 |
+| `naviduck-model` | 模型与 ER 图 | M7 |
+| `naviduck-automation` | 备份还原、自动运行 | M9 |
+| `naviduck-bi` | BI 数据源、图表、仪表板 | M10 |
+| `naviduck-ai` | AI 助手 | M11 |
 
 规则：
-- 依赖只能向下：feature crate 可以依赖 `navidog-ui`、`navidog-app-state`、`navidog-model`、`navidog-db`、`navidog-sql`、`navidog-schema`、`navidog-session`、`navidog-util`，**不能依赖其他 feature crate，也不能依赖 `navidog-mysql`、`navidog-postgres`、`navidog-sqlite`**（测试可以用 dev-dependency）。这三个 crate 只由 `navidog-session` 和 `navidog-headless` 组合。feature 之间通过 `navidog-app-state::actions` 中的命令、事件和领域 ID 协作。`navidog-util` 只依赖 `navidog-sql`。唯一的例外是 `navidog-query` 依赖 `navidog-grid`，复用结果网格和提交流程；`navidog-grid` 不能反过来依赖它。
-- GPUI 只出现在 `navidog-app-state`、`navidog-session`、`navidog-ui` 和 feature crate 里。`navidog-model`、`navidog-db`、`navidog-sql`、`navidog-schema`、`navidog-util`、`navidog-sql-log`、`navidog-mysql`、`navidog-postgres`、`navidog-sqlite` 的 normal 依赖不允许出现 `gpui-kit`，由 `scripts/check-deps.sh` 检查；`navidog-headless` 用 model、db 和 sqlite 驱动做编译/运行回归。
+- 依赖只能向下：feature crate 可以依赖 `naviduck-ui`、`naviduck-app-state`、`naviduck-model`、`naviduck-db`、`naviduck-sql`、`naviduck-schema`、`naviduck-session`、`naviduck-util`，**不能依赖其他 feature crate，也不能依赖 `naviduck-mysql`、`naviduck-postgres`、`naviduck-sqlite`**（测试可以用 dev-dependency）。这三个 crate 只由 `naviduck-session` 和 `naviduck-headless` 组合。feature 之间通过 `naviduck-app-state::actions` 中的命令、事件和领域 ID 协作。`naviduck-util` 只依赖 `naviduck-sql`。唯一的例外是 `naviduck-query` 依赖 `naviduck-grid`，复用结果网格和提交流程；`naviduck-grid` 不能反过来依赖它。
+- GPUI 只出现在 `naviduck-app-state`、`naviduck-session`、`naviduck-ui` 和 feature crate 里。`naviduck-model`、`naviduck-db`、`naviduck-sql`、`naviduck-schema`、`naviduck-util`、`naviduck-sql-log`、`naviduck-mysql`、`naviduck-postgres`、`naviduck-sqlite` 的 normal 依赖不允许出现 `gpui-kit`，由 `scripts/check-deps.sh` 检查；`naviduck-headless` 用 model、db 和 sqlite 驱动做编译/运行回归。
 - 每个 feature crate 把自己的 model、service、view、command、dialog 放在一起，禁止建立全局的 `models/`、`views/`、`commands/` 目录。
-- 小能力先作为 module 留在最接近的 crate 里，等边界有实际收益再拆成 crate。不依赖界面、也不需要驱动的纯函数例外，直接放 `navidog-util`。
+- 小能力先作为 module 留在最接近的 crate 里，等边界有实际收益再拆成 crate。不依赖界面、也不需要驱动的纯函数例外，直接放 `naviduck-util`。
 - feature crate 对外只暴露 `init(cx)`、需要被外壳放进 Dock 的 Panel 类型，以及少量公开的 Entity 或命令。
 
 ### 4.2 运行时数据流
@@ -167,7 +167,7 @@ flowchart TD
 sequenceDiagram
   participant View as "GPUI View (前台)"
   participant Task as "cx.spawn Task"
-  participant Rt as "navidog-db tokio 运行时"
+  participant Rt as "naviduck-db tokio 运行时"
   participant Db as "数据库 / SSH"
   View->>Task: 发起请求（状态置为 loading）
   Task->>Rt: spawn 驱动调用，返回 oneshot
@@ -181,8 +181,8 @@ sequenceDiagram
 
 gpui-kit 的[编码指南](https://gpui-kit.com/zh-CN/docs/coding-guides)和[设计指南](https://gpui-kit.com/zh-CN/docs/design-guides)是强制规范。以下几条与像素复刻直接相关，单独说明：
 
-- **token 规则**：Navicat 的实测数值只出现在 `navidog-ui` 的 token 和主题 JSON 里，单位是 macOS 的 pt，在 token 定义处换算成 rem（基准 13）。组件代码只引用具名 token（如 `tokens.toolbar.height`），这样应用缩放仍然有效。规范明确允许“主题或 token 定义本身”使用像素值。
-- **裸值检查**：`scripts/check-raw-px.sh` 在 `crates/navidog-ui/src/tokens*` 和 `themes/` 之外查找 `px(`、`rgb(`、`rgba(`、`hsla(`、`hsl(`。必须例外的位置（运行时测量的几何、平台边界）在行尾加注释 `// raw-px: <理由>`。
+- **token 规则**：Navicat 的实测数值只出现在 `naviduck-ui` 的 token 和主题 JSON 里，单位是 macOS 的 pt，在 token 定义处换算成 rem（基准 13）。组件代码只引用具名 token（如 `tokens.toolbar.height`），这样应用缩放仍然有效。规范明确允许“主题或 token 定义本身”使用像素值。
+- **裸值检查**：`scripts/check-raw-px.sh` 在 `crates/naviduck-ui/src/tokens*` 和 `themes/` 之外查找 `px(`、`rgb(`、`rgba(`、`hsla(`、`hsl(`。必须例外的位置（运行时测量的几何、平台边界）在行尾加注释 `// raw-px: <理由>`。
 - **rem 缓存**：任何根据布局结果缓存的几何（行高、文本测量、画布尺寸），失效键都必须包含 `window.rem_size()`。
 - **命令**：一个命令只定义一个 Action，工具栏、菜单、右键菜单、快捷键共用。`CommandRegistry` 先统一命令元数据和可发现性，不替换现有的 typed Action、菜单或快捷键分发；快捷键表照 Navicat（见 `hot_keys.html`）。
 - **焦点**：可聚焦元素显式 `.tab_stop(true)`；`key_context` 和 `on_action` 挂在同一区域；对话框困住焦点，关闭后把焦点还给打开它的元素。
@@ -191,7 +191,7 @@ gpui-kit 的[编码指南](https://gpui-kit.com/zh-CN/docs/coding-guides)和[设
 - **大数据**：导航树、对象列表、结果网格必须虚拟化，数据、排序筛选、选择、视口和行渲染分开。
 - **i18n**：使用 rust-i18n。每个 crate 根部写 `i18n!("locales", fallback = "en")`，外壳在 `gpui_kit::init` 之前调用 `rust_i18n::extend!(gpui_component)`。切换语言后调用 `cx.refresh_windows()`。
   - 契约是 **crate-local**：每个后端只加载自己 crate 的 `locales/*.yml`，`scripts/check-i18n.sh` 要求字面量 `t!("…")` 的 key 在本 crate 定义，并且每个 key 同时有 `en` 和 `zh-CN`。
-  - 跨 crate 的文案只能通过显式 helper（如 `navidog_ui::db_error_text`）或调用方传入的字符串复用，不能依赖另一个 crate 的 key。
+  - 跨 crate 的文案只能通过显式 helper（如 `naviduck_ui::db_error_text`）或调用方传入的字符串复用，不能依赖另一个 crate 的 key。
   - 动态 key（`t!(format!("…"))`、`t!(key)`、`t!(if … { "a" } else { "b" })`）不参与静态检查，必须逐条登记在 `scripts/i18n-dynamic-keys.txt`（`<path> TAB <第一个参数>`），否则 `check-i18n.sh` 失败。这份清单就是动态 key 的完整清单，新增时要说明理由。
   - 统一 backend（构建期合并所有 locale、跨 crate 复用 key）没有采用：它要改每个 crate 的初始化和测试，收益只在大规模共享文案时才出现。改走这条路线时先更新本段和 `scripts/check-i18n.sh`。
 - **测试**：UI 测试用 `#[gpui_kit::test]` 加 `TestAppContext`，通过 `gpui_kit::test::{TestWindowExt, TestAppContextExt}` 驱动真实的点击、键盘和焦点。像素测试（`Window::render_to_image`）只在 macOS 上可用，暂不使用。
@@ -202,21 +202,21 @@ gpui-kit 的[编码指南](https://gpui-kit.com/zh-CN/docs/coding-guides)和[设
 | 里程碑 | 内容 | 主要 crate |
 | --- | --- | --- |
 | M0 | 参考资料工具、总览、功能清单、token 表、插件 API、M1 规格 | 文档、`xtask` |
-| M1 | 应用外壳和连接管理 | `navidog`、`navidog-ui`、`navidog-model`、`navidog-app-state`、`navidog-db`、`navidog-connection` |
-| M2 | 对象树、对象选项卡、信息窗格、表查看器和结果网格 | `navidog-navigator`、`navidog-grid` |
-| M3 | 查询编辑器、结果、执行计划、SQL 美化、代码段、历史日志、命令列界面 | `navidog-query` |
-| M4 | 表设计器及其他对象设计器 | `navidog-designer` |
-| M5 | 插件体系 | `navidog-plugin` |
-| M6 | 导入导出向导、导入 `.ncx` 连接 | `navidog-transfer` |
-| M7 | 模型和 ER 图；查询创建工具（与 ER 图共用画布，画布放在哪个 crate 在 M7 规格中确定）。ER 图 crate 暂记作 `navidog-er`：`navidog-model` 已是纯数据模型 | `navidog-er`、`navidog-query` |
-| M8 | 数据传输、数据同步、结构同步 | `navidog-transfer` |
-| M9 | 备份还原、自动运行 | `navidog-automation` |
-| M10 | BI | `navidog-bi` |
-| M11 | AI 助手 | `navidog-ai` |
-| M12 | 同步（本地目录或 Git），替代 Navicat Cloud | `navidog-app-state` |
-| M13 | HTTP 隧道 | `navidog-db` |
-| M14 | 其他数据库，按类别接入 | `navidog-db` 及各 feature crate |
-| M15 | 发布：签名、公证、多平台安装包、应用内更新。打包和应用内更新已提前落地；里程碑未关闭，因为公证和配置迁移还没做 | 打包脚本、`navidog` |
+| M1 | 应用外壳和连接管理 | `naviduck`、`naviduck-ui`、`naviduck-model`、`naviduck-app-state`、`naviduck-db`、`naviduck-connection` |
+| M2 | 对象树、对象选项卡、信息窗格、表查看器和结果网格 | `naviduck-navigator`、`naviduck-grid` |
+| M3 | 查询编辑器、结果、执行计划、SQL 美化、代码段、历史日志、命令列界面 | `naviduck-query` |
+| M4 | 表设计器及其他对象设计器 | `naviduck-designer` |
+| M5 | 插件体系 | `naviduck-plugin` |
+| M6 | 导入导出向导、导入 `.ncx` 连接 | `naviduck-transfer` |
+| M7 | 模型和 ER 图；查询创建工具（与 ER 图共用画布，画布放在哪个 crate 在 M7 规格中确定）。ER 图 crate 暂记作 `naviduck-er`：`naviduck-model` 已是纯数据模型 | `naviduck-er`、`naviduck-query` |
+| M8 | 数据传输、数据同步、结构同步 | `naviduck-transfer` |
+| M9 | 备份还原、自动运行 | `naviduck-automation` |
+| M10 | BI | `naviduck-bi` |
+| M11 | AI 助手 | `naviduck-ai` |
+| M12 | 同步（本地目录或 Git），替代 Navicat Cloud | `naviduck-app-state` |
+| M13 | HTTP 隧道 | `naviduck-db` |
+| M14 | 其他数据库，按类别接入 | `naviduck-db` 及各 feature crate |
+| M15 | 发布：签名、公证、多平台安装包、应用内更新。打包和应用内更新已提前落地；里程碑未关闭，因为公证和配置迁移还没做 | 打包脚本、`naviduck` |
 
 ### 每个里程碑的完成标准
 - CI 通过：fmt、clippy、单元测试、headless UI 测试、裸值检查。

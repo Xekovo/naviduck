@@ -4,7 +4,7 @@
 #   scripts/publish-crates.sh                 # dry-run every publishable crate
 #   scripts/publish-crates.sh --execute       # upload
 #   scripts/publish-crates.sh --plan          # print order and exit
-#   scripts/publish-crates.sh navidog-util    # one crate (still a dry-run)
+#   scripts/publish-crates.sh naviduck-util    # one crate (still a dry-run)
 #
 # Crates with `publish = false` are skipped (xtask). A version already on
 # crates.io is skipped. `cargo publish` waits for the index after each upload
@@ -149,10 +149,10 @@ def self_check():
 
 def main():
     try:
-        if os.environ.get("NAVIDOG_PUBLISH_SELF_CHECK") == "1":
+        if os.environ.get("NAVIDUCK_PUBLISH_SELF_CHECK") == "1":
             self_check()
             return
-        selected = [s for s in os.environ.get("NAVIDOG_PUBLISH", "").split("\n") if s]
+        selected = [s for s in os.environ.get("NAVIDUCK_PUBLISH", "").split("\n") if s]
         meta = json.load(sys.stdin)
         for name, version in plan(meta["packages"], set(meta["workspace_members"]), selected):
             print(f"{name}\t{version}")
@@ -166,7 +166,7 @@ PY
 }
 
 if [[ "$self_check" == true ]]; then
-  NAVIDOG_PUBLISH_SELF_CHECK=1 python3 -c "$(plan_py)"
+  NAVIDUCK_PUBLISH_SELF_CHECK=1 python3 -c "$(plan_py)"
   exit 0
 fi
 
@@ -176,7 +176,7 @@ if ((${#selected[@]} > 0)); then
 fi
 
 order=$(
-  export NAVIDOG_PUBLISH="$names"
+  export NAVIDUCK_PUBLISH="$names"
   cargo metadata --format-version 1 --no-deps | python3 -c "$(plan_py)"
 )
 
@@ -200,7 +200,7 @@ fi
 on_crates_io() {
   local name=$1 version=$2 http
   http=$(curl -sS -o /dev/null -w '%{http_code}' \
-    -A 'navidog-publish (https://github.com/xhofe/navidog)' \
+    -A 'naviduck-publish (https://github.com/ekovovo/naviduck)' \
     "https://crates.io/api/v1/crates/${name}/${version}")
   case "$http" in
     200) return 0 ;;

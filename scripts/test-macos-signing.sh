@@ -8,7 +8,7 @@ if [ "$(uname -s)" != Darwin ]; then
 fi
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
-work=$(mktemp -d "${TMPDIR:-/tmp}/navidog-signing.XXXXXX")
+work=$(mktemp -d "${TMPDIR:-/tmp}/naviduck-signing.XXXXXX")
 mount="$work/Mounted image"
 mounted=false
 
@@ -34,7 +34,7 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cat > "$work/main.c" <<'C'
 #include <stdio.h>
 int main(void) {
-    puts("navidog signing fixture");
+    puts("naviduck signing fixture");
     return 0;
 }
 C
@@ -43,7 +43,7 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>CFBundleIdentifier</key><string>ci.nn.navidog.signing-test</string>
+  <key>CFBundleIdentifier</key><string>com.ekovovo.naviduck.signing-test</string>
   <key>CFBundleName</key><string>Signing fixture</string>
   <key>CFBundleExecutable</key><string>signing-fixture</string>
   <key>CFBundlePackageType</key><string>APPL</string>
@@ -54,7 +54,7 @@ echo "original resource" > "$app/Contents/Resources/sealed.txt"
 
 verify_and_run() {
   codesign --verify --deep --strict --all-architectures "$1"
-  test "$("$1/Contents/MacOS/signing-fixture")" = "navidog signing fixture"
+  test "$("$1/Contents/MacOS/signing-fixture")" = "naviduck signing fixture"
 }
 
 code_hash() {
@@ -78,7 +78,7 @@ test -n "$expected_hash"
 stage="$work/Disk image contents"
 mkdir -p "$stage" "$mount" "$work/Applications"
 ditto "$app" "$stage/Signing fixture.app"
-hdiutil create -volname "Navidog signing check" -srcfolder "$stage" \
+hdiutil create -volname "Naviduck signing check" -srcfolder "$stage" \
   -format UDZO "$work/Signing fixture.dmg" >/dev/null
 hdiutil attach -nobrowse -readonly -mountpoint "$mount" \
   "$work/Signing fixture.dmg" >/dev/null

@@ -7,7 +7,7 @@ if [ "$(uname -s)" != Darwin ]; then
   exit 1
 fi
 if [ "$#" -ne 1 ] || [ ! -d "$1" ] || [ ! -f "$1/Contents/Info.plist" ]; then
-  echo "Usage: $0 path/to/Navidog.app" >&2
+  echo "Usage: $0 path/to/Naviduck.app" >&2
   exit 2
 fi
 

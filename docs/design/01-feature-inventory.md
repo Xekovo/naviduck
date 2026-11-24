@@ -26,11 +26,11 @@
 | F-APP-011 | 收藏夹 | 把对象或选项卡加入收藏夹（⌥⇧1-9）并快速打开（⌃⇧1-9）；收藏夹菜单。 | favorites | M2 |
 | F-APP-012 | 启动画面 | 启动时打开的选项卡列表（按住 Control 点按选项卡加入）。 | main_window, preferences_tab | M2 |
 | F-APP-013 | 打开最近使用过的 | 文件菜单中列出最近打开的对象，可清除。 | — | M2 |
-| F-APP-014 | 使用 navidog URI 打开 | ⌘U 粘贴 URI 打开对象，支持连接映射（自动匹配、现有连接、新建连接）。URI 格式由 navidog 自定，不兼容 Navicat URI。 | share_uri | M2 |
+| F-APP-014 | 使用 naviduck URI 打开 | ⌘U 粘贴 URI 打开对象，支持连接映射（自动匹配、现有连接、新建连接）。URI 格式由 naviduck 自定，不兼容 Navicat URI。 | share_uri | M2 |
 | F-APP-015 | 通过 URI 共享 | 在信息窗格“常规”页生成对象的 URI，可选隐藏主机信息。 | share_uri | M2 |
 | F-APP-016 | 自动恢复 | 定期保存未保存的查询和设计器内容，异常退出后提示恢复。 | preferences_auto_recovery | M3 |
-| F-APP-017 | 日志文件 | `tracing` 应用日志、SQL 执行日志、命令行日志，存放在 `~/Library/Logs/navidog/`。 | log_files | M1（应用日志）、M3（SQL 日志） |
-| F-APP-018 | 关于与检查更新 | “关于 navidog”窗口。“检查更新”读取 GitHub Releases 上的 `latest.json`（先 nightly，没有再试最新稳定版；`releases` 是各版本列表），有新版本时在应用内下载并校验 SHA-256 后安装。不含预发布时跳过预发布和 nightly。没有发布版本和网络失败分开提示。菜单回调没有活动窗口时用最前面的窗口。偏好设置可包含预发布和 nightly。启动时最多每两天检查一次，可关掉。 | about | M1、M15 |
+| F-APP-017 | 日志文件 | `tracing` 应用日志、SQL 执行日志、命令行日志，存放在 `~/Library/Logs/naviduck/`。 | log_files | M1（应用日志）、M3（SQL 日志） |
+| F-APP-018 | 关于与检查更新 | “关于 naviduck”窗口。“检查更新”读取 GitHub Releases 上的 `latest.json`（先 nightly，没有再试最新稳定版；`releases` 是各版本列表），有新版本时在应用内下载并校验 SHA-256 后安装。不含预发布时跳过预发布和 nightly。没有发布版本和网络失败分开提示。菜单回调没有活动窗口时用最前面的窗口。偏好设置可包含预发布和 nightly。启动时最多每两天检查一次，可关掉。 | about | M1、M15 |
 | F-APP-019 | 欢迎界面 | 首次启动的引导窗口，没有连接时对象窗格显示“点击工具栏中的‘连接’开始”。 | — | M1 |
 
 ## PREF 偏好设置
@@ -38,7 +38,7 @@
 | 编号 | 功能 | 摘要与验收要点 | 帮助页 | 里程碑 |
 | --- | --- | --- | --- | --- |
 | F-PREF-001 | 偏好设置窗口 | ⌘, 打开，左侧分类列表，右侧设置页；修改即时生效并持久化。 | preferences_settings | M1 |
-| F-PREF-002 | 常规 | 主题（Navidog、Default，缺省 Default）、外观、语言、启动行为、导航窗格显示选项（显示模式下对象、显示表下对象、显示系统对象）等。 | preferences_gen | M1 |
+| F-PREF-002 | 常规 | 主题（Naviduck、Default，缺省 Default）、外观、语言、启动行为、导航窗格显示选项（显示模式下对象、显示表下对象、显示系统对象）等。 | preferences_gen | M1 |
 | F-PREF-003 | 选项卡 | 弹出内容在新选项卡还是新窗口中打开、启动画面、选项卡关闭行为。 | preferences_tab | M2 |
 | F-PREF-004 | 编辑器 | 字体、字号、行号、代码折叠、自动换行、制表符宽度等。 | preferences_editor | M3 |
 | F-PREF-005 | 记录 | 每页记录数（默认 1000）、网格字体、显示主键提示、自动开始事务等。 | preferences_record | M2 |
@@ -67,8 +67,8 @@
 | F-CONN-013 | 连接组 | 在“我的连接”下新建、重命名、删除组，拖放移动连接；“隐藏连接组”切换为扁平显示。 | virtual_group, navigation_pane | M1 |
 | F-CONN-014 | 连接颜色 | 右键“颜色”设置标识色，显示在导航树和相关选项卡上。 | connection_color | M1 |
 | F-CONN-015 | 管理连接窗口 | 集中管理“我的连接”：新建、编辑、标星、隐藏、删除、搜索连接信息并高亮匹配。 | con_manage | M2 |
-| F-CONN-016 | 通过 URI 新建连接 | 在类型选择窗口粘贴 navidog URI 或标准数据库 URI（`mysql://`、`postgres://`），自动填写表单。 | connection | M2 |
-| F-CONN-017 | 导出与导入连接 | “文件 > 导出连接/导入连接”，navidog 自有格式，可选包含密码（需确认）。 | — | M6 |
+| F-CONN-016 | 通过 URI 新建连接 | 在类型选择窗口粘贴 naviduck URI 或标准数据库 URI（`mysql://`、`postgres://`），自动填写表单。 | connection | M2 |
+| F-CONN-017 | 导出与导入连接 | “文件 > 导出连接/导入连接”，naviduck 自有格式，可选包含密码（需确认）。 | — | M6 |
 | F-CONN-018 | 导入 Navicat `.ncx` | 读取 Navicat 导出的连接文件并转换。 | — | M6 |
 | F-CONN-019 | 重载 [My] | 右键“重载”，选择 FLUSH 选项执行，需要 RELOAD 权限。 | connection | M2 |
 | F-CONN-020 | 密码存储 | 密码加密保存；可设置主密码；“保存密码”未勾选时每次连接弹出询问密码对话框。 | — | M1 |
@@ -146,7 +146,7 @@
 | F-QRY-004 | SQL 格式 | 缩进、注释与取消注释、转换大小写、美化 SQL（含选项：短括号长度、大写关键字）、简化 SQL。 | query_editor | M3 |
 | F-QRY-005 | 剪贴板堆栈 | 保存最近复制的多段文本，⇧⌘V 选择粘贴。 | query_editor | M3 |
 | F-QRY-006 | 运行 | 运行全部、运行已选择的、运行当前语句、停止；选择数据库或模式；运行多条语句。 | query_editor | M3 |
-| F-QRY-007 | 查询结果 | 每条 SELECT 一个结果选项卡（最多 20 个，`-- NAME:` 命名）；消息和摘要页；固定选项卡；结果位置（下方、右侧、新页面）；结果网格复用 `navidog-grid`，来自单张有主键的表时可编辑；MySQL/MariaDB 可显示查询分析和状态。 | query_results | M3 |
+| F-QRY-007 | 查询结果 | 每条 SELECT 一个结果选项卡（最多 20 个，`-- NAME:` 命名）；消息和摘要页；固定选项卡；结果位置（下方、右侧、新页面）；结果网格复用 `naviduck-grid`，来自单张有主键的表时可编辑；MySQL/MariaDB 可显示查询分析和状态。 | query_results | M3 |
 | F-QRY-008 | 查询解释 | 执行计划的网格、文本、JSON 视图和可视化图；耗时阈值高亮；查找。 | query_explain | M3 |
 | F-QRY-009 | 查询参数 | SQL 中的参数占位符在运行时弹出输入框。 | query_parameters | M3 |
 | F-QRY-010 | 代码段 | 内置和自定义代码段，按数据库类型、标签过滤，带占位符。 | query_code_snippet | M3 |
@@ -232,11 +232,11 @@
 
 | 编号 | 功能 | 摘要与验收要点 | 帮助页 | 里程碑 |
 | --- | --- | --- | --- | --- |
-| F-AUTO-001 | 内置备份 | 备份数据库或模式的对象与数据为 navidog 备份文件，可选对象、压缩、加密；备份列表出现在对象分类“备份”中。 | backup, backup_restore, build_in_backup_restore | M9 |
+| F-AUTO-001 | 内置备份 | 备份数据库或模式的对象与数据为 naviduck 备份文件，可选对象、压缩、加密；备份列表出现在对象分类“备份”中。 | backup, backup_restore, build_in_backup_restore | M9 |
 | F-AUTO-002 | 还原 | 从备份文件还原，选择对象与选项，显示进度和日志。 | restore | M9 |
 | F-AUTO-003 | 备份配置文件 | 保存备份设置以复用。 | backup | M9 |
 | F-AUTO-004 | 自动运行：批处理作业 | 第一步创建作业：添加查询、备份、导入导出、数据传输、数据同步等任务；设置通知邮件。 | automation, automation_task | M9 |
-| F-AUTO-005 | 自动运行：计划 | 第二步设置计划；macOS 上用 launchd 用户代理执行，navidog 未运行时也能执行。 | automation_schedule | M9 |
+| F-AUTO-005 | 自动运行：计划 | 第二步设置计划；macOS 上用 launchd 用户代理执行，naviduck 未运行时也能执行。 | automation_schedule | M9 |
 
 ## TOOL 工具
 

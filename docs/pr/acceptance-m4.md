@@ -4,7 +4,7 @@
 
 ## 2026-10-18 首版（界面已由下文替换）
 
-- 新增独立 `navidog-designer`，从对象工具栏和导航菜单新建/设计表，表默认双击仍查看数据。
+- 新增独立 `naviduck-designer`，从对象工具栏和导航菜单新建/设计表，表默认双击仍查看数据。
 - 字段增加、删除、复制、重排、重命名与完整 SQL 定义；约束、索引、选项编辑；保存先预览，再明确执行。
 - 自有数据库会话、执行期间禁用编辑、失败保留草稿、关闭守卫、重新加载确认、布局草稿恢复，成功后刷新目录和补全缓存。
 - MySQL/MariaDB 差异 ALTER；PostgreSQL 事务 ALTER；SQLite 事务重建或原生重命名/索引修改。保存前检查外部结构变化，不支持的迁移明确拒绝。
@@ -17,14 +17,14 @@
 | `cargo fmt --all --check`、`scripts/check-raw-px.sh`、`git diff --check` | 通过 |
 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | 通过；`block`、`proc-macro-error2` 有依赖 future-incompatibility 提示 |
 | `cargo test --workspace --locked` | 206 项通过，35 个测试/文档测试套件 |
-| `NAVIDOG_LIVE=1 cargo test -p navidog-db table_design --locked` | 5 项通过，含 MySQL 8、MariaDB 11、PostgreSQL 16 创建、修改、重命名、索引、检查约束和外键的实库验证 |
-| `NAVIDOG_LIVE=1 cargo test -p navidog-db --test live --locked` | 11 项通过 |
-| `NAVIDOG_LIVE=1 cargo test -p navidog-query --locked` | 27 项通过 |
+| `NAVIDUCK_LIVE=1 cargo test -p naviduck-db table_design --locked` | 5 项通过，含 MySQL 8、MariaDB 11、PostgreSQL 16 创建、修改、重命名、索引、检查约束和外键的实库验证 |
+| `NAVIDUCK_LIVE=1 cargo test -p naviduck-db --test live --locked` | 11 项通过 |
+| `NAVIDUCK_LIVE=1 cargo test -p naviduck-query --locked` | 27 项通过 |
 | 设计器 headless UI | 2 项通过：真实按键与点击、草稿恢复、预览不执行、执行建表、失败回滚保留草稿 |
 | 选项卡测试 | 通过，补充设计器未保存关闭的取消/放弃分支 |
 | `cargo deny --all-features check` | advisories、bans、licenses、sources 通过，保留重复依赖等已有警告 |
 | `cargo audit` | 通过，9 条已允许的间接依赖 unmaintained 警告 |
-| `cargo test -p navidog --test snapshot --locked` | 通过，生成 31 张；新增字段和 SQL 预览的浅深色 4 张已逐张查看 |
+| `cargo test -p naviduck --test snapshot --locked` | 通过，生成 31 张；新增字段和 SQL 预览的浅深色 4 张已逐张查看 |
 
 截图测试输出到本地 `target/snapshots/`；首版当时归档 17 张，其后增至 33 张。这些归档截图已从仓库移除，其余构建产物不进 Git。
 
@@ -79,7 +79,7 @@ PR #3 的 Linux/Windows 界面测试失败于字段名称断言：测试使用 `
 
 元数据通过 Sessions::run_rel 异步读取，独立于保存会话；候选加载中禁用菜单，错误和重试入口就地显示；请求代次防止过期成功或错误覆盖新选择。类型、唯一键、排序规则等完整兼容性由数据库执行检查，不宣称前端已完整验证。
 
-验证：开启 NAVIDOG_LIVE 的全量测试 211 项通过（含 MySQL、MariaDB、PostgreSQL 实库）；随后增加过期结果回归，设计器全部 4 项通过。SQLite 真实连接 UI 验证候选、连续切换引用表、依赖字段清空、复合引用字段顺序、刷新不改草稿、自引用，以及无效输入阻止预览。SQL 领域测试补充引用字段数及空表名检查。全量 clippy、fmt、裸值、diff 检查通过；deny/audit 通过，保留现有间接依赖警告。
+验证：开启 NAVIDUCK_LIVE 的全量测试 211 项通过（含 MySQL、MariaDB、PostgreSQL 实库）；随后增加过期结果回归，设计器全部 4 项通过。SQLite 真实连接 UI 验证候选、连续切换引用表、依赖字段清空、复合引用字段顺序、刷新不改草稿、自引用，以及无效输入阻止预览。SQL 领域测试补充引用字段数及空表名检查。全量 clippy、fmt、裸值、diff 检查通过；deny/audit 通过，保留现有间接依赖警告。
 
 截图测试通过；更新并逐张查看浅色外键和深色外键，归档原图随代码提交。本次未完成运行态 Navicat 并排验收，M4 仍进行中。
 
@@ -113,8 +113,8 @@ PG 注释从补充 SQL 列表迁为独立数据：表注释放在选项页，字
 
 已处理作者在 `1c26253` 上的 12 条行内意见、菜单入口及两项维护建议。设计器保存 ObjectRef，分别复用设计/数据选项卡和弹出窗口，断线关闭纳入设计器；菜单与 ⌘D 通过 core 共用命令定位当前查看的表。新建未编辑及首次加载失败不误报修改。保存/重载成功后清空校验错误与单元格编辑状态，重建条目表单，避免重排后误改其他索引/约束。修复字段选择去重、数值类型分类、预览页删除状态与中英文校验提示；MySQL/MariaDB 独立索引删除使用带表名的 ALTER TABLE。
 
-`NAVIDOG_LIVE=1 cargo test --workspace --locked`：226 项、35 套件通过；新增条目重排后真实输入回归及 MySQL 索引删除计划检查，实库回归覆盖 MySQL/MariaDB 独立索引删除。选项卡额外验证 ⌘D、弹出复用、启动项和断线关闭。格式、裸值、clippy、deny、audit 通过（audit 保留 9 条已允许警告）。
+`NAVIDUCK_LIVE=1 cargo test --workspace --locked`：226 项、35 套件通过；新增条目重排后真实输入回归及 MySQL 索引删除计划检查，实库回归覆盖 MySQL/MariaDB 独立索引删除。选项卡额外验证 ⌘D、弹出复用、启动项和断线关闭。格式、裸值、clippy、deny、audit 通过（audit 保留 9 条已允许警告）。
 
-本轮截图命令明确开启 `NAVIDOG_LIVE=1` 且 Docker 就绪：生成全应用 60 张（无实库时 44 张），逐张查看，设计器 33 张全部重新归档。此前 31/44 张与 17 张记录为各轮历史数量，不代表当前输出。Navicat 运行态并排验收仍待完成。
+本轮截图命令明确开启 `NAVIDUCK_LIVE=1` 且 Docker 就绪：生成全应用 60 张（无实库时 44 张），逐张查看，设计器 33 张全部重新归档。此前 31/44 张与 17 张记录为各轮历史数量，不代表当前输出。Navicat 运行态并排验收仍待完成。
 
 本轮性能复验：10 万行网格逐行/跳跃均值 3.40/4.72ms，导航树约 0.53/0.72ms，5 万行 SQL 编辑器各场景均值 1.60～1.67ms；各场景均 0/300 帧超过 8.3ms。

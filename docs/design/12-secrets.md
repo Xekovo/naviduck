@@ -22,11 +22,11 @@
 
 | 系统 | 路径 |
 | --- | --- |
-| macOS | `~/Library/Application Support/navidog/connections.json` |
-| Windows | `%APPDATA%\navidog\connections.json` |
-| Linux | `$XDG_CONFIG_HOME/navidog/connections.json`，未设置时是 `~/.config/navidog/connections.json` |
+| macOS | `~/Library/Application Support/naviduck/connections.json` |
+| Windows | `%APPDATA%\naviduck\connections.json` |
+| Linux | `$XDG_CONFIG_HOME/naviduck/connections.json`，未设置时是 `~/.config/naviduck/connections.json` |
 
-`NAVIDOG_HOME` 可以改掉这个目录。写入先落到临时文件，再原子替换。
+`NAVIDUCK_HOME` 可以改掉这个目录。写入先落到临时文件，再原子替换。
 
 ## 2. 两种密钥
 
@@ -38,7 +38,7 @@
 
 读取发生在 `ConnectionStore::key`。读到之后缓存在这次运行的内存里，同一个进程再打开别的连接不再去碰系统凭据存储。退出进程后缓存消失，下次启动再读一次。
 
-service 是 `ci.nn.navidog`，account 是 `config-key`。这两个名字不能改，否则对不上已经写进去的密钥。
+service 是 `com.ekovovo.naviduck`，account 是 `config-key`。这两个名字不能改，否则对不上已经写进去的密钥。
 
 ### 主密码
 
@@ -55,7 +55,7 @@ service 是 `ci.nn.navidog`，account 是 `config-key`。这两个名字不能�
 }
 ```
 
-`salt` 是 16 字节随机数的 Base64。密钥用 Argon2id（版本 0x13）从主密码和这份盐派生，参数是 OWASP 的建议：19 MiB 内存、2 次迭代、1 路并行，输出 32 字节。`check` 是用这把密钥加密固定串 `navidog-master-check`（关联数据是 `check`）的结果，用来判断输入的主密码对不对。密码错时派生出另一把密钥，`check` 解不开。
+`salt` 是 16 字节随机数的 Base64。密钥用 Argon2id（版本 0x13）从主密码和这份盐派生，参数是 OWASP 的建议：19 MiB 内存、2 次迭代、1 路并行，输出 32 字节。`check` 是用这把密钥加密固定串 `naviduck-master-check`（关联数据是 `check`）的结果，用来判断输入的主密码对不对。密码错时派生出另一把密钥，`check` 解不开。
 
 盐在文件里，所以同一份 `connections.json` 配上同一句主密码，在另一台机器上能派生出同一把密钥。本机密钥做不到这一点：密钥留在原来那台机器的凭据存储里，文件拷走之后解不开。
 
@@ -65,9 +65,9 @@ service 是 `ci.nn.navidog`，account 是 `config-key`。这两个名字不能�
 
 | 系统 | 存储 | 表现 |
 | --- | --- | --- |
-| macOS | 登录钥匙串。钥匙串访问里能看到名称 `ci.nn.navidog`、账户 `config-key` 的通用密码 | 见下一节 |
+| macOS | 登录钥匙串。钥匙串访问里能看到名称 `com.ekovovo.naviduck`、账户 `config-key` 的通用密码 | 见下一节 |
 | Windows | 凭据管理器里的通用凭据，同一用户读取通常不再弹框 | 跨重启保留 |
-| Linux | `$XDG_CONFIG_HOME/navidog/machine-key`（未设置时是 `~/.config/navidog/machine-key`），权限 `0600`。`NAVIDOG_HOME` 改掉配置目录时，文件跟着走 | 跨重启保留。文件拷到另一台机器上，权限允许的话也能解开，和钥匙串不一样 |
+| Linux | `$XDG_CONFIG_HOME/naviduck/machine-key`（未设置时是 `~/.config/naviduck/machine-key`），权限 `0600`。`NAVIDUCK_HOME` 改掉配置目录时，文件跟着走 | 跨重启保留。文件拷到另一台机器上，权限允许的话也能解开，和钥匙串不一样 |
 
 主密码模式不读这些存储，三套系统上都能跨重启解密。
 
@@ -75,7 +75,7 @@ FreeBSD 和 OpenBSD 没有单独的后端，和 Linux 一样写 `machine-key` �
 
 ## 4. macOS 上的钥匙串授权
 
-弹出的不是“请输入数据库密码”。系统问的是：这个程序能否读取钥匙串里 `ci.nn.navidog` 的机密。允许之后，程序拿到的是加密密钥，再用它解开 `connections.json` 里的字段。
+弹出的不是“请输入数据库密码”。系统问的是：这个程序能否读取钥匙串里 `com.ekovovo.naviduck` 的机密。允许之后，程序拿到的是加密密钥，再用它解开 `connections.json` 里的字段。
 
 对话框会反复出现，是因为调试构建没有稳定的代码签名。`cargo run` 每次编译，二进制的签名都变。钥匙串把“始终允许”记在旧签名上，下一个二进制对不上，于是再问。正式签名并且签名保持不变之后（发布阶段，M15），“始终允许”才能留住，之后启动不再问。
 
@@ -105,7 +105,7 @@ FreeBSD 和 OpenBSD 没有单独的后端，和 Linux 一样写 `machine-key` �
 
 ## 6. 启动后的解锁
 
-设了主密码时，文件里没有密钥，程序也不能从主密码以外的材料把它算出来。这次运行第一次要解开某个已保存的秘密时，弹出“解锁 Navidog”，要求输入主密码。
+设了主密码时，文件里没有密钥，程序也不能从主密码以外的材料把它算出来。这次运行第一次要解开某个已保存的秘密时，弹出“解锁 Naviduck”，要求输入主密码。
 
 输对之后，派生出的密钥缓存在内存里，直到退出。这次运行里再打开别的连接不再问。
 

@@ -18,15 +18,15 @@
 | --- | --- |
 | `scripts/test-macos-signing.sh` | 通过：真实 clang 最小应用、空格路径、签名/运行、资源篡改拒绝、重新签名、DMG 挂载/ditto 复制/整包替换，替换后 CDHash 一致且可运行 |
 | `env -u CARGO_TARGET_DIR scripts/bundle-macos.sh` | 通过：生成完整应用与 DMG，`Signature=adhoc`，严格验签通过 |
-| 完整应用安装/更新复制 | 从新 DMG 复制 Navidog，用 rename 先移开旧包、再换上新包，严格验签及 CDHash 比对均通过 |
-| 签名后完整应用首帧 | 隔离 `NAVIDOG_HOME`，设置 `NAVIDOG_SMOKE_TEST=1`，退出码 0，出现 `NAVIDOG_SMOKE_WINDOW` 与 `NAVIDOG_SMOKE_OK` |
+| 完整应用安装/更新复制 | 从新 DMG 复制 Naviduck，用 rename 先移开旧包、再换上新包，严格验签及 CDHash 比对均通过 |
+| 签名后完整应用首帧 | 隔离 `NAVIDUCK_HOME`，设置 `NAVIDUCK_SMOKE_TEST=1`，退出码 0，出现 `NAVIDUCK_SMOKE_WINDOW` 与 `NAVIDUCK_SMOKE_OK` |
 | Shell / 工作流检查 | 三个 shell 脚本 `bash -n`、两个工作流 YAML 解析及 `git diff --check` 通过 |
 | fmt / 裸值 / clippy | 通过，Clippy 使用 workspace、all-targets、locked、`-D warnings` |
 | 在线 cargo audit / deny | 通过，保留既有九项允许警告，未新增忽略项 |
-| 实库模式 workspace 测试 | `NAVIDOG_LIVE=1 cargo test --workspace --locked`：284 项 / 43 套件，0 失败、0 忽略；含 15 项 DB live 与查询解释实库测试 |
+| 实库模式 workspace 测试 | `NAVIDUCK_LIVE=1 cargo test --workspace --locked`：284 项 / 43 套件，0 失败、0 忽略；含 15 项 DB live 与查询解释实库测试 |
 | Docker 清理 | 已执行 compose down，移除本轮容器与网络 |
 
-本地产物：`target/bundle/navidog.app`、`target/bundle/navidog-0.0.1.dmg`。DMG SHA-256：`fb19c47b1a13de257fefec93911485116f819e550e5b11a4ef0247bdd0fde4fb`。
+本地产物：`target/bundle/naviduck.app`、`target/bundle/naviduck-0.0.1.dmg`。DMG SHA-256：`fb19c47b1a13de257fefec93911485116f819e550e5b11a4ef0247bdd0fde4fb`。
 
 构建、实包复制/首帧、全量检查日志位于 `target/macos-signing-*.log`；自动回归可用上述脚本重跑。安装包与临时检查文件不提交。
 

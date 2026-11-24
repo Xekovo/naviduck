@@ -1,0 +1,210 @@
+//! Headless UI test of the table viewer on a real SQLite table: paging with an uncommitted edit
+//! commits it first, and "auto begin transaction" still loads the first page.
+
+use naviduck_test_support::sql;
+use naviduck_test_support::wait;
+use std::time::Duration;
+
+use gpui_kit::test::TestWindowExt as _;
+use gpui_kit::{
+    AnyWindowHandle, AppContext as _, Context, ElementId, Entity, IntoElement, ParentElement as _,
+    Render, Styled as _, TestAppContext, Window, WindowBounds, WindowOptions, div, size,
+};
+use naviduck_app_state::settings::Settings;
+use naviduck_app_state::store::ConnectionStore;
+use naviduck_db::Secrets;
+use naviduck_grid::TableViewer;
+use naviduck_model::connection::Connection;
+use naviduck_model::crypto::Key;
+use naviduck_model::object::{ObjectKind, ObjectRef, Scope};
+use naviduck_session::sessions::Sessions;
+use naviduck_ui::tokens;
+
+fn fit(rem: gpui_kit::Pixels, header: &str, values: &[&str]) -> gpui_kit::Pixels {
+    naviduck_grid::grid::auto_width(
+        header,
+        values.iter().copied(),
+        tokens::font::SIZE_BODY.to_pixels(rem).as_f32(),
+    )
+}
+
+struct Host {
+    viewer: Entity<TableViewer>,
+}
+
+impl Render for Host {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        div().size_full().child(self.viewer.clone())
+    }
+}
+
+fn open_viewer(cx: &mut TestAppContext, object: ObjectRef) -> AnyWindowHandle {
+    cx.update(|cx| {
+        // raw-px: test window size
+        let test_size = size(gpui_kit::px(900.), gpui_kit::px(500.));
+        let options = WindowOptions {
+            window_bounds: Some(WindowBounds::Windowed(gpui_kit::Bounds {
+                origin: Default::default(),
+                size: test_size,
+            })),
+            ..Default::default()
+        };
+        gpui_kit::open_window(options, cx, |window, cx| {
+            let viewer = TableViewer::new(object, window, cx);
+            cx.new(|_| Host { viewer })
+        })
+        .unwrap()
+        .0
+    })
+}
+
+fn has_rows(cx: &mut TestAppContext, handle: AnyWindowHandle) -> bool {
+    cx.update_window(handle, |_, window, cx| {
+        window.render_frame(cx);
+        window
+            .try_find(ElementId::NamedInteger("row".into(), 0))
+            .is_some()
+    })
+    .unwrap()
+}
+
+#[gpui_kit::test]
+fn paging_commits_first_and_auto_transaction_still_loads(cx: &mut TestAppContext) {
+    let home = std::env::temp_dir().join(format!("naviduck-viewer-test-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&home);
+    std::fs::create_dir_all(&home).unwrap();
+    let file = home.join("viewer.db");
+    sql(
+        &file,
+        "CREATE TABLE t(id INTEGER PRIMARY KEY, name TEXT); \
+         INSERT INTO t(name) VALUES ('a'), ('b'), ('c')",
+    );
+    // SAFETY: this test binary has a single test; nothing else reads the environment concurrently
+    unsafe { std::env::set_var("NAVIDUCK_HOME", &home) };
+
+    let id = cx.update(|cx| {
+        gpui_kit::init(cx);
+        naviduck_app_state::init(cx);
+        naviduck_ui::theme::init(cx);
+        naviduck_session::init(cx);
+        naviduck_grid::init(cx);
+        Settings::update(cx, |s| {
+            s.limit_records = true;
+            s.records_per_page = 2;
+            s.auto_begin_transaction = false;
+        });
+        ConnectionStore::global(cx).update(cx, |s, cx| {
+            s.set_key(Key::random());
+            let mut c = Connection::new("sqlite");
+            c.name = "viewer".into();
+            c.general.file = Some(file.to_string_lossy().into_owned());
+            let id = c.id.clone();
+            s.upsert(c, &[], cx).unwrap();
+            id
+        })
+    });
+    cx.executor().allow_parking();
+    cx.update(|cx| {
+        Sessions::global(cx).update(cx, |s, cx| s.open(id.clone(), Secrets::default(), cx))
+    });
+    wait(cx, "the connection to open", |cx| {
+        cx.update(|cx| Sessions::global(cx).read(cx).state(&id).is_open())
+    });
+    let table = ObjectRef {
+        scope: Scope {
+            connection: id.clone(),
+            database: "main".into(),
+            schema: None,
+        },
+        kind: ObjectKind::Table,
+        name: "t".into(),
+    };
+
+    // Edit row 1's name, then go to the next page without leaving the row
+    let first = open_viewer(cx, table.clone());
+    wait(cx, "the first page", |cx| has_rows(cx, first));
+    // Let the row count arrive so the next-page button is enabled
+    for _ in 0..10 {
+        cx.run_until_parked();
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    cx.update_window(first, |_, window, cx| {
+        window.render_frame(cx);
+        let rem = window.rem_size();
+        // The name column: past the marker column and id
+        let x = tokens::grid::ROW_NUMBER_WIDTH.to_pixels(rem)
+            + fit(rem, "id", &["1"])
+            + fit(rem, "name", &["a"]) / 2.;
+        window.click_at(
+            ElementId::NamedInteger("row".into(), 0),
+            gpui_kit::point(x, rem / 2.),
+            cx,
+        );
+        window.press("enter", cx);
+        window.render_frame(cx);
+        window.press("secondary-a", cx);
+        window.input("z", cx);
+        window.press("enter", cx);
+        window.render_frame(cx);
+    })
+    .unwrap();
+    cx.update_window(first, |_, window, cx| {
+        window.render_frame(cx);
+        window.click("page-next", cx);
+    })
+    .unwrap();
+    wait(cx, "the edit to be committed before paging", |_| {
+        sql(&file, "SELECT name FROM t WHERE id = 1") == [vec![Some("z".to_string())]]
+    });
+
+    // A reopen (profile switch, "Reopen Now") keeps the tab and its pending edit, which then
+    // commits on the new session. Page 2 holds row 3; let its load finish before editing.
+    for _ in 0..20 {
+        cx.run_until_parked();
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    wait(cx, "page 2", |cx| has_rows(cx, first));
+    cx.update_window(first, |_, window, cx| {
+        window.render_frame(cx);
+        let rem = window.rem_size();
+        let x = tokens::grid::ROW_NUMBER_WIDTH.to_pixels(rem)
+            + fit(rem, "id", &["1"])
+            + fit(rem, "name", &["a"]) / 2.;
+        window.click_at(
+            ElementId::NamedInteger("row".into(), 0),
+            gpui_kit::point(x, rem / 2.),
+            cx,
+        );
+        window.press("enter", cx);
+        window.render_frame(cx);
+        window.press("secondary-a", cx);
+        window.input("y", cx);
+        window.press("enter", cx);
+        window.render_frame(cx);
+    })
+    .unwrap();
+    cx.update(|cx| {
+        Sessions::global(cx).update(cx, |s, cx| {
+            s.close_for_reopen(&id, cx);
+            s.open(id.clone(), Secrets::default(), cx);
+        })
+    });
+    // ✓ stays disabled until the viewer has its new session, so keep clicking it
+    wait(cx, "the edit to commit after the reopen", |cx| {
+        cx.update_window(first, |_, window, cx| {
+            window.render_frame(cx);
+            window.click("row-apply", cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+        sql(&file, "SELECT name FROM t WHERE id = 3") == [vec![Some("y".to_string())]]
+    });
+
+    // Opening a table with "auto begin transaction" sends BEGIN right after the first SELECT
+    cx.update(|cx| Settings::update(cx, |s| s.auto_begin_transaction = true));
+    let second = open_viewer(cx, table);
+    wait(cx, "the first page with auto begin transaction", |cx| {
+        has_rows(cx, second)
+    });
+    let _ = std::fs::remove_dir_all(&home);
+}

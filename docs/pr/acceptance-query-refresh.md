@@ -39,8 +39,8 @@
 | `scripts/check-raw-px.sh` | 通过 |
 | `cargo audit` | 通过；9 项传递依赖的允许警告仍在，无新增忽略项 |
 | `cargo deny --all-features check` | advisories、bans、licenses、sources 均通过 |
-| `NAVIDOG_LIVE=1 cargo test --workspace --locked` | 37 个测试组共 226 项通过；包含 DB 实库 15 项、MySQL/MariaDB/PostgreSQL 查询操作和计划解析 |
-| `cargo test -p navidog --test snapshot --locked` | 39 张 PNG 已逐张检查，含新增的自动刷新和保留编辑提示各一对浅深色图 |
+| `NAVIDUCK_LIVE=1 cargo test --workspace --locked` | 37 个测试组共 226 项通过；包含 DB 实库 15 项、MySQL/MariaDB/PostgreSQL 查询操作和计划解析 |
+| `cargo test -p naviduck --test snapshot --locked` | 39 张 PNG 已逐张检查，含新增的自动刷新和保留编辑提示各一对浅深色图 |
 | release 网格 10 万行 × 20 列 | 逐行/跳跃平均 3.25 / 4.57ms，p95 4.32 / 5.99ms，超过 8.3ms 的帧均为 0/300 |
 | release 导航树 5000 项 | 逐行/跳跃平均 0.56 / 0.82ms，p95 1.21 / 1.37ms，超过 8.3ms 的帧均为 0/300 |
 | release SQL 编辑器 5 万行 | 滚动、带装饰滚动及连续输入平均约 1.57–1.59ms，超过 8.3ms 的帧均为 0/300 |

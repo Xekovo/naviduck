@@ -1,0 +1,227 @@
+//! Headless UI test of navigator arrow keys on a real SQLite connection: once a table is expanded,
+//! ↓ walks through the rows under it to the next table instead of stopping on the table row.
+
+use naviduck_test_support::wait;
+use std::sync::Arc;
+use std::time::Duration;
+
+use gpui_kit::test::TestWindowExt as _;
+use gpui_kit::{
+    AppContext as _, Context, FocusHandle, InteractiveElement as _, IntoElement,
+    ParentElement as _, Render, Styled as _, TestAppContext, Window, WindowBounds, WindowOptions,
+    div, size,
+};
+use naviduck_app_state::store::ConnectionStore;
+use naviduck_app_state::workspace::{Selection, Workspace};
+use naviduck_db::{ConnectParams, Secrets, connect, runtime};
+use naviduck_model::connection::Connection;
+use naviduck_model::crypto::Key;
+use naviduck_model::object::{ObjectKind, ObjectRef, Scope};
+use naviduck_navigator::NavigatorPanel;
+use naviduck_navigator::catalog::{Catalog, Load};
+use naviduck_session::sessions::Sessions;
+use naviduck_sqlite::SqliteDriver;
+
+struct Host {
+    focus: FocusHandle,
+    navigator: gpui_kit::Entity<NavigatorPanel>,
+}
+
+impl Render for Host {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        naviduck_navigator::bind_actions(
+            div()
+                .id("host")
+                .track_focus(&self.focus)
+                .size_full()
+                .child(self.navigator.clone()),
+        )
+    }
+}
+
+/// Runs the app and the tokio driver until `done`, or fails after a few seconds.
+
+#[gpui_kit::test]
+fn arrow_keys_walk_through_the_rows_under_a_table(cx: &mut TestAppContext) {
+    let home = std::env::temp_dir().join(format!("naviduck-nav-keys-{}", std::process::id()));
+    std::fs::create_dir_all(&home).unwrap();
+    let file = home.join("keys.db");
+    runtime::runtime().block_on(async {
+        let params = ConnectParams {
+            file: Some(file.clone()),
+            create_new: true,
+            ..Default::default()
+        };
+        let mut s = connect(Arc::new(SqliteDriver::default()), params)
+            .await
+            .unwrap();
+        s.relational()
+            .unwrap()
+            .execute(
+                "CREATE TABLE t1(id INTEGER PRIMARY KEY, name TEXT); CREATE TABLE t2(id INTEGER)",
+            )
+            .await
+            .unwrap();
+        s.close().await.unwrap();
+    });
+    // SAFETY: this test binary has a single test; nothing else reads the environment concurrently
+    unsafe { std::env::set_var("NAVIDUCK_HOME", &home) };
+
+    let id = cx.update(|cx| {
+        gpui_kit::init(cx);
+        naviduck_app_state::init(cx);
+        naviduck_ui::theme::init(cx);
+        naviduck_session::init(cx);
+        naviduck_navigator::init(cx);
+        ConnectionStore::global(cx).update(cx, |s, cx| {
+            s.set_key(Key::random());
+            let mut c = Connection::new("sqlite");
+            c.name = "keys".into();
+            c.general.file = Some(file.to_string_lossy().into_owned());
+            let id = c.id.clone();
+            s.upsert(c, &[], cx).unwrap();
+            id
+        })
+    });
+    let (handle, _host) = cx.update(|cx| {
+        // raw-px: test window size
+        let test_size = size(gpui_kit::px(400.), gpui_kit::px(900.));
+        let options = WindowOptions {
+            window_bounds: Some(WindowBounds::Windowed(gpui_kit::Bounds {
+                origin: Default::default(),
+                size: test_size,
+            })),
+            ..Default::default()
+        };
+        gpui_kit::open_window(options, cx, |window, cx| {
+            let navigator = NavigatorPanel::shared(window, cx);
+            cx.new(|cx| Host {
+                focus: cx.focus_handle(),
+                navigator,
+            })
+        })
+        .unwrap()
+    });
+    cx.executor().allow_parking();
+    cx.update(|cx| {
+        Sessions::global(cx).update(cx, |s, cx| s.open(id.clone(), Secrets::default(), cx))
+    });
+    wait(cx, "the connection to open", |cx| {
+        cx.update(|cx| Sessions::global(cx).read(cx).state(&id).is_open())
+    });
+
+    let scope = Scope {
+        connection: id.clone(),
+        database: "main".into(),
+        schema: None,
+    };
+    let table = |name: &str| {
+        Selection::Object(ObjectRef {
+            scope: scope.clone(),
+            kind: ObjectKind::Table,
+            name: name.into(),
+        })
+    };
+    let selection = |cx: &mut TestAppContext| {
+        cx.update(|cx| Workspace::global(cx).read(cx).selection().clone())
+    };
+    let press = |cx: &mut TestAppContext, key: &str| {
+        cx.update_window(handle, |_, window, cx| {
+            window.render_frame(cx);
+            window.press(key, cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+    };
+
+    // The connection row, then main → expand → Tables → expand → t1 → expand
+    cx.update_window(handle, |_, window, cx| {
+        window.render_frame(cx);
+        window.click(format!("c:{id}"), cx);
+    })
+    .unwrap();
+    for key in ["down", "right", "down", "right"] {
+        press(cx, key);
+    }
+    wait(cx, "the table list", |cx| {
+        cx.update(|cx| {
+            matches!(
+                Catalog::global(cx)
+                    .read(cx)
+                    .objects(&scope, ObjectKind::Table),
+                Some(Load::Ready(_))
+            )
+        })
+    });
+    press(cx, "down");
+    assert_eq!(selection(cx), table("t1"));
+    press(cx, "right");
+    wait(cx, "t1's fields", |cx| {
+        cx.update(|cx| {
+            matches!(
+                Catalog::global(cx).read(cx).columns(&scope, "t1"),
+                Some(Load::Ready(_))
+            )
+        })
+    });
+    // Let the indexes, foreign keys and triggers under t1 arrive too
+    for _ in 0..10 {
+        cx.run_until_parked();
+        std::thread::sleep(Duration::from_millis(20));
+    }
+
+    // The folders under t1 stand for t1; ↓ must get past them to t2
+    let mut reached = false;
+    for _ in 0..8 {
+        press(cx, "down");
+        if selection(cx) == table("t2") {
+            reached = true;
+            break;
+        }
+        assert_eq!(selection(cx), table("t1"), "rows under t1 select t1");
+    }
+    assert!(reached, "↓ walks past the rows under t1 to t2");
+
+    // Search matches names and opens ancestors only. t1 was expanded by the user;
+    // t2 must stay collapsed, with no placeholder row under it.
+    let sep = "\u{1f}";
+    let scope = format!("{id}{sep}main{sep}");
+    let table_row = |name: &str| format!("o:{scope}{sep}table{sep}{name}");
+    let folder = |name: &str, child: &str| format!("t:{scope}{sep}{name}{sep}{child}");
+    let loading = |name: &str, child: &str| format!("p:{}#0", folder(name, child));
+    cx.update_window(handle, |_, window, cx| {
+        window.render_frame(cx);
+        window.click("nav-search", cx);
+        window.input("t2", cx);
+    })
+    .unwrap();
+    cx.run_until_parked();
+    cx.update_window(handle, |_, window, cx| {
+        window.render_frame(cx);
+        assert!(window.try_find(table_row("t2")).is_some(), "t2 matches");
+        assert!(
+            window.try_find(table_row("t1")).is_none(),
+            "t1 does not match t2"
+        );
+        assert!(
+            window.try_find(folder("t2", "fields")).is_none(),
+            "search does not expand t2"
+        );
+        assert!(
+            window.try_find(loading("t2", "fields")).is_none(),
+            "search does not show a loading row under t2"
+        );
+        window.click("clean", cx);
+    })
+    .unwrap();
+    cx.run_until_parked();
+    cx.update_window(handle, |_, window, cx| {
+        window.render_frame(cx);
+        assert!(
+            window.try_find(folder("t1", "fields")).is_some(),
+            "clearing the search keeps t1 expanded"
+        );
+    })
+    .unwrap();
+    let _ = std::fs::remove_dir_all(&home);
+}

@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
-# Builds an ad-hoc signed navidog.app and .dmg for a local check.
+# Builds an ad-hoc signed naviduck.app and .dmg for a local check.
 # Tagged releases are built by .github/workflows/publish.yml.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 version=$(cargo metadata --no-deps --format-version 1 \
-  | python3 -c 'import json,sys; print(next(p["version"] for p in json.load(sys.stdin)["packages"] if p["name"]=="navidog"))')
-cargo build --release -p navidog
+  | python3 -c 'import json,sys; print(next(p["version"] for p in json.load(sys.stdin)["packages"] if p["name"]=="naviduck"))')
+cargo build --release -p naviduck
 
 out=target/bundle
-app="$out/navidog.app"
+app="$out/naviduck.app"
 rm -rf "$out" && mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-cp target/release/navidog "$app/Contents/MacOS/navidog"
+cp target/release/naviduck "$app/Contents/MacOS/naviduck"
 
-iconset="$out/navidog.iconset"
-swift "$PWD/scripts/raster-icon.swift" "$PWD/crates/navidog/resources/navidog.svg" "$iconset"
-iconutil -c icns "$iconset" -o "$app/Contents/Resources/navidog.icns"
+iconset="$out/naviduck.iconset"
+swift "$PWD/scripts/raster-icon.swift" "$PWD/crates/naviduck/resources/naviduck.svg" "$iconset"
+iconutil -c icns "$iconset" -o "$app/Contents/Resources/naviduck.icns"
 rm -rf "$iconset"
 
 cat > "$app/Contents/Info.plist" <<PLIST
@@ -23,11 +23,11 @@ cat > "$app/Contents/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>Navidog</string>
-  <key>CFBundleDisplayName</key><string>Navidog</string>
-  <key>CFBundleIdentifier</key><string>ci.nn.navidog</string>
-  <key>CFBundleExecutable</key><string>navidog</string>
-  <key>CFBundleIconFile</key><string>navidog</string>
+  <key>CFBundleName</key><string>Naviduck</string>
+  <key>CFBundleDisplayName</key><string>Naviduck</string>
+  <key>CFBundleIdentifier</key><string>com.ekovovo.naviduck</string>
+  <key>CFBundleExecutable</key><string>naviduck</string>
+  <key>CFBundleIconFile</key><string>naviduck</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>${version}</string>
   <key>CFBundleVersion</key><string>${version}</string>
@@ -47,8 +47,8 @@ PLIST
 stage="$out/dmg"
 rm -rf "$stage"
 mkdir -p "$stage"
-ditto "$app" "$stage/navidog.app"
+ditto "$app" "$stage/naviduck.app"
 ln -s /Applications "$stage/Applications"
-hdiutil create -volname Navidog -srcfolder "$stage" -ov -format UDZO "$out/navidog-${version}.dmg"
+hdiutil create -volname Naviduck -srcfolder "$stage" -ov -format UDZO "$out/naviduck-${version}.dmg"
 rm -rf "$stage"
-echo "Built $out/navidog-${version}.dmg"
+echo "Built $out/naviduck-${version}.dmg"

@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Navidog
-Comment=Database client
-Exec=navidog
-Icon=navidog
-Categories=Development;Database;
-Terminal=false

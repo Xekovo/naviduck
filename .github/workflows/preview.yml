@@ -87,36 +87,36 @@ jobs:
           cargo install --locked cargo-bundle@0.11.0
           brew install create-dmg
       - name: bundle
-        run: cargo bundle --release -p navidog --target aarch64-apple-darwin --features mimalloc
+        run: cargo bundle --release -p naviduck --target aarch64-apple-darwin --features mimalloc
       - name: verify app icon
-        run: ./scripts/check-macos-bundle-icon.sh "target/aarch64-apple-darwin/release/bundle/osx/Navidog.app"
+        run: ./scripts/check-macos-bundle-icon.sh "target/aarch64-apple-darwin/release/bundle/osx/Naviduck.app"
       - name: sign app
-        run: ./scripts/sign-macos.sh "target/aarch64-apple-darwin/release/bundle/osx/Navidog.app"
+        run: ./scripts/sign-macos.sh "target/aarch64-apple-darwin/release/bundle/osx/Naviduck.app"
       - name: create dmg
         run: |
           mkdir -p dist
           create-dmg \
-            --volname "Navidog Preview" \
+            --volname "Naviduck Preview" \
             --window-pos 200 120 \
             --window-size 800 400 \
             --icon-size 100 \
-            --icon "Navidog.app" 200 190 \
-            --hide-extension "Navidog.app" \
+            --icon "Naviduck.app" 200 190 \
+            --hide-extension "Naviduck.app" \
             --app-drop-link 600 185 \
-            "dist/Navidog-preview-macos-aarch64.dmg" \
-            "target/aarch64-apple-darwin/release/bundle/osx/Navidog.app"
+            "dist/Naviduck-preview-macos-aarch64.dmg" \
+            "target/aarch64-apple-darwin/release/bundle/osx/Naviduck.app"
       - name: checksum
         id: checksum
         run: |
-          dmg="dist/Navidog-preview-macos-aarch64.dmg"
+          dmg="dist/Naviduck-preview-macos-aarch64.dmg"
           echo "file=$(basename "$dmg")" >> "$GITHUB_OUTPUT"
           echo "sha256=$(shasum -a 256 "$dmg" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v7
         with:
           # With `archive: false` the file name becomes the artifact name; the
           # tester downloads the DMG directly instead of a zip inside a zip.
-          name: Navidog-preview-macos-aarch64
-          path: dist/Navidog-preview-macos-aarch64.dmg
+          name: Naviduck-preview-macos-aarch64
+          path: dist/Naviduck-preview-macos-aarch64.dmg
           archive: false
           if-no-files-found: error
           retention-days: 7
@@ -133,7 +133,7 @@ jobs:
             echo "- Built from $GITHUB_SHA."
             echo
             echo "The app is ad-hoc signed and not notarized. Open the DMG, move"
-            echo "\`Navidog.app\` to \`~/Applications\`, then allow it in System Settings"
+            echo "\`Naviduck.app\` to \`~/Applications\`, then allow it in System Settings"
             echo "→ Privacy & Security → Open Anyway if macOS blocks the first launch."
           } >> "$GITHUB_STEP_SUMMARY"
 

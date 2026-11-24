@@ -10,7 +10,7 @@ unmaintained = "workspace"
 
 ignore = [
     # No patched release exists (`patched = []` in the advisory). The timing side
-    # channel needs a remote attacker observing RSA *signing*; navidog only uses
+    # channel needs a remote attacker observing RSA *signing*; naviduck only uses
     # `rsa` through russh for local SSH keys. Mirrored in `.cargo/audit.toml`.
     { id = "RUSTSEC-2023-0071", reason = "rsa has no fixed release, not exploitable for local SSH keys" },
     # Unmaintained with no fixed release; the advisory recommends jiff. chrono is a

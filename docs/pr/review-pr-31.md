@@ -1,7 +1,7 @@
 # PR #31 审查：M4 剩余工作
 
-- 仓库：`xhofe/navidog`
-- PR：<https://github.com/xhofe/navidog/pull/31>
+- 仓库：`ekovovo/naviduck`
+- PR：<https://github.com/ekovovo/naviduck/pull/31>
 - 基准：`main @ 43dd4c6`
 - 头部：审查时 `feat/m4-remainder @ 05a1f78`。第 7.1–7.3 节的修复在 `9dccbb6`。其后的补充见第 7.4 节，与该节的文档更新在同一提交。
 - 范围：`git diff main...HEAD`，51 个文件，+7857 / −204
@@ -15,7 +15,7 @@
 
 ### 0.1 做得好的地方
 
-- **依赖方向清楚**：SQL 计划在 `navidog-sql`/`navidog-schema`，界面在 `navidog-designer`，外壳只负责打开面板；没有新增 feature crate 之间的依赖，`scripts/check-deps.sh` 通过。
+- **依赖方向清楚**：SQL 计划在 `naviduck-sql`/`naviduck-schema`，界面在 `naviduck-designer`，外壳只负责打开面板；没有新增 feature crate 之间的依赖，`scripts/check-deps.sh` 通过。
 - **表设计器计划测试有基础**：排除约束、identity、SQLite 生成列/`WITHOUT ROWID`、列重排都有计划级测试；MySQL/PostgreSQL/SQLite 的实库建表测试也在。
 - **复用到位**：`FormRow`、`tokens`、`tabs`、`Sessions::new_session`、`run_rel` 都沿用了现有模式；新代码没有裸像素，`scripts/check-raw-px.sh` 通过。
 - **i18n 基础设施正确**：新增 key 同时有 `en`/`zh-CN`，动态 key 已登记，`scripts/check-i18n.sh` 通过。
@@ -94,25 +94,25 @@
 
 好的部分：
 
-- `navidog-sql` 负责方言 SQL 和计划，`navidog-schema` 负责执行顺序，`navidog-designer` 只做界面；`navidog` 外壳按对象种类打开面板。这个方向与 00-overview 的 crate 表一致。
-- 新代码没有把驱动或 GPUI 带进 `navidog-sql`/`navidog-schema`；`check-deps.sh` 通过。
+- `naviduck-sql` 负责方言 SQL 和计划，`naviduck-schema` 负责执行顺序，`naviduck-designer` 只做界面；`naviduck` 外壳按对象种类打开面板。这个方向与 00-overview 的 crate 表一致。
+- 新代码没有把驱动或 GPUI 带进 `naviduck-sql`/`naviduck-schema`；`check-deps.sh` 通过。
 - 对象设计器复用一个面板，而不是给每种对象写一个面板；这符合 42 §1 的“一个面板”。
 
 ### 2.2 设计问题
 
 #### 2.2.1 `DefinitionFamily` 仍是产品分支
 
-`crates/navidog-sql/src/definition.rs:13-16` 定义了 `Mysql / Postgres / Sqlite` 三值枚举，`security.rs` 里有 50 处 `DefinitionFamily::…` 匹配。虽然它没有直接比较 `Dialect::id()`，所以 `scripts/check-dialect-branches.sh` 放行，但本质仍是“按产品名分支”。新增第四个产品时，需要在 `security.rs` 的几十个 match 里逐项补，容易漏掉某个 SQL 细节。
+`crates/naviduck-sql/src/definition.rs:13-16` 定义了 `Mysql / Postgres / Sqlite` 三值枚举，`security.rs` 里有 50 处 `DefinitionFamily::…` 匹配。虽然它没有直接比较 `Dialect::id()`，所以 `scripts/check-dialect-branches.sh` 放行，但本质仍是“按产品名分支”。新增第四个产品时，需要在 `security.rs` 的几十个 match 里逐项补，容易漏掉某个 SQL 细节。
 
 建议：
 
-- 把安全/监控/查找的 SQL 拆成方言方法（或每个驱动一个 `security` 模块），让 `navidog-sql` 只保留通用 trait；
+- 把安全/监控/查找的 SQL 拆成方言方法（或每个驱动一个 `security` 模块），让 `naviduck-sql` 只保留通用 trait；
 - 或者至少把 `DefinitionFamily` 收敛成少量能力字段（`account_form`、`kill_style`、`find_case_insensitive`……），不要让一个 50 臂的 match 成为事实上的产品开关；
 - 如果保留现状，在 00-overview 或 ADR 里明确这是“受控的产品分支”，并给 `check-dialect-branches.sh` 加一条对 `DefinitionFamily` 的提示，而不是让它静默通过。
 
 #### 2.2.2 UI 用无关的 feature flag 推断产品
 
-`crates/navidog-navigator/src/navigator/menus.rs:165-167`：
+`crates/naviduck-navigator/src/navigator/menus.rs:165-167`：
 
 ```rust
 let mysql = features.is_some_and(|f| f.inline_table_options);
@@ -155,7 +155,7 @@ fn on_removed(panel: PanelId, cx: &mut Context<...>) -> bool {
 
 #### 2.2.5 `ToolPanel` 是一个 god object
 
-`crates/navidog-designer/src/tools.rs:75` 的 `ToolPanel` 同时持有用户、权限、监控、查找四个工具的状态，约 1300 行，`render` 里按 `Tool` 分派。M4 可以接受，但继续加工具会失控。建议至少拆成 `UsersPanel`、`PrivilegesPanel`、`MonitorPanel`、`FindPanel` 四个子模块，共享一个 `ToolPanel` 外壳；或者先按 `impl` 分文件，降低单文件复杂度。
+`crates/naviduck-designer/src/tools.rs:75` 的 `ToolPanel` 同时持有用户、权限、监控、查找四个工具的状态，约 1300 行，`render` 里按 `Tool` 分派。M4 可以接受，但继续加工具会失控。建议至少拆成 `UsersPanel`、`PrivilegesPanel`、`MonitorPanel`、`FindPanel` 四个子模块，共享一个 `ToolPanel` 外壳；或者先按 `impl` 分文件，降低单文件复杂度。
 
 #### 2.2.6 结果格式化重复三份
 
@@ -163,7 +163,7 @@ fn on_removed(panel: PanelId, cx: &mut Context<...>) -> bool {
 - `navigator/ops.rs:357` `format_maintenance`
 - `navigator/info.rs:307-333` 关系查询的内联格式化
 
-三份逻辑相似但不完全一致（空结果、affected rows、标签）。建议抽一个 `navidog_util::format::result_sets(sets, options)`，把“空集显示什么”“是否带标签”“是否显示 affected rows”作为参数。否则以后修一个格式，另外两处会漂移。
+三份逻辑相似但不完全一致（空结果、affected rows、标签）。建议抽一个 `naviduck_util::format::result_sets(sets, options)`，把“空集显示什么”“是否带标签”“是否显示 affected rows”作为参数。否则以后修一个格式，另外两处会漂移。
 
 ### 2.3 测试设计
 
@@ -180,12 +180,12 @@ fn on_removed(panel: PanelId, cx: &mut Context<...>) -> bool {
 
 ### 3.1 PostgreSQL 整表重建：命名约束和 serial 会失败
 
-**位置**：`crates/navidog-schema/src/table_design/plan.rs:597-643`、`mod.rs:113-140`
+**位置**：`crates/naviduck-schema/src/table_design/plan.rs:597-643`、`mod.rs:113-140`
 
 `postgres_rebuild` 先用临时名生成临时表：
 
 ```rust
-let temp = format!("{}__navidog_new", old.name);
+let temp = format!("{}__naviduck_new", old.name);
 let mut out = vec![rebuild_note(after.create_sql(d, scope, &temp)?, false)];
 ```
 
@@ -195,7 +195,7 @@ let mut out = vec![rebuild_note(after.create_sql(d, scope, &temp)?, false)];
 
 ```text
 CREATE TABLE zz_named (id int, CONSTRAINT zz_named_pkey PRIMARY KEY (id));
-CREATE TABLE zz_named__navidog_new (id int, CONSTRAINT zz_named_pkey PRIMARY KEY (id));
+CREATE TABLE zz_named__naviduck_new (id int, CONSTRAINT zz_named_pkey PRIMARY KEY (id));
 ERROR:  relation "zz_named_pkey" already exists
 ```
 
@@ -203,10 +203,10 @@ ERROR:  relation "zz_named_pkey" already exists
 
 ```text
 CREATE TABLE zz_s (id serial PRIMARY KEY);
-CREATE TABLE zz_s__navidog_new (id integer NOT NULL DEFAULT nextval('zz_s_id_seq'::regclass));
+CREATE TABLE zz_s__naviduck_new (id integer NOT NULL DEFAULT nextval('zz_s_id_seq'::regclass));
 DROP TABLE zz_s;
 ERROR:  cannot drop table zz_s because other objects depend on it
-DETAIL:  default value for column id of table zz_s__navidog_new depends on sequence zz_s_id_seq
+DETAIL:  default value for column id of table zz_s__naviduck_new depends on sequence zz_s_id_seq
 HINT:  Use DROP ... CASCADE to drop the dependent objects too.
 ```
 
@@ -214,13 +214,13 @@ HINT:  Use DROP ... CASCADE to drop the dependent objects too.
 
 **建议**：
 
-- 临时表的 PK/UNIQUE 约束用临时名（例如 `__navidog_new_pkey`），`DROP TABLE` 旧表后再 `ALTER TABLE … RENAME CONSTRAINT` 改回原名；或者临时表先不带命名约束，重命名后再 `ADD CONSTRAINT`。
+- 临时表的 PK/UNIQUE 约束用临时名（例如 `__naviduck_new_pkey`），`DROP TABLE` 旧表后再 `ALTER TABLE … RENAME CONSTRAINT` 改回原名；或者临时表先不带命名约束，重命名后再 `ADD CONSTRAINT`。
 - `serial`/`nextval` 默认值：为临时表创建新序列，或在 `DROP TABLE` 前先 `ALTER TABLE temp ALTER COLUMN id DROP DEFAULT`，重命名后再恢复默认值并修正序列的 `OWNED BY`。要同时处理 `bigserial` 和显式 `nextval`。
 - 加测试：命名 PK、命名 UNIQUE、`serial`、`bigserial`、identity、普通列各一条；测试应从真实快照构造，而不是只测 `create_sql` 字符串。
 
 ### 3.2 PostgreSQL 列重排会静默丢触发器
 
-**位置**：`crates/navidog-schema/src/table_design/mod.rs:316-334`、`plan.rs:643`
+**位置**：`crates/naviduck-schema/src/table_design/mod.rs:316-334`、`plan.rs:643`
 
 快照只在 `dialect.features().rebuilds_tables`（SQLite）时查询 `sqlite_schema` 的触发器：
 
@@ -254,7 +254,7 @@ triggers: vec!["CREATE TRIGGER audit AFTER INSERT ON t EXECUTE FUNCTION log()".i
 
 ### 3.3 对象设计器：已有对象 raw 化 + 第二次保存失败
 
-**位置**：`crates/navidog-designer/src/object.rs:291-336`、`:272`、`:583`，`crates/navidog-schema/src/object_design.rs:21-31`
+**位置**：`crates/naviduck-designer/src/object.rs:291-336`、`:272`、`:583`，`crates/naviduck-schema/src/object_design.rs:21-31`
 
 `load()` 对任何 `catalog_kind()` 非空的对象都做：
 
@@ -305,7 +305,7 @@ if !current.is_empty() && current != draft.loaded {
 
 ### 3.4 移动到新窗口会绕过关闭确认
 
-**位置**：`crates/navidog-designer/src/object.rs:535-539`、`crates/navidog-designer/src/tools.rs:697-704`、对照 `crates/navidog-designer/src/panel.rs:383-389`
+**位置**：`crates/naviduck-designer/src/object.rs:535-539`、`crates/naviduck-designer/src/tools.rs:697-704`、对照 `crates/naviduck-designer/src/panel.rs:383-389`
 
 `tabs::removed` 在“移动到新窗口”时也返回 true。`TableDesigner` 的处理是：
 
@@ -344,7 +344,7 @@ if tabs::removed(...) {
 
 ### 3.5 用户面板：不能编辑已有账号
 
-**位置**：`crates/navidog-designer/src/tools.rs:205-227`、`:358-365`，`crates/navidog-sql/src/security.rs:617-671`
+**位置**：`crates/naviduck-designer/src/tools.rs:205-227`、`:358-365`，`crates/naviduck-sql/src/security.rs:617-671`
 
 `account_draft` 构造 `AccountDraft` 时用了 `..AccountDraft::default()`，没有填 `previous_name`/`previous_host`。`mysql_account` 用 `previous_name` 判断是 `ALTER USER` 还是 `CREATE USER`：
 
@@ -371,7 +371,7 @@ if let Some(previous) = previous {
 
 ### 3.6 查找：结果模型和 SQL 方言都有问题
 
-**位置**：`crates/navidog-designer/src/tools.rs:530-573`、`:1147-1207`，`crates/navidog-sql/src/security.rs:904-1024`
+**位置**：`crates/naviduck-designer/src/tools.rs:530-573`、`:1147-1207`，`crates/naviduck-sql/src/security.rs:904-1024`
 
 **结果模型**：`find` 把结构结果和数据结果都拼进 `String`，`render_output` 逐行显示。没有 `(object, kind, row)` 模型，所以无法双击打开设计器/表查看器，也无法显示列名、对象类型、命中行号。规格 43 §6 的核心交互缺失。
 
@@ -383,7 +383,7 @@ if let Some(previous) = previous {
 }
 ```
 
-`navidog-sqlite/Cargo.toml` 只开了 `bundled`/`column_decltype`/`column_metadata`，没有 `functions`；源码里也没有 `create_scalar_function("regexp", …)`。bundled SQLite 默认不提供 `regexp()`，这条 SQL 会调用一个未注册的函数，运行时报 `no such function: REGEXP`。
+`naviduck-sqlite/Cargo.toml` 只开了 `bundled`/`column_decltype`/`column_metadata`，没有 `functions`；源码里也没有 `create_scalar_function("regexp", …)`。bundled SQLite 默认不提供 `regexp()`，这条 SQL 会调用一个未注册的函数，运行时报 `no such function: REGEXP`。
 
 **MySQL 区分大小写**：生成：
 
@@ -420,7 +420,7 @@ WHERE m.type = 'table' AND (...)
 
 ### 3.7 监控：PostgreSQL 语义和页面状态
 
-**位置**：`crates/navidog-sql/src/security.rs:330-394`，`crates/navidog-designer/src/tools.rs:1049-1145`
+**位置**：`crates/naviduck-sql/src/security.rs:330-394`，`crates/naviduck-designer/src/tools.rs:1049-1145`
 
 - **结束进程**：PostgreSQL 用 `SELECT pg_terminate_backend(id)`，规格 43 §5 明确要求 `pg_cancel_backend`。`pg_terminate_backend` 会直接断开整个会话，可能回滚用户事务；`pg_cancel_backend` 只取消当前查询。这是语义错误，不只是文案。
 - **变量页**：PostgreSQL 的 `set_variable_sql` 生成 `ALTER SYSTEM SET name = value`，而规格说 PostgreSQL 变量只读。`ALTER SYSTEM` 需要超级用户、写入 `postgresql.auto.conf`，还要 reload 才生效；这既不是 `SET`，也不该在监控面板里提供。
@@ -432,7 +432,7 @@ WHERE m.type = 'table' AND (...)
 
 ### 3.8 触发器/分区表单
 
-**位置**：`crates/navidog-designer/src/panel/more.rs:57-59`、`:163-225`
+**位置**：`crates/naviduck-designer/src/panel/more.rs:57-59`、`:163-225`
 
 - `more_field` 的参数是 `_disabled`，但函数体完全没用它：
 
@@ -465,7 +465,7 @@ return Ok(());
 
 ### 3.9 PostgreSQL 分区子表没有加载
 
-**位置**：`crates/navidog-schema/src/table_design/mod.rs:245`、`parse.rs:117`、`plan.rs:454-463`
+**位置**：`crates/naviduck-schema/src/table_design/mod.rs:245`、`parse.rs:117`、`plan.rs:454-463`
 
 PG 快照查询的是当前表的父表：
 
@@ -509,7 +509,7 @@ SELECT ... FROM pg_inherits i ... WHERE i.inhrelid = c.oid
    > SQLite user authentication needs the user-auth extension, which this build does not include.
 
    中文界面里出现英文；没有标题、图标或说明卡片，下面是大片空白。规格 43 §1 要求面板说明原因，但至少应该本地化，并给出“为什么没有/如何启用”的两三行说明。
-4. **选项页的复选框和“高级”按钮居中**（`designer-options-light.png`）。这个问题在 `crates/navidog-designer/src/panel/options.rs`，该文件不在本 PR 的 diff 里，属于既有问题，**不计入本次审查**。
+4. **选项页的复选框和“高级”按钮居中**（`designer-options-light.png`）。这个问题在 `crates/naviduck-designer/src/panel/options.rs`，该文件不在本 PR 的 diff 里，属于既有问题，**不计入本次审查**。
 
 ### 4.2 表单密度与尺寸
 
@@ -549,7 +549,7 @@ SELECT ... FROM pg_inherits i ... WHERE i.inhrelid = c.oid
 | `scripts/check-i18n.sh` | 通过 |
 | `scripts/check-dialect-branches.sh` | 通过 |
 | `scripts/check-deps.sh` | 通过 |
-| `cargo test -p navidog-sql -p navidog-schema -p navidog-designer --lib --offline` | 通过：12 + 33 + 21 = 66 项 |
+| `cargo test -p naviduck-sql -p naviduck-schema -p naviduck-designer --lib --offline` | 通过：12 + 33 + 21 = 66 项 |
 
 ### 5.2 Docker 实库复现
 
@@ -563,7 +563,7 @@ SELECT ... FROM pg_inherits i ... WHERE i.inhrelid = c.oid
 
   ```text
   ERROR:  cannot drop table zz_s because other objects depend on it
-  DETAIL:  default value for column id of table zz_s__navidog_new depends on sequence zz_s_id_seq
+  DETAIL:  default value for column id of table zz_s__naviduck_new depends on sequence zz_s_id_seq
   ```
 
 - MySQL latin1 连接 + `COLLATE utf8mb4_bin`：
@@ -577,7 +577,7 @@ SELECT ... FROM pg_inherits i ... WHERE i.inhrelid = c.oid
 ### 5.3 没有重复跑的检查
 
 - 没有重复跑 `cargo test --workspace --offline`；PR 验收记录声称通过。
-- 没有重复跑完整的 `NAVIDOG_LIVE=1` 实库套件；本次只用 Docker 直接验证了上述三条 SQL 级问题。
+- 没有重复跑完整的 `NAVIDUCK_LIVE=1` 实库套件；本次只用 Docker 直接验证了上述三条 SQL 级问题。
 - 没有逐张比对深色截图；浅色截图已看，深色同布局。
 
 ### 5.4 建议补的测试
@@ -617,7 +617,7 @@ SELECT ... FROM pg_inherits i ... WHERE i.inhrelid = c.oid
 | 审查项 | 做法 | 验证 |
 | --- | --- | --- |
 | **P0** PostgreSQL 列重排丢掉触发器 | `Dialect::trigger_definitions_sql`：PostgreSQL 用 `pg_get_triggerdef`，MySQL 从 `information_schema.TRIGGERS` 拼 `CREATE TRIGGER`。快照同时写入 `TableSnapshot.triggers` 和 `design.triggers`，重建在改名之后按原文发出 | 计划测试仍是手工放进 `TableSnapshot.triggers` 的文本。加载 SQL 没有实库往返 |
-| **P1** 命名 PK/UNIQUE/EXCLUDE 与 `serial` 重建失败 | 索引类约束先改成临时名（后缀 `__navidog`，最长 63 字节），表改名后再 `RENAME CONSTRAINT`。`nextval` 默认值在 `DROP TABLE` 前 `DROP DEFAULT` 并 `ALTER SEQUENCE … OWNED BY NONE`，改名后写回原表达式并 `OWNED BY` 新列。CHECK 名称是表内的，不改。共享序列只被当作默认值时会改挂到新列（已知上限） | `postgres_rebuild_keeps_constraint_names_and_serial_defaults` |
+| **P1** 命名 PK/UNIQUE/EXCLUDE 与 `serial` 重建失败 | 索引类约束先改成临时名（后缀 `__naviduck`，最长 63 字节），表改名后再 `RENAME CONSTRAINT`。`nextval` 默认值在 `DROP TABLE` 前 `DROP DEFAULT` 并 `ALTER SEQUENCE … OWNED BY NONE`，改名后写回原表达式并 `OWNED BY` 新列。CHECK 名称是表内的，不改。共享序列只被当作默认值时会改挂到新列（已知上限） | `postgres_rebuild_keeps_constraint_names_and_serial_defaults` |
 | **P1** 新建对象第二次保存被外部变更守卫拒绝 | `DefinitionDraft.server_ddl` 只存服务器 DDL。守卫比较它，脏标记仍比较编辑器正文。保存成功后清空 `server_ddl`，再只回填服务器 DDL，不把正文换成 `CREATE …` | `definition_plans_cover_each_object_kind`、`raw_edits_replace_an_existing_object` 仍通过。没有「保存两次」的界面测试 |
 | **P1** 移到新窗口取消任务 | `ObjectDesigner` 与 `ToolPanel` 的 `on_removed`：`tabs::removed` 为真时直接返回。真正关闭才取走任务；监控同时停掉自动刷新 | 没有 headless 测试 |
 | **P1** 密码未遮挡 | 密码框 `InputState.masked(true)`，并打开 `mask_toggle`。取值仍是明文，账户 SQL 不受影响 | 没有界面测试 |
@@ -650,8 +650,8 @@ SELECT ... FROM pg_inherits i ... WHERE i.inhrelid = c.oid
 ### 7.3 本轮跑过的检查
 
 - `cargo fmt --all`
-- `cargo clippy -p navidog-sql -p navidog-schema -p navidog-designer -p navidog-mysql -p navidog-postgres --all-targets -- -D warnings`
-- `cargo test -p navidog-schema -p navidog-designer --lib -- postgres_rebuild_keeps postgres_column_reorder security_statements mysql_partition definition_plans raw_edits`（6 项通过）
+- `cargo clippy -p naviduck-sql -p naviduck-schema -p naviduck-designer -p naviduck-mysql -p naviduck-postgres --all-targets -- -D warnings`
+- `cargo test -p naviduck-schema -p naviduck-designer --lib -- postgres_rebuild_keeps postgres_column_reorder security_statements mysql_partition definition_plans raw_edits`（6 项通过）
 
 没有跑 Docker 实库，也没有跑 `cargo test --workspace`。审查第 5.2 节的三条 SQL 错误没有在服务器上再复现一遍。
 

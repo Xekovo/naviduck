@@ -1,0 +1,668 @@
+//! Lossless table drafts and guarded, dialect-specific schema changes.
+mod comments;
+mod entries;
+mod options;
+mod parse;
+mod properties;
+pub use entries::{DesignEntry, EntryKind, parse_entry, split_field_list};
+pub use options::{edit_table_option, table_option};
+pub use properties::{ColumnProperties, ColumnProperty, column_properties, edit_column};
+mod plan;
+#[cfg(test)]
+mod tests;
+
+use naviduck_db::{DbError, DbResult, Relational};
+use naviduck_model::object::{ObjectKind, Scope};
+use naviduck_sql::dialect::Dialect;
+pub use plan::{plan, plan_with};
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct DesignColumn {
+    pub id: u64,
+    pub original: Option<String>,
+    pub name: String,
+    pub definition: String,
+    #[serde(default)]
+    pub comment: String,
+}
+impl DesignColumn {
+    pub fn new(id: u64, name: impl Into<String>, definition: impl Into<String>) -> Self {
+        Self {
+            id,
+            original: None,
+            name: name.into(),
+            definition: definition.into(),
+            comment: String::new(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct TableDesign {
+    pub name: String,
+    pub columns: Vec<DesignColumn>,
+    pub constraints: Vec<String>,
+    pub indexes: Vec<String>,
+    pub options: String,
+    #[serde(default)]
+    pub comment: String,
+    #[serde(default)]
+    pub owner: String,
+    #[serde(default)]
+    pub unlogged: bool,
+    /// `None` means “use the snapshot’s trigger list”. `Some` is an explicit edit, including
+    /// an empty list when every trigger was removed.
+    #[serde(default)]
+    pub triggers: Option<Vec<String>>,
+    /// `PARTITION BY …` clause, without a leading space. Empty when the table is not partitioned.
+    #[serde(default)]
+    pub partition: String,
+    /// Extra statements for PostgreSQL child partitions (`CREATE TABLE … PARTITION OF`).
+    #[serde(default)]
+    pub partition_children: Vec<String>,
+}
+impl TableDesign {
+    pub fn new() -> Self {
+        Self {
+            columns: vec![DesignColumn::new(1, "id", "INTEGER NOT NULL")],
+            constraints: vec!["PRIMARY KEY (id)".into()],
+            ..Default::default()
+        }
+    }
+    /// A new, unmodified table for this dialect. The `id` column uses the type the server
+    /// prints back, so saving and reloading does not rewrite it.
+    pub fn blank(dialect: &dyn Dialect) -> Self {
+        Self {
+            columns: vec![DesignColumn::new(
+                1,
+                "id",
+                format!("{} NOT NULL", dialect.default_column_type()),
+            )],
+            constraints: vec!["PRIMARY KEY (id)".into()],
+            ..Default::default()
+        }
+    }
+    /// An untouched new table when the dialect is no longer known. A live designer compares
+    /// against [`TableDesign::blank`] for that connection, so another dialect's id type counts
+    /// as an edit.
+    pub fn is_blank(&self) -> bool {
+        self.name.is_empty()
+            && self.indexes.is_empty()
+            && self.options.is_empty()
+            && self.comment.is_empty()
+            && self.owner.is_empty()
+            && !self.unlogged
+            && self.triggers.as_ref().is_none_or(|t| t.is_empty())
+            && self.partition.is_empty()
+            && self.partition_children.is_empty()
+            && self.constraints.len() == 1
+            && self.constraints[0] == "PRIMARY KEY (id)"
+            && self.columns.len() == 1
+            && self.columns[0].id == 1
+            && self.columns[0].original.is_none()
+            && self.columns[0].name == "id"
+            && self.columns[0].comment.is_empty()
+            && matches!(
+                self.columns[0].definition.as_str(),
+                "int NOT NULL" | "integer NOT NULL" | "INTEGER NOT NULL"
+            )
+    }
+    pub fn create_sql(&self, dialect: &dyn Dialect, scope: &Scope, name: &str) -> DbResult<String> {
+        self.validate(dialect)?;
+        let mut parts: Vec<_> = self
+            .columns
+            .iter()
+            .map(|c| format!("  {} {}", dialect.quote_ident(&c.name), c.definition.trim()))
+            .collect();
+        parts.extend(self.constraints.iter().map(|c| format!("  {}", c.trim())));
+        Ok(format!(
+            "CREATE {}TABLE {} (\n{}\n){}{}",
+            if dialect.features().supports_unlogged && self.unlogged {
+                "UNLOGGED "
+            } else {
+                ""
+            },
+            dialect.qualified(scope, name),
+            parts.join(",\n"),
+            if self.options.trim().is_empty() {
+                String::new()
+            } else {
+                format!(" {}", self.options.trim())
+            },
+            if self.partition.trim().is_empty() {
+                String::new()
+            } else {
+                format!(" {}", self.partition.trim())
+            }
+        ))
+    }
+    fn validate(&self, dialect: &dyn Dialect) -> DbResult<()> {
+        if self.name.trim().is_empty() || self.columns.is_empty() {
+            return Err(DbError::msg(
+                "A table needs a name and at least one column.",
+            ));
+        }
+        let mut names = std::collections::HashSet::new();
+        let mut ids = std::collections::HashSet::new();
+        let mut originals = std::collections::HashSet::new();
+        for c in &self.columns {
+            if c.name.trim().is_empty()
+                || c.name.contains('\0')
+                || !names.insert(c.name.to_lowercase())
+                || !ids.insert(c.id)
+                || c.original
+                    .as_ref()
+                    .is_some_and(|name| !originals.insert(name))
+            {
+                return Err(DbError::msg(
+                    "Column names and identities must be nonempty and unique.",
+                ));
+            }
+            if c.definition.trim().is_empty() {
+                return Err(DbError::msg("A column needs a type definition."));
+            }
+            parse::fragment(&c.definition, dialect)?;
+        }
+        if self.comment.contains('\0') || self.columns.iter().any(|c| c.comment.contains('\0')) {
+            return Err(DbError::msg("Comments cannot contain NUL characters."));
+        }
+        if !dialect.features().separate_comments
+            && (!self.comment.is_empty() || self.columns.iter().any(|c| !c.comment.is_empty()))
+        {
+            return Err(DbError::msg(
+                "Separate comment definitions are supported only on PostgreSQL.",
+            ));
+        }
+        for c in &self.constraints {
+            parse::fragment(c, dialect)?;
+        }
+        parse::fragment(&self.options, dialect)?;
+        parse::fragment(&self.partition, dialect)?;
+        for trigger in self.triggers.iter().flatten() {
+            if naviduck_db::sql::split_script(trigger, dialect.lex()).len() != 1
+                || !trigger.trim_start().to_uppercase().starts_with("CREATE ")
+            {
+                return Err(DbError::msg(
+                    "Each trigger must contain one CREATE TRIGGER statement.",
+                ));
+            }
+        }
+        for child in &self.partition_children {
+            if naviduck_db::sql::split_script(child, dialect.lex()).len() != 1
+                || !child.trim_start().to_uppercase().starts_with("CREATE ")
+            {
+                return Err(DbError::msg(
+                    "Each partition must contain one CREATE TABLE statement.",
+                ));
+            }
+        }
+        for index in &self.indexes {
+            if naviduck_db::sql::split_script(index, dialect.lex()).len() != 1 {
+                return Err(DbError::msg(
+                    "Each supplemental definition must contain one SQL statement.",
+                ));
+            }
+            if dialect.features().separate_comments
+                && (index.starts_with("COMMENT ON TABLE ")
+                    || index.starts_with("COMMENT ON COLUMN "))
+            {
+                continue;
+            }
+            if naviduck_db::sql::split_script(index, dialect.lex()).len() != 1
+                || !index.trim_start().to_uppercase().starts_with("CREATE ")
+            {
+                return Err(DbError::msg(
+                    "Each index must contain one CREATE INDEX statement.",
+                ));
+            }
+            plan::index_name(index)?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct TableSnapshot {
+    pub design: TableDesign,
+    pub ddl: String,
+    pub triggers: Vec<String>,
+    /// `None` for older snapshots or dialects without PostgreSQL sequence ownership.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    owned_sequences: Option<Vec<OwnedSequence>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+struct OwnedSequence {
+    column: String,
+    schema: String,
+    name: String,
+    oid: u32,
+}
+
+impl OwnedSequence {
+    fn qualified(&self, d: &dyn Dialect) -> String {
+        format!(
+            "{}.{}",
+            d.quote_ident(&self.schema),
+            d.quote_ident(&self.name)
+        )
+    }
+}
+
+impl TableSnapshot {
+    fn matches_baseline(&self, before: &Self) -> bool {
+        self.design == before.design
+            && self.ddl == before.ddl
+            && self.triggers == before.triggers
+            // Old drafts can still save without rebuilding. A rebuild separately
+            // requires the ownership baseline to be present in the preview.
+            && (before.owned_sequences.is_none() || self.owned_sequences == before.owned_sequences)
+    }
+}
+
+async fn load_owned_sequences(r: &mut dyn Relational, sql: &str) -> DbResult<Vec<OwnedSequence>> {
+    r.execute(sql)
+        .await?
+        .into_iter()
+        .flat_map(|set| set.rows)
+        .map(|row| {
+            let [Some(column), Some(schema), Some(name), Some(oid)] = row.as_slice() else {
+                return Err(DbError::msg(
+                    "Invalid PostgreSQL sequence ownership metadata.",
+                ));
+            };
+            Ok(OwnedSequence {
+                column: column.clone(),
+                schema: schema.clone(),
+                name: name.clone(),
+                oid: oid
+                    .parse()
+                    .map_err(|_| DbError::msg("Invalid PostgreSQL sequence ownership metadata."))?,
+            })
+        })
+        .collect()
+}
+
+pub async fn load(r: &mut dyn Relational, scope: &Scope, name: &str) -> DbResult<TableSnapshot> {
+    let d = r.dialect();
+    let scoped_path = d
+        .features()
+        .enriches_from_catalog
+        .then(|| scope.schema.as_deref().or(d.default_schema()))
+        .flatten()
+        .and_then(|schema| d.set_search_path_sql(schema));
+    let Some(set_path) = scoped_path else {
+        return load_in_context(r, scope, name).await;
+    };
+    // Deparse defaults under the same search path used to apply the plan. A regclass
+    // literal outside this schema must stay qualified when it is replayed.
+    let context = d.session_context_sql().ok_or_else(missing_search_path)?;
+    let sets = r.execute(context).await?;
+    let path = sets
+        .iter()
+        .flat_map(|set| &set.rows)
+        .next()
+        .and_then(|row| row.get(2))
+        .and_then(|cell| cell.as_deref())
+        .ok_or_else(missing_search_path)?;
+    let restore = d
+        .restore_search_path_sql(path)
+        .ok_or_else(missing_search_path)?;
+    r.execute(&set_path).await?;
+    let result = load_in_context(r, scope, name).await;
+    let restored = r.execute(&restore).await;
+    let snapshot = result?;
+    restored?;
+    Ok(snapshot)
+}
+
+fn missing_search_path() -> DbError {
+    DbError::msg("Could not read or restore the schema search path.")
+}
+
+async fn load_in_context(
+    r: &mut dyn Relational,
+    scope: &Scope,
+    name: &str,
+) -> DbResult<TableSnapshot> {
+    let dialect = r.dialect();
+    let mut ddl = r.object_ddl(scope, ObjectKind::Table, name).await?;
+    let mut design = parse::create(&ddl, name, dialect.as_ref())?;
+    if dialect.features().enriches_from_catalog {
+        design.migrate_comments(scope, dialect.as_ref())?;
+        // The general DDL view omits identity/generated flags and nondefault collations.
+        // Include them in both the editable draft and the concurrency fingerprint. The queries
+        // and the identity clause come from the dialect (140-dameng.md §5.4.1).
+        if let Some(option_query) = dialect.table_options_sql(scope, name) {
+            let option_sets = r.execute(&option_query).await?;
+            if let Some(row) = option_sets.iter().flat_map(|s| &s.rows).next() {
+                let cell = |i: usize| row.get(i).and_then(|v| v.as_deref()).unwrap_or("");
+                design.owner = cell(0).into();
+                design.unlogged = cell(1) == "u";
+                let mut options = Vec::new();
+                if !cell(4).is_empty() {
+                    options.push(format!("INHERITS ({})", cell(4)));
+                }
+                if !cell(2).is_empty() {
+                    options.push(format!("WITH ({})", cell(2)));
+                }
+                if !cell(3).is_empty() {
+                    options.push(format!("TABLESPACE {}", dialect.quote_ident(cell(3))));
+                }
+                design.options = options.join(" ");
+            }
+            ddl.push_str(&format!(
+                "\n-- Table options: {}",
+                serde_json::to_string(
+                    &option_sets.iter().flat_map(|s| &s.rows).collect::<Vec<_>>()
+                )
+                .unwrap_or_default()
+            ));
+        }
+        if let Some(query) = dialect.column_metadata_sql(scope, name) {
+            let sets = r.execute(&query).await?;
+            for row in sets.iter().flat_map(|s| &s.rows) {
+                let cell = |i: usize| row.get(i).and_then(|v| v.as_deref()).unwrap_or("");
+                let Some(column) = design.columns.iter_mut().find(|c| c.name == cell(0)) else {
+                    continue;
+                };
+                let mut definition = cell(1).to_string();
+                if !cell(7).is_empty() {
+                    definition.push_str(&format!(
+                        " COLLATE {}.{}",
+                        dialect.quote_ident(cell(6)),
+                        dialect.quote_ident(cell(7))
+                    ));
+                }
+                if !cell(5).is_empty() {
+                    definition.push_str(&format!(
+                        " GENERATED ALWAYS AS ({}) {}",
+                        cell(3),
+                        if cell(5) == "s" { "STORED" } else { "VIRTUAL" }
+                    ));
+                } else if !cell(4).is_empty() {
+                    definition.push_str(&dialect.identity_definition(cell(4)));
+                }
+                if cell(2) == "t" {
+                    definition.push_str(" NOT NULL");
+                }
+                if cell(4).is_empty() && cell(5).is_empty() && !cell(3).is_empty() {
+                    definition.push_str(&format!(" DEFAULT {}", cell(3)));
+                }
+                column.definition = definition;
+                column.comment = cell(8).into();
+            }
+            ddl.push_str(&format!(
+                "\n-- Column metadata: {}",
+                serde_json::to_string(
+                    &sets.iter().flat_map(|s| s.rows.clone()).collect::<Vec<_>>()
+                )
+                .unwrap_or_default()
+            ));
+        }
+    }
+    let owned_sequences =
+        if let Some(sql) = dialect.owned_sequences_sql(&dialect.qualified(scope, name)) {
+            Some(load_owned_sequences(r, &sql).await?)
+        } else {
+            None
+        };
+    let mut triggers = Vec::new();
+    if dialect.features().rebuilds_tables {
+        let sql = format!(
+            "SELECT type, sql FROM {}.sqlite_schema WHERE tbl_name = {} AND type IN ('index', 'trigger') AND sql IS NOT NULL ORDER BY type, name",
+            dialect.quote_ident(&scope.database),
+            dialect.string_literal(name)
+        );
+        for set in r.execute(&sql).await? {
+            for row in set.rows {
+                let value = row.get(1).and_then(|v| v.clone()).unwrap_or_default();
+                if row.first().and_then(|v| v.as_deref()) == Some("index") {
+                    design.indexes.push(value);
+                } else {
+                    triggers.push(value);
+                }
+            }
+        }
+        design.triggers = Some(triggers.clone());
+    } else if let Some(sql) = dialect.trigger_definitions_sql(scope, name) {
+        for set in r.execute(&sql).await? {
+            for row in set.rows {
+                if let Some(value) = row
+                    .first()
+                    .and_then(|value| value.clone())
+                    .filter(|v| !v.is_empty())
+                {
+                    triggers.push(value);
+                }
+            }
+        }
+        design.triggers = Some(triggers.clone());
+    }
+    Ok(TableSnapshot {
+        design,
+        ddl,
+        triggers,
+        owned_sequences,
+    })
+}
+
+/// Table names in one SQLite database, used to pick a free `_table_old_YYYYMMDD` backup.
+pub async fn sqlite_table_names(r: &mut dyn Relational, scope: &Scope) -> DbResult<Vec<String>> {
+    let sql = format!(
+        "SELECT name FROM {}.sqlite_schema WHERE type = 'table'",
+        r.dialect().quote_ident(&scope.database)
+    );
+    let mut names = Vec::new();
+    for set in r.execute(&sql).await? {
+        for row in set.rows {
+            if let Some(name) = row.first().and_then(|value| value.clone()) {
+                names.push(name);
+            }
+        }
+    }
+    Ok(names)
+}
+
+fn sqlite_rename(statements: &[String]) -> bool {
+    statements.first().is_some_and(|sql| {
+        let upper = sql.to_uppercase();
+        upper.contains(" RENAME TO ") && !upper.contains("RENAME COLUMN")
+    })
+}
+
+/// Applies precisely the previewed plan on a caller-owned session. Never retries DDL.
+pub async fn apply(
+    r: &mut dyn Relational,
+    scope: &Scope,
+    before: Option<&TableSnapshot>,
+    after: &TableDesign,
+) -> DbResult<TableSnapshot> {
+    let d = r.dialect();
+    let mut legacy_before = before.cloned();
+    if d.features().separate_comments
+        && let Some(old) = &mut legacy_before
+    {
+        old.design.migrate_comments(scope, d.as_ref())?;
+    }
+    let before = legacy_before.as_ref();
+    if let Some(old) = before {
+        let current = load(r, scope, &old.design.name).await?;
+        if !current.matches_baseline(old) {
+            return Err(DbError::msg(
+                "The table changed outside this designer. Reload before saving.",
+            ));
+        }
+    }
+    if let Some(sql) = d.prepare_database_sql(&scope.database) {
+        r.execute(&sql).await?;
+    }
+    if let Some(schema) = scope.schema.as_deref().or(d.default_schema())
+        && let Some(sql) = d.set_search_path_sql(schema)
+    {
+        r.execute(&sql).await?;
+    }
+    if let Some(primary) = d.table_rebuild_catalog()
+        && scope.database != primary
+    {
+        return Err(DbError::msg(
+            "The table designer can only rebuild tables in the primary SQLite database.",
+        ));
+    }
+    let occupied = if d.features().rebuilds_tables && before.is_some() {
+        sqlite_table_names(r, scope).await?
+    } else {
+        Vec::new()
+    };
+    let statements = plan_with(d.as_ref(), scope, before, after, &occupied)?;
+    if statements.is_empty() {
+        return load(r, scope, &after.name).await;
+    }
+    let sqlite_rebuild =
+        d.features().rebuilds_tables && before.is_some() && sqlite_rename(&statements);
+    let foreign_keys = if sqlite_rebuild {
+        r.execute("PRAGMA foreign_keys")
+            .await?
+            .first()
+            .and_then(|s| s.rows.first())
+            .and_then(|row| row.first())
+            .and_then(|v| v.as_deref())
+            .unwrap_or("0")
+            == "1"
+    } else {
+        false
+    };
+    if sqlite_rebuild {
+        r.execute("PRAGMA foreign_keys = OFF").await?;
+    }
+    let legacy = if sqlite_rebuild {
+        let value = r
+            .execute("PRAGMA legacy_alter_table")
+            .await?
+            .first()
+            .and_then(|s| s.rows.first())
+            .and_then(|r| r.first())
+            .and_then(|v| v.as_deref())
+            .unwrap_or("0")
+            == "1";
+        r.execute("PRAGMA legacy_alter_table = ON").await?;
+        value
+    } else {
+        false
+    };
+    let transactional = d.features().transactional_ddl;
+    let result = async {
+        if transactional {
+            r.execute(if d.features().begin_immediate {
+                "BEGIN IMMEDIATE"
+            } else {
+                "BEGIN"
+            })
+            .await?;
+        }
+        // Recheck inside the transaction/lock as well as before the preview is applied.
+        if let Some(old) = before {
+            if let Some(sql) = d.exclusive_lock_sql(&d.qualified(scope, &old.design.name)) {
+                r.execute(&sql).await?;
+            }
+            for (sequence, _) in plan::transferred_sequences(d.as_ref(), old, after)? {
+                let sql = d.lock_owned_sequence_sql(&sequence.qualified(d.as_ref())).ok_or_else(|| {
+                    DbError::msg("Cannot lock a sequence before transferring its ownership.")
+                })?;
+                r.execute(&sql).await?;
+            }
+            if !load(r, scope, &old.design.name).await?.matches_baseline(old) {
+                return Err(DbError::msg(
+                    "The table changed outside this designer. Reload before saving.",
+                ));
+            }
+        }
+        if sqlite_rebuild && let Some(old) = before {
+            let removed: Vec<_> = old.design.columns.iter().filter(|c| !after.columns.iter().any(|n|n.original.as_ref()==Some(&c.name))).collect();
+            if !removed.is_empty() {
+                // SQLite validates view/trigger/index dependencies during native DROP COLUMN.
+                // Roll this preflight back before copying data into the replacement table.
+                r.execute("SAVEPOINT naviduck_drop_preflight").await?;
+                for column in removed {
+                    if let Err(error) = r.execute(&format!("ALTER TABLE {} DROP COLUMN {}",d.qualified(scope,&old.design.name),d.quote_ident(&column.name))).await {
+                        return Err(DbError::msg(format!("Cannot drop a field with dependent schema objects; remove those dependencies first: {error}")));
+                    }
+                }
+                r.execute("ROLLBACK TO naviduck_drop_preflight").await?;
+                r.execute("RELEASE naviduck_drop_preflight").await?;
+            }
+        }
+        let sequence = if sqlite_rebuild
+            && before.is_some_and(|old| old.ddl.to_uppercase().contains("AUTOINCREMENT"))
+        {
+            let query = format!(
+                "SELECT seq FROM {}.sqlite_sequence WHERE name = {}",
+                d.quote_ident(&scope.database),
+                d.string_literal(&after.name)
+            );
+            r.execute(&query)
+                .await?
+                .first()
+                .and_then(|s| s.rows.first())
+                .and_then(|r| r.first())
+                .and_then(|v| v.as_deref())
+                .and_then(|v| v.parse::<u64>().ok())
+        } else {
+            None
+        };
+        for sql in &statements {
+            r.execute(sql).await?;
+        }
+        if let Some(sequence) = sequence {
+            let seq_table=format!("{}.sqlite_sequence",d.quote_ident(&scope.database));
+            let name=d.string_literal(&after.name);
+            r.execute(&format!("UPDATE {seq_table} SET seq = MAX(seq, {sequence}) WHERE name = {name}")).await?;
+            r.execute(&format!("INSERT INTO {seq_table}(name,seq) SELECT {name},{sequence} WHERE NOT EXISTS(SELECT 1 FROM {seq_table} WHERE name={name})")).await?;
+        }
+        if sqlite_rebuild {
+            let check = format!(
+                "PRAGMA {}.foreign_key_check",
+                d.quote_ident(&scope.database)
+            );
+            if r.execute(&check).await?.iter().any(|s| !s.rows.is_empty()) {
+                return Err(DbError::msg(
+                    "Foreign key check failed; the schema change was rolled back.",
+                ));
+            }
+        }
+        let saved = load(r, scope, &after.name).await?;
+        if transactional {
+            r.execute("COMMIT").await?;
+        }
+        Ok(saved)
+    }
+    .await;
+    if result.is_err() && transactional {
+        let _ = r.execute("ROLLBACK").await;
+    }
+    if sqlite_rebuild {
+        let restore = r
+            .execute(if foreign_keys {
+                "PRAGMA foreign_keys = ON"
+            } else {
+                "PRAGMA foreign_keys = OFF"
+            })
+            .await;
+        r.execute(if legacy {
+            "PRAGMA legacy_alter_table = ON"
+        } else {
+            "PRAGMA legacy_alter_table = OFF"
+        })
+        .await?;
+        if let Err(e) = restore {
+            return Err(DbError::msg(format!(
+                "Could not restore foreign key mode: {e}"
+            )));
+        }
+    }
+    result
+}

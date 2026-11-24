@@ -13,17 +13,17 @@
 | R-04 / D-05 | 统一 SQL 词法 | `refactor(sql)` |
 | D-08 / A-06 | 缓存/选择状态收口 | `refactor(navigator)` |
 | A-01 / A-02 | app-state 拆分、依赖方向 | `refactor(state)` |
-| A-03 | `table_design` 拆到 `navidog-schema` | `refactor(schema)` |
+| A-03 | `table_design` 拆到 `naviduck-schema` | `refactor(schema)` |
 | A-07 | 超长文件拆分 | `refactor(grid)`/`refactor(query)`/`refactor(connection)`/`refactor(update)` |
 | A-10 | `Connection` 的 `profiles + active` | `refactor(connection)` |
 | S-07 | i18n 契约与动态 key 检查 | `docs(i18n)` |
 
 ### R-04 / D-05：统一 SQL 扫描
 
-- 新建 `navidog-sql`：`Dialect`（从 `navidog-db` 迁入并由 db re-export）、关键字表、`span` 词法器。
+- 新建 `naviduck-sql`：`Dialect`（从 `naviduck-db` 迁入并由 db re-export）、关键字表、`span` 词法器。
 - `span::spans(sql, dialect)` 覆盖字符串、引号标识符、行/块注释（PostgreSQL 嵌套）、`$tag$`、`[$name]` 参数、括号深度、语句分隔符（MySQL `DELIMITER` 与 `BEGIN…END` 例外）。`span::check` 报告未闭合引号/注释和括号不平衡，`span::separators` 给出深度 0 的分隔符位置。
-- 六个消费者改为消费同一份 span 结果，各自的跳过函数删除：`navidog-db::sql`、`navidog-util::sql_text`、`navidog-util::sql_format`、`navidog-grid::filter`、`navidog-schema::table_design::{parse,properties,entries}`。
-- 回归：`navidog-sql/src/span/tests.rs` 覆盖清单里的 `SELECT $$ [$x] $$`、`E'a\';b'`、`foo$tag$`、`#` 注释、嵌套注释、`DELIMITER //`、`BEGIN…END`、反斜杠关闭的字符串和方括号标识符；`navidog-grid/src/filter/consistency_tests.rs` 用同一段 SQL 检查分句、字段列表、参数、筛选、格式化、列属性六处结论一致。
+- 六个消费者改为消费同一份 span 结果，各自的跳过函数删除：`naviduck-db::sql`、`naviduck-util::sql_text`、`naviduck-util::sql_format`、`naviduck-grid::filter`、`naviduck-schema::table_design::{parse,properties,entries}`。
+- 回归：`naviduck-sql/src/span/tests.rs` 覆盖清单里的 `SELECT $$ [$x] $$`、`E'a\';b'`、`foo$tag$`、`#` 注释、嵌套注释、`DELIMITER //`、`BEGIN…END`、反斜杠关闭的字符串和方括号标识符；`naviduck-grid/src/filter/consistency_tests.rs` 用同一段 SQL 检查分句、字段列表、参数、筛选、格式化、列属性六处结论一致。
 
 ### D-08 / A-06：Catalog/OutlineCache 统一缓存
 
@@ -34,17 +34,17 @@
 
 ### A-01 / A-02：app-state 拆分与依赖方向
 
-- `navidog-core` 整体改名为 `navidog-app-state`（settings/store/workspace/favorites/snippets/vgroups/actions/registry/uri + `init`），纯数据继续留在 `navidog-model`。72 个文件的 `navidog_core::…` 按模块迁到 `navidog_model::…` 或 `navidog_app_state::…`；`navidog-core` 删除，没有兼容 facade。
+- `naviduck-core` 整体改名为 `naviduck-app-state`（settings/store/workspace/favorites/snippets/vgroups/actions/registry/uri + `init`），纯数据继续留在 `naviduck-model`。72 个文件的 `naviduck_core::…` 按模块迁到 `naviduck_model::…` 或 `naviduck_app_state::…`；`naviduck-core` 删除，没有兼容 facade。
 - i18n 域从 `core.*` 改为 `app_state.*`（`locales/app_state.yml`）。
-- `navidog-db` 只依赖 `navidog-model`，驱动栈不再链接 GPUI；新增 `crates/navidog-headless`（只依赖 model + db）编译并运行 SQLite。
-- 新增 `scripts/check-deps.sh`：`navidog-model`/`navidog-db`/`navidog-sql`/`navidog-schema`/`navidog-util`/`navidog-sql-log`/`navidog-headless` 的 normal 依赖不得出现 `gpui`，`crates/navidog-core` 不得回潮；已接入 `lint.yml`。
-- `docs/design/00-overview.md` 的 crate 表、依赖规则和里程碑 crate 列同步；M7 的 ER 图 crate 暂记作 `navidog-er`，因为 `navidog-model` 已是纯数据层。
+- `naviduck-db` 只依赖 `naviduck-model`，驱动栈不再链接 GPUI；新增 `crates/naviduck-headless`（只依赖 model + db）编译并运行 SQLite。
+- 新增 `scripts/check-deps.sh`：`naviduck-model`/`naviduck-db`/`naviduck-sql`/`naviduck-schema`/`naviduck-util`/`naviduck-sql-log`/`naviduck-headless` 的 normal 依赖不得出现 `gpui`，`crates/naviduck-core` 不得回潮；已接入 `lint.yml`。
+- `docs/design/00-overview.md` 的 crate 表、依赖规则和里程碑 crate 列同步；M7 的 ER 图 crate 暂记作 `naviduck-er`，因为 `naviduck-model` 已是纯数据层。
 
-### A-03：`table_design` 拆到 `navidog-schema`
+### A-03：`table_design` 拆到 `naviduck-schema`
 
-- 新 `navidog-schema` 持有表草稿/解析/表单/迁移计划（约 4,000 行），依赖 `navidog-model` + `navidog-db` 的接口 + `navidog-sql`，没有复制驱动类型。
-- `navidog-db` 删除 `pub mod table_design`，`rg 'table_design' crates/navidog-db/src` 为空；designer 和 grid 的一致性测试改为 `navidog_schema::table_design`。仓库外没有消费者，为此没有保留过渡 re-export。
-- 实库 DDL 测试随模块迁到 `navidog-schema`，CI 的 `integration.yml` 同步改了命令。
+- 新 `naviduck-schema` 持有表草稿/解析/表单/迁移计划（约 4,000 行），依赖 `naviduck-model` + `naviduck-db` 的接口 + `naviduck-sql`，没有复制驱动类型。
+- `naviduck-db` 删除 `pub mod table_design`，`rg 'table_design' crates/naviduck-db/src` 为空；designer 和 grid 的一致性测试改为 `naviduck_schema::table_design`。仓库外没有消费者，为此没有保留过渡 re-export。
+- 实库 DDL 测试随模块迁到 `naviduck-schema`，CI 的 `integration.yml` 同步改了命令。
 
 ### A-07：超长文件拆分
 
@@ -66,7 +66,7 @@
 - 内存模型：`profiles: Vec<Profile>` + `active: usize`（激活项在数组里）。`active()`/`active_mut()`/`active_profile_name()` 访问激活配置，`Deref`/`DerefMut` 到 `Profile` 让 `connection.general` 等既有字段访问不改。切换/添加/删除只移动索引，`with_active_profile` 用 Drop 守卫恢复。
 - `ConnectionsFile::reencrypt` 按索引遍历全部配置文件；`duplicate` 随克隆带走全部配置。
 - **兼容窗口**：`connections.json` 的写格式保持历史布局（激活设置在顶层、`profile` 是激活名、`profiles` 只放其余配置），所以**旧版本仍能读新版本写的文件，不需要迁移**；读格式同时接受 `profiles` 含全部配置 + `active` 索引的新布局，将来切换写格式时不用再做迁移。两代 fixture 都有测试。
-- 边界测试：7 个以上配置文件、重名、空名字、旧/新两种 JSON、panic 后激活项恢复（`navidog-model`）；8 个配置文件的 rekey/duplicate 秘密字段（`navidog-app-state`）。
+- 边界测试：7 个以上配置文件、重名、空名字、旧/新两种 JSON、panic 后激活项恢复（`naviduck-model`）；8 个配置文件的 rekey/duplicate 秘密字段（`naviduck-app-state`）。
 
 ### S-07：i18n 契约
 
@@ -82,13 +82,13 @@
 | --- | --- | --- |
 | 格式 | `cargo fmt --all --check` | 通过 |
 | 静态检查 | `cargo clippy --workspace --all-targets -- -D warnings` | 通过 |
-| 单元/headless 测试 | `cargo test --workspace --exclude navidog -j 1`、`cargo test -p navidog -j 1` | 通过 |
+| 单元/headless 测试 | `cargo test --workspace --exclude naviduck -j 1`、`cargo test -p naviduck -j 1` | 通过 |
 | 裸值检查 | `scripts/check-raw-px.sh` | 通过 |
 | i18n 检查 | `scripts/check-i18n.sh` | 通过 |
 | 依赖方向 | `scripts/check-deps.sh` | 通过 |
-| headless 依赖检查 | `cargo test -p navidog-headless` | 通过（SQLite 连接/执行 SQL，模型序列化） |
-| 实库测试 | `docker compose up -d --wait && NAVIDOG_LIVE=1 cargo test -p navidog-db -p navidog-schema -p navidog-query --lib --test live --locked -j 1` | 通过：`navidog-db` 的 `tests/live.rs` 15 项、`navidog-schema` 的 lib（含 3 项实库 DDL/表选项/注释重命名回归）22 项、`navidog-query` 的 lib 33 项；MySQL 8.4、MariaDB 11、PostgreSQL 16 容器均 Healthy |
-| 截图 | `cargo test -p navidog --test snapshot` | 未跑：外观未变（见下） |
+| headless 依赖检查 | `cargo test -p naviduck-headless` | 通过（SQLite 连接/执行 SQL，模型序列化） |
+| 实库测试 | `docker compose up -d --wait && NAVIDUCK_LIVE=1 cargo test -p naviduck-db -p naviduck-schema -p naviduck-query --lib --test live --locked -j 1` | 通过：`naviduck-db` 的 `tests/live.rs` 15 项、`naviduck-schema` 的 lib（含 3 项实库 DDL/表选项/注释重命名回归）22 项、`naviduck-query` 的 lib 33 项；MySQL 8.4、MariaDB 11、PostgreSQL 16 容器均 Healthy |
+| 截图 | `cargo test -p naviduck --test snapshot` | 未跑：外观未变（见下） |
 
 截图：本次没有改外观（拆分为纯搬家、缓存/连接模型的行为与界面无关），按遗留清单的 A-07 验收“截图测试只在外观受影响时补跑”未补跑；如需要，可在 PR 批准后补一轮浅深色截图。
 
@@ -112,7 +112,7 @@ CodeRabbit 提了 7 条可操作评论，逐条对照代码核实后全部成立
 
 [2026-10-26 PR #22 审查](../cr/2026-10-26-pr-22.md) 的结论与处理：
 
-- **Standards（违反唯一扫描器）**：`schema/table_design/options.rs` 的 `tokens` 改为消费 `navidog_sql::span::spans`，`decoded` 接收方言（反斜杠只在 MySQL 下当转义）；补 PostgreSQL 带反斜杠标识符和 SQLite `#` 的回归。
+- **Standards（违反唯一扫描器）**：`schema/table_design/options.rs` 的 `tokens` 改为消费 `naviduck_sql::span::spans`，`decoded` 接收方言（反斜杠只在 MySQL 下当转义）；补 PostgreSQL 带反斜杠标识符和 SQLite `#` 的回归。
 - **Catalog 状态机**：完成加载时调用 `ScopeCache::finish_task`，`task_pending` 不再残留；`retain_connections`/`invalidate_connection`/`refresh_scope` 只在真正删除 entries/tasks/generation 时递增 revision 并通知；新增回归测试。generation token 保留，因为强制刷新会替换 task，只有 token 能阻止被替换的加载写回。
 - **A-10**：`reencrypt` 直接遍历 `profiles`，不再临时改 `active`；`SecretField` 的辅助函数改成接收 `&Profile`。
 - **A-07 结构拆分**（`TableSession`/`TableView`、`ResultSession`、`GridModel` 的 storage/edit/projection、`AfterCommit`）：已补齐，见下面“结构级拆分”一节。

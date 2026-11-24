@@ -78,7 +78,7 @@ flowchart LR
 | 保存密码 / Save password | 复选框 | ✓ | ✓ | ✓ | 勾选 |
 | 说明文字 | 11pt 次要文字 | ✓ | ✓ | ✓ | “* 所有密码都加密保存在本机” |
 
-- **偏差**：Navicat 的说明文字是“* 所有密码不会保存到 Navicat Cloud”。navidog 没有 Cloud，改成说明密码的加密存储方式。
+- **偏差**：Navicat 的说明文字是“* 所有密码不会保存到 Navicat Cloud”。naviduck 没有 Cloud，改成说明密码的加密存储方式。
 - SQLite 的“类型”有两个选项：现有的数据库文件、新建 SQLite 3。Navicat 的“新建 SQLite 2”不支持（**偏差**：rusqlite 只支持 SQLite 3）。
 - PostgreSQL 的“节点类型”“成员”“主机类型偏好”属于多主机配置，放到 M2（F-CONN-021 一同实现），M1 不显示。
 
@@ -86,7 +86,7 @@ flowchart LR
 
 | 字段 | MySQL | PostgreSQL | SQLite | 默认值 |
 | --- | --- | --- | --- | --- |
-| 设置位置: | ✓ | ✓ | ✓ | `~/Library/Application Support/navidog/profiles/<连接 ID>`（只读，带“在 Finder 中显示”） |
+| 设置位置: | ✓ | ✓ | ✓ | `~/Library/Application Support/naviduck/profiles/<连接 ID>`（只读，带“在 Finder 中显示”） |
 | 客户端字符集: | ✓ | ✓ | — | 自动 |
 | 编码: | ✓ | ✓ | — | UTF-8 |
 | 保持连接间隔（秒）: | ✓（复选框 + 数字） | ✓ | — | 关闭，240* |
@@ -102,7 +102,7 @@ flowchart LR
 | 兼容性（按钮） | ✓ | — | — | 打开兼容性设置页（F-CONN-008） |
 | 加密 / 密码 / 密码名称 / 旧版页大小 | — | — | ✓ | 不加密。M1 只显示，不启用（rusqlite 需要 SQLCipher 才支持加密数据库，放到 M4 评估） |
 
-“客户端驱动程序版本”是 Navicat 用来切换内置 libmysqlclient 版本的选项。navidog 使用 `mysql_async`，不需要这个选项（**偏差**，不显示）。
+“客户端驱动程序版本”是 Navicat 用来切换内置 libmysqlclient 版本的选项。naviduck 使用 `mysql_async`，不需要这个选项（**偏差**，不显示）。
 
 ### 2.3 数据库
 
@@ -233,7 +233,7 @@ flowchart LR
 
 | 模式 | `crypto` 字段 | 密钥来源 |
 | --- | --- | --- |
-| 本机密钥（默认） | `{ "kind": "machine" }` | 首次使用时生成 32 字节随机密钥。macOS 放登录钥匙串（service `ci.nn.navidog`，account `config-key`），Windows 放凭据管理器，Linux 放配置目录里权限 `0600` 的 `machine-key` |
+| 本机密钥（默认） | `{ "kind": "machine" }` | 首次使用时生成 32 字节随机密钥。macOS 放登录钥匙串（service `com.ekovovo.naviduck`，account `config-key`），Windows 放凭据管理器，Linux 放配置目录里权限 `0600` 的 `machine-key` |
 | 主密码 | `{ "kind": "master", "salt": "…", "m_kib": 19456, "t": 2, "p": 1, "check": { "nonce": "…", "ct": "…" } }` | 用 Argon2id 从主密码派生 32 字节密钥；`check` 是加密后的固定串，用来验证主密码是否正确 |
 
 - 算法为 XChaCha20-Poly1305，每个字段使用随机 24 字节 nonce；associated data 为 `连接 ID + 字段名`，防止密文在字段之间被调换。
@@ -242,7 +242,7 @@ flowchart LR
 - 钥匙串不可用或本机密钥丢失时，秘密字段无法解密：提示用户，相应的连接视为“未保存密码”，不删除任何数据。
 - 各系统上密钥放在哪里、macOS 为什么会弹出钥匙串授权，以及设置里的主密码做什么，见 [12-secrets.md](12-secrets.md)。
 
-## 8. 驱动行为（`navidog-db`，M1 部分）
+## 8. 驱动行为（`naviduck-db`，M1 部分）
 
 | 能力 | MySQL / MariaDB（`mysql_async`） | PostgreSQL（`tokio-postgres`） | SQLite（`rusqlite`，bundled） |
 | --- | --- | --- | --- |

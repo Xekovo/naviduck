@@ -21,10 +21,10 @@ permissions:
 
 env:
   # Baked into the binary. A nightly build follows the pre-release channel.
-  NAVIDOG_BUILD_CHANNEL: ${{ github.ref == 'refs/heads/main' && 'nightly' || 'stable' }}
+  NAVIDUCK_BUILD_CHANNEL: ${{ github.ref == 'refs/heads/main' && 'nightly' || 'stable' }}
   CARGO_TERM_COLOR: always
   RUST_TOOLCHAIN: 1.99.0
-  APP_NAME: Navidog
+  APP_NAME: Naviduck
 
 jobs:
   prepare_vars:
@@ -94,7 +94,7 @@ jobs:
             target: x86_64-apple-darwin
             arch: x86_64
     env:
-      NAVIDOG_BUILD_TIMESTAMP: ${{ needs.prepare_vars.outputs.build_rfc3339 }}
+      NAVIDUCK_BUILD_TIMESTAMP: ${{ needs.prepare_vars.outputs.build_rfc3339 }}
     steps:
       - uses: actions/checkout@v7
       - name: Stamp the tag version into Cargo.toml
@@ -145,7 +145,7 @@ jobs:
           done < <(security list-keychains -d user)
           security list-keychains -d user -s "$KEYCHAIN_PATH" "${existing[@]}"
       - name: release
-        run: cargo bundle --release -p navidog --target ${{ matrix.target }} --features mimalloc
+        run: cargo bundle --release -p naviduck --target ${{ matrix.target }} --features mimalloc
       - name: verify app icon
         run: ./scripts/check-macos-bundle-icon.sh "target/${{ matrix.target }}/release/bundle/osx/${{ env.APP_NAME }}.app"
       - name: sign app
@@ -173,9 +173,9 @@ jobs:
       - name: smoke test (signed app must paint)
         timeout-minutes: 5
         env:
-          NAVIDOG_SMOKE_TEST: "1"
-          NAVIDOG_HOME: ${{ runner.temp }}/navidog-smoke
-        run: ./target/${{ matrix.target }}/release/bundle/osx/${{ env.APP_NAME }}.app/Contents/MacOS/navidog
+          NAVIDUCK_SMOKE_TEST: "1"
+          NAVIDUCK_HOME: ${{ runner.temp }}/naviduck-smoke
+        run: ./target/${{ matrix.target }}/release/bundle/osx/${{ env.APP_NAME }}.app/Contents/MacOS/naviduck
       - name: create dmg
         run: |
           mkdir -p release
@@ -250,7 +250,7 @@ jobs:
           - target: aarch64-pc-windows-msvc
             arch: aarch64
     env:
-      NAVIDOG_BUILD_TIMESTAMP: ${{ needs.prepare_vars.outputs.build_rfc3339 }}
+      NAVIDUCK_BUILD_TIMESTAMP: ${{ needs.prepare_vars.outputs.build_rfc3339 }}
     steps:
       - uses: actions/checkout@v7
       - name: Stamp the tag version into Cargo.toml
@@ -270,40 +270,40 @@ jobs:
         shell: pwsh
         run: |
           cargo install --locked cargo-wix@0.3.9
-          cargo build --release -p navidog --target ${{ matrix.target }} --features mimalloc
-          Copy-Item "target/${{ matrix.target }}/release/navidog.exe" ./navidog.exe
+          cargo build --release -p naviduck --target ${{ matrix.target }} --features mimalloc
+          Copy-Item "target/${{ matrix.target }}/release/naviduck.exe" ./naviduck.exe
           # light.exe resolves Icon SourceFile from the process cwd, not the wxs directory.
-          $env:NAVIDOG_ICON = (Resolve-Path "crates/navidog/icons/navidog.ico").Path
-          cargo wix --nocapture --no-build -p navidog --target ${{ matrix.target }}
+          $env:NAVIDUCK_ICON = (Resolve-Path "crates/naviduck/icons/naviduck.ico").Path
+          cargo wix --nocapture --no-build -p naviduck --target ${{ matrix.target }}
           $msi = @(
             "target/wix",
             "target/${{ matrix.target }}/wix"
           ) | ForEach-Object { Get-ChildItem $_ -Filter *.msi -ErrorAction SilentlyContinue } | Select-Object -First 1
           if (-not $msi) { throw "cargo-wix did not write an msi" }
-          Copy-Item $msi.FullName ./navidog.msi
+          Copy-Item $msi.FullName ./naviduck.msi
       - name: smoke test
         if: matrix.arch == 'x86_64'
         timeout-minutes: 3
         shell: pwsh
         env:
-          NAVIDOG_SMOKE_TEST: "1"
-          NAVIDOG_HOME: ${{ runner.temp }}/navidog-smoke
+          NAVIDUCK_SMOKE_TEST: "1"
+          NAVIDUCK_HOME: ${{ runner.temp }}/naviduck-smoke
         run: |
-          $p = Start-Process -FilePath .\navidog.exe -Wait -PassThru
+          $p = Start-Process -FilePath .\naviduck.exe -Wait -PassThru
           if ($p.ExitCode -ne 0) { exit 1 }
       - name: package
         shell: pwsh
         run: |
-          $zipName = "navidog-windows-${{ matrix.arch }}.zip"
-          Compress-Archive -Path navidog.exe -DestinationPath $zipName
+          $zipName = "naviduck-windows-${{ matrix.arch }}.zip"
+          Compress-Archive -Path naviduck.exe -DestinationPath $zipName
           echo "ZIP_NAME=$zipName" >> $env:GITHUB_ENV
 
-          $msiName = "navidog-windows-${{ matrix.arch }}.msi"
-          Copy-Item navidog.msi $msiName
+          $msiName = "naviduck-windows-${{ matrix.arch }}.msi"
+          Copy-Item naviduck.msi $msiName
           echo "MSI_NAME=$msiName" >> $env:GITHUB_ENV
 
-          $msiZipName = "navidog-windows-${{ matrix.arch }}.msi.zip"
-          Compress-Archive -Path navidog.msi -DestinationPath $msiZipName
+          $msiZipName = "naviduck-windows-${{ matrix.arch }}.msi.zip"
+          Compress-Archive -Path naviduck.msi -DestinationPath $msiZipName
           echo "MSI_ZIP_NAME=$msiZipName" >> $env:GITHUB_ENV
       - name: checksum
         if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
@@ -367,7 +367,7 @@ jobs:
             arch: aarch64
             appimagetool: appimagetool-aarch64.AppImage
     env:
-      NAVIDOG_BUILD_TIMESTAMP: ${{ needs.prepare_vars.outputs.build_rfc3339 }}
+      NAVIDUCK_BUILD_TIMESTAMP: ${{ needs.prepare_vars.outputs.build_rfc3339 }}
     steps:
       - uses: actions/checkout@v7
       - name: Stamp the tag version into Cargo.toml
@@ -394,47 +394,47 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: "1"
         run: |
           cargo install --locked cargo-deb@3.7.0 cargo-generate-rpm@0.21.0
-          cargo build --release -p navidog --features mimalloc
-          cargo deb -p navidog --no-build -o "./navidog-linux-${{ matrix.arch }}.deb"
-          cargo generate-rpm -p crates/navidog -o "./navidog-linux-${{ matrix.arch }}.rpm"
+          cargo build --release -p naviduck --features mimalloc
+          cargo deb -p naviduck --no-build -o "./naviduck-linux-${{ matrix.arch }}.deb"
+          cargo generate-rpm -p crates/naviduck -o "./naviduck-linux-${{ matrix.arch }}.rpm"
           # cargo-appimage only accepts a Cargo.toml that is itself the
           # workspace root. This package inherits version and deps, and the
           # tool always opens ./Cargo.toml, which cargo_toml 0.22 cannot
           # walk up from. appimagetool is already on PATH.
-          appdir="target/appimage/navidog.AppDir"
+          appdir="target/appimage/naviduck.AppDir"
           rm -rf "$appdir"
           mkdir -p "$appdir/usr/bin" target/appimage
-          cp target/release/navidog "$appdir/usr/bin/navidog"
-          cp crates/navidog/assets/navidog.desktop "$appdir/navidog.desktop"
-          cp crates/navidog/icons/navidog.png "$appdir/navidog.png"
-          printf '%s\n' '#!/bin/sh' 'HERE="$(dirname "$(readlink -f "$0")")"' 'exec "$HERE/usr/bin/navidog" "$@"' > "$appdir/AppRun"
-          chmod +x "$appdir/AppRun" "$appdir/usr/bin/navidog"
-          ARCH=${{ matrix.arch }} appimagetool "$appdir" target/appimage/navidog.AppImage
-          mv target/release/navidog ./navidog
-          chmod +x navidog
-          objdump -p ./navidog | grep GLIBC
-          tar -czvf "navidog-linux-${{ matrix.arch }}.tar.gz" navidog
-          mv target/appimage/navidog.AppImage ./navidog.AppImage
-          tar -czvf "navidog-${{ matrix.arch }}.AppImage.tar.gz" navidog.AppImage
+          cp target/release/naviduck "$appdir/usr/bin/naviduck"
+          cp crates/naviduck/assets/naviduck.desktop "$appdir/naviduck.desktop"
+          cp crates/naviduck/icons/naviduck.png "$appdir/naviduck.png"
+          printf '%s\n' '#!/bin/sh' 'HERE="$(dirname "$(readlink -f "$0")")"' 'exec "$HERE/usr/bin/naviduck" "$@"' > "$appdir/AppRun"
+          chmod +x "$appdir/AppRun" "$appdir/usr/bin/naviduck"
+          ARCH=${{ matrix.arch }} appimagetool "$appdir" target/appimage/naviduck.AppImage
+          mv target/release/naviduck ./naviduck
+          chmod +x naviduck
+          objdump -p ./naviduck | grep GLIBC
+          tar -czvf "naviduck-linux-${{ matrix.arch }}.tar.gz" naviduck
+          mv target/appimage/naviduck.AppImage ./naviduck.AppImage
+          tar -czvf "naviduck-${{ matrix.arch }}.AppImage.tar.gz" naviduck.AppImage
       - name: smoke test (first frame must paint)
         continue-on-error: true
         timeout-minutes: 5
         env:
-          NAVIDOG_SMOKE_TEST: "1"
-          NAVIDOG_HOME: ${{ runner.temp }}/navidog-smoke
+          NAVIDUCK_SMOKE_TEST: "1"
+          NAVIDUCK_HOME: ${{ runner.temp }}/naviduck-smoke
         run: |
           sudo apt-get install -y xvfb mesa-vulkan-drivers libvulkan1
-          xvfb-run -a ./navidog
+          xvfb-run -a ./naviduck
       - name: checksum
         if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
         run: |
           mkdir -p meta
           : > "meta/linux-${{ matrix.arch }}.txt"
           for entry in \
-            "navidog-linux-${{ matrix.arch }}.tar.gz tarball" \
-            "navidog-${{ matrix.arch }}.AppImage.tar.gz appimage" \
-            "navidog-linux-${{ matrix.arch }}.deb deb" \
-            "navidog-linux-${{ matrix.arch }}.rpm rpm"; do
+            "naviduck-linux-${{ matrix.arch }}.tar.gz tarball" \
+            "naviduck-${{ matrix.arch }}.AppImage.tar.gz appimage" \
+            "naviduck-linux-${{ matrix.arch }}.deb deb" \
+            "naviduck-linux-${{ matrix.arch }}.rpm rpm"; do
             set -- $entry
             f="$1"; kind="$2"
             sha="$(sha256sum "$f" | awk '{print $1}')"
@@ -446,10 +446,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ./scripts/upload_asset.sh "navidog-linux-${{ matrix.arch }}.deb"
-          ./scripts/upload_asset.sh "navidog-linux-${{ matrix.arch }}.rpm"
-          ./scripts/upload_asset.sh "navidog-linux-${{ matrix.arch }}.tar.gz"
-          ./scripts/upload_asset.sh "navidog-${{ matrix.arch }}.AppImage.tar.gz"
+          ./scripts/upload_asset.sh "naviduck-linux-${{ matrix.arch }}.deb"
+          ./scripts/upload_asset.sh "naviduck-linux-${{ matrix.arch }}.rpm"
+          ./scripts/upload_asset.sh "naviduck-linux-${{ matrix.arch }}.tar.gz"
+          ./scripts/upload_asset.sh "naviduck-${{ matrix.arch }}.AppImage.tar.gz"
       - name: upload checksum meta
         if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v7
@@ -462,10 +462,10 @@ jobs:
         with:
           name: dist-linux-${{ matrix.arch }}
           path: |
-            navidog-linux-${{ matrix.arch }}.deb
-            navidog-linux-${{ matrix.arch }}.rpm
-            navidog-linux-${{ matrix.arch }}.tar.gz
-            navidog-${{ matrix.arch }}.AppImage.tar.gz
+            naviduck-linux-${{ matrix.arch }}.deb
+            naviduck-linux-${{ matrix.arch }}.rpm
+            naviduck-linux-${{ matrix.arch }}.tar.gz
+            naviduck-${{ matrix.arch }}.AppImage.tar.gz
           if-no-files-found: error
           retention-days: 3
           compression-level: 0
@@ -572,7 +572,7 @@ jobs:
           # draft. Other drafts stay out.
           gh api "repos/${REPO}/releases?per_page=30" > releases.json
           mkdir -p index-work
-          # Same clock as NAVIDOG_BUILD_TIMESTAMP. A tag publish copies the
+          # Same clock as NAVIDUCK_BUILD_TIMESTAMP. A tag publish copies the
           # nightly value so this tag's build time does not replace it.
           if [ "$TAG" = "nightly" ]; then
             NIGHTLY_BUILT="$BUILD_RFC3339"

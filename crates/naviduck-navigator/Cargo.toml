@@ -1,0 +1,34 @@
+[package]
+name = "naviduck-navigator"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Object browser for naviduck."
+
+[dependencies]
+naviduck-session = { path = "../naviduck-session" }
+naviduck-ui.workspace = true
+naviduck-model.workspace = true
+naviduck-sql = { path = "../naviduck-sql" }
+naviduck-app-state.workspace = true
+naviduck-db.workspace = true
+naviduck-util.workspace = true
+gpui-kit = { workspace = true, features = ["tree-sitter-sql"] }
+anyhow.workspace = true
+lsp-types = "0.97"
+rust-i18n.workspace = true
+tracing.workspace = true
+tokio.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+naviduck-mysql = { path = "../naviduck-mysql" }
+naviduck-postgres = { path = "../naviduck-postgres" }
+naviduck-sqlite = { path = "../naviduck-sqlite" }
+naviduck-test-support = { path = "../naviduck-test-support" }
+gpui-kit = { workspace = true, features = ["test-support", "tree-sitter-sql"] }
+tempfile = "3"

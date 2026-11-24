@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Naviduck
+Comment=Database client
+Exec=naviduck
+Icon=naviduck
+Categories=Development;Database;
+Terminal=false

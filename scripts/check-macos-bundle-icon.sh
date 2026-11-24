@@ -5,19 +5,19 @@
 set -euo pipefail
 
 if [ "$#" -ne 1 ] || [ ! -d "$1" ]; then
-  echo "Usage: $0 path/to/Navidog.app" >&2
+  echo "Usage: $0 path/to/Naviduck.app" >&2
   exit 2
 fi
 
 app="$1"
-icon="$app/Contents/Resources/navidog.icns"
+icon="$app/Contents/Resources/naviduck.icns"
 if [ ! -f "$icon" ]; then
   echo "missing $icon" >&2
   exit 1
 fi
 
 name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$app/Contents/Info.plist")"
-if [ "$name" != "navidog.icns" ]; then
-  echo "CFBundleIconFile is '${name}', expected navidog.icns" >&2
+if [ "$name" != "naviduck.icns" ]; then
+  echo "CFBundleIconFile is '${name}', expected naviduck.icns" >&2
   exit 1
 fi

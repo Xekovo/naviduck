@@ -1,0 +1,23 @@
+[package]
+name = "naviduck-schema"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Lossless table drafts, definition parsing and guarded schema changes. UI-free; depends on the driver interfaces in naviduck-db."
+
+[dependencies]
+naviduck-db = { path = "../naviduck-db" }
+naviduck-model.workspace = true
+naviduck-sql = { path = "../naviduck-sql" }
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+naviduck-mysql = { path = "../naviduck-mysql" }
+naviduck-postgres = { path = "../naviduck-postgres" }
+naviduck-sqlite = { path = "../naviduck-sqlite" }
+naviduck-dameng = { path = "../naviduck-dameng" }

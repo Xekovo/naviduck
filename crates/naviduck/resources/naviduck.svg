@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- naviduck app icon: a white-and-orange dog looking up. Drawn on a 900 tile, scaled onto the macOS grid (824 body, 100 inset). -->
+  <defs>
+    <linearGradient id="bg" gradientUnits="userSpaceOnUse" x1="62" y1="220" x2="962" y2="700">
+      <stop offset="0" stop-color="#1C55F1"/>
+      <stop offset="0.5" stop-color="#2297F4"/>
+      <stop offset="1" stop-color="#36C6E6"/>
+    </linearGradient>
+    <radialGradient id="bg-glow" gradientUnits="userSpaceOnUse" cx="962" cy="640" r="380">
+      <stop offset="0" stop-color="#4DE5DF"/>
+      <stop offset="1" stop-color="#4DE5DF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="body" gradientUnits="userSpaceOnUse" x1="430" y1="640" x2="640" y2="970">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.35" stop-color="#FAFBFE"/>
+      <stop offset="1" stop-color="#C9D8F6"/>
+    </linearGradient>
+    <linearGradient id="neck" gradientUnits="userSpaceOnUse" x1="660" y1="540" x2="585" y2="650">
+      <stop offset="0" stop-color="#C3CCF0"/>
+      <stop offset="1" stop-color="#C3CCF0" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="ear" gradientUnits="userSpaceOnUse" x1="440" y1="215" x2="270" y2="600">
+      <stop offset="0" stop-color="#FFC83C"/>
+      <stop offset="1" stop-color="#F7911F"/>
+    </linearGradient>
+    <linearGradient id="ear-fold" gradientUnits="userSpaceOnUse" x1="450" y1="290" x2="390" y2="615">
+      <stop offset="0" stop-color="#F49024"/>
+      <stop offset="1" stop-color="#DB5A10"/>
+    </linearGradient>
+    <linearGradient id="back" gradientUnits="userSpaceOnUse" x1="320" y1="610" x2="200" y2="950">
+      <stop offset="0" stop-color="#FFB82F"/>
+      <stop offset="1" stop-color="#F4891C"/>
+    </linearGradient>
+    <radialGradient id="nose" gradientUnits="userSpaceOnUse" cx="800" cy="295" r="80">
+      <stop offset="0" stop-color="#34447F"/>
+      <stop offset="1" stop-color="#141D55"/>
+    </radialGradient>
+    <clipPath id="tile">
+      <rect x="62" y="62" width="900" height="900" rx="205"/>
+    </clipPath>
+  </defs>
+
+  <g transform="translate(43.24 43.24) scale(0.91556)">
+    <!-- Background tile -->
+    <rect x="62" y="62" width="900" height="900" rx="205" fill="url(#bg)"/>
+    <rect x="62" y="62" width="900" height="900" rx="205" fill="url(#bg-glow)"/>
+
+    <g clip-path="url(#tile)">
+      <!-- Head, neck and chest; the left edge hides under the ear and the back -->
+      <path fill="url(#body)" d="M380 250 C420 212 480 190 540 190 C600 188 650 215 680 250 C700 272 715 288 745 288 C770 288 795 282 820 280 L860 330 C868 400 852 455 815 478 C780 505 730 522 680 535 C640 550 625 590 632 640 C640 700 670 760 680 830 C690 890 672 940 658 990 L250 990 L300 770 L300 650 L310 600 L340 560 Z"/>
+      <!-- Shade where the neck runs under the jaw -->
+      <path fill="url(#neck)" d="M540 650 C545 590 600 548 680 535 C640 550 625 590 632 640 L637 690 L540 690 Z"/>
+
+      <!-- Orange back -->
+      <path fill="url(#back)" d="M300 560 C335 610 355 690 350 770 C345 835 300 895 258 990 L60 990 L60 960 C110 840 200 720 300 600 Z"/>
+
+      <!-- Floppy ear and its darker fold -->
+      <path fill="url(#ear)" d="M445 213 C470 208 492 218 488 245 C482 300 468 360 478 420 C488 470 500 510 495 545 C490 590 455 615 400 615 C340 615 290 595 250 570 C205 545 180 510 185 475 C190 440 220 415 250 385 C290 340 320 270 370 235 C395 220 420 215 445 213 Z"/>
+      <path fill="url(#ear-fold)" d="M440 285 C420 360 398 440 372 500 C352 545 322 572 282 587.6 C315.6 603.8 355 615 400 615 C455 615 490 590 495 545 C500 510 488 470 478 420 C470 375 462 325 440 285 Z"/>
+    </g>
+
+    <!-- Face -->
+    <ellipse cx="603" cy="334" rx="36" ry="42" fill="#16215B"/>
+    <circle cx="607" cy="312" r="12" fill="#FFFFFF"/>
+    <path d="M648 433 C686 467 766 470 812 446 C838 432 850 400 850 362" fill="none" stroke="#16215B" stroke-width="15" stroke-linecap="round"/>
+    <path fill="url(#nose)" d="M776 306 C790 288 820 278 845 280 C860 282 864 296 863 315 C862 340 860 360 852 372 C830 362 800 345 780 330 C768 322 768 312 776 306 Z"/>
+  </g>
+</svg>

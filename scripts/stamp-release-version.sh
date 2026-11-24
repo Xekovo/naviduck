@@ -22,7 +22,7 @@ awk -v version="$version" '
     sub(/"[^"]+"/, "\"" version "\"")
     pkg_done = 1
   }
-  in_deps && /^navidog/ && /version = "/ {
+  in_deps && /^naviduck/ && /version = "/ {
     sub(/version = "[^"]+"/, "version = \"" version "\"")
     dep_count++
   }

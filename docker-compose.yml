@@ -1,23 +1,23 @@
-# navidog 开发与测试数据库。端口与账号同 crates/navidog-db/tests/live.rs。
+# naviduck 开发与测试数据库。端口与账号同 crates/naviduck-db/tests/live.rs。
 # 启动：docker compose up -d --wait
-# 驱动实库测试：NAVIDOG_LIVE=1 cargo test -p navidog-db --test live
+# 驱动实库测试：NAVIDUCK_LIVE=1 cargo test -p naviduck-db --test live
 services:
   mysql:
     image: mysql:8.4
     environment:
-      MYSQL_ROOT_PASSWORD: navidog
+      MYSQL_ROOT_PASSWORD: naviduck
     ports: ["13306:3306"]
     volumes:
       - ./docker/seed/mysql:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-pnavidog"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-pnaviduck"]
       interval: 3s
       retries: 40
 
   mariadb:
     image: mariadb:11
     environment:
-      MARIADB_ROOT_PASSWORD: navidog
+      MARIADB_ROOT_PASSWORD: naviduck
     ports: ["13307:3306"]
     volumes:
       - ./docker/seed/mysql:/docker-entrypoint-initdb.d:ro
@@ -29,7 +29,7 @@ services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_PASSWORD: navidog
+      POSTGRES_PASSWORD: naviduck
     # 使用镜像自带的自签名证书开启 SSL，用于测试 SSL 模式
     command: >
       -c ssl=on
@@ -47,8 +47,8 @@ services:
   ssh:
     image: lscr.io/linuxserver/openssh-server:latest
     environment:
-      USER_NAME: navidog
-      USER_PASSWORD: navidog
+      USER_NAME: naviduck
+      USER_PASSWORD: naviduck
       PASSWORD_ACCESS: "true"
       DOCKER_MODS: linuxserver/mods:openssh-server-ssh-tunnel
     ports: ["12222:2222"]

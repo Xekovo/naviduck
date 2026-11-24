@@ -1,0 +1,22 @@
+[package]
+name = "naviduck-connection"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Connection manager for naviduck."
+
+[dependencies]
+naviduck-session = { path = "../naviduck-session" }
+naviduck-ui.workspace = true
+naviduck-model.workspace = true
+naviduck-app-state.workspace = true
+naviduck-db.workspace = true
+gpui-kit.workspace = true
+rust-i18n.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+gpui-kit = { workspace = true, features = ["test-support"] }

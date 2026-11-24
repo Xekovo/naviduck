@@ -28,7 +28,7 @@
 
 ## 2. 驱动与迁移
 
-领域草稿和方言 SQL 计划在 navidog-db；UI 在独立 navidog-designer，不依赖其他 feature。读取原始 CREATE TABLE 定义，分离字段、表约束、表选项和独立索引/注释语句。保留未编辑片段，未知语法不能悄悄降级。
+领域草稿和方言 SQL 计划在 naviduck-db；UI 在独立 naviduck-designer，不依赖其他 feature。读取原始 CREATE TABLE 定义，分离字段、表约束、表选项和独立索引/注释语句。保留未编辑片段，未知语法不能悄悄降级。
 
 - MySQL/MariaDB：差异生成 ALTER TABLE；字段按原名称识别重命名，使用完整定义 CHANGE COLUMN，保留未改动定义与表选项。约束和索引改动须能识别名称，否则阻止保存，提示原因。DDL 隐式提交，执行失败后标记需要重新加载，禁止对部分成功的状态盲目重试。
 - PostgreSQL：字段添加/删除/重命名，支持普通字段类型、NULL 和 DEFAULT 差异；无法安全分解的字段属性变化明确拒绝。约束和索引按名称变更。事务内执行，失败回滚。

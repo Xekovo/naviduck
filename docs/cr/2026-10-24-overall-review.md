@@ -1,4 +1,4 @@
-# navidog 整体代码审查（2026-10-24）
+# naviduck 整体代码审查（2026-10-24）
 
 审查对象：`review/e120f30`（`e120f30`），工作区干净。范围是全部 11 个 crate 加 `xtask`、`scripts/`、`.github/`，以及 `docs/design/00-overview.md`、`AGENTS.md`、`docs/progress.md` 的工程约定。
 
@@ -72,11 +72,11 @@
 
 这些是架构级重构，不是单点 bug；已在本次分支记录，建议按主题另开 PR，避免把行为迁移和修复混在一起。每项的当前缺口、目标、验收标准和推荐 PR 顺序见 [2026-10-26-remaining-work.md](2026-10-26-remaining-work.md)。
 
-- **R-04 / D-05（SQL 扫描统一）**：`navidog-sql` 的 `span::spans` 成为唯一词法层（字符串、引号标识符、注释、`$tag$`、参数、括号深度、语句边界）；六个消费者全部改为消费它，各自的跳过函数已删除，跨消费者一致性测试在 `navidog-grid/src/filter/consistency_tests.rs`。
+- **R-04 / D-05（SQL 扫描统一）**：`naviduck-sql` 的 `span::spans` 成为唯一词法层（字符串、引号标识符、注释、`$tag$`、参数、括号深度、语句边界）；六个消费者全部改为消费它，各自的跳过函数已删除，跨消费者一致性测试在 `naviduck-grid/src/filter/consistency_tests.rs`。
 
 - **D-08（Catalog/OutlineCache）**：`ScopeCache<K, T>` 泛型化后 Catalog 的五类缓存和 OutlineCache 共用同一状态机；`Catalog` 用 typed key 和 `LoadId` 管理 tasks/generation，`invalidate_connection` 一次清空 entries/tasks/generation。
-- **S-07（每 crate i18n 后端）**：采用 crate-local 契约：`scripts/check-i18n.sh` 校验字面量 `t!` key 在本 crate locales 中，并强制动态 key 登记在 `scripts/i18n-dynamic-keys.txt`；跨 crate 文案走 `navidog_ui::db_error_text` 这类显式 helper。统一后端不合并，理由和改路线的条件写在 00-overview。
-- **A-01/A-02（core/db 分层）**：`navidog-core` 已删除，GPUI 应用状态迁到新的 `navidog-app-state`，纯数据留在 `navidog-model`；`navidog-db` 只依赖 model。`navidog-headless`（model + db）与 `scripts/check-deps.sh` 守住依赖方向，CI 已接入。
+- **S-07（每 crate i18n 后端）**：采用 crate-local 契约：`scripts/check-i18n.sh` 校验字面量 `t!` key 在本 crate locales 中，并强制动态 key 登记在 `scripts/i18n-dynamic-keys.txt`；跨 crate 文案走 `naviduck_ui::db_error_text` 这类显式 helper。统一后端不合并，理由和改路线的条件写在 00-overview。
+- **A-01/A-02（core/db 分层）**：`naviduck-core` 已删除，GPUI 应用状态迁到新的 `naviduck-app-state`，纯数据留在 `naviduck-model`；`naviduck-db` 只依赖 model。`naviduck-headless`（model + db）与 `scripts/check-deps.sh` 守住依赖方向，CI 已接入。
 - **A-06（缓存/选择）**：`Catalog::require(Requirement)` 成为唯一加载入口，`require_selection` 由 Workspace 选择事件驱动；objects 面板的 `ensure_loaded` 和 `stalled_load` 渲染期补偿已删除，navigator/信息/DDL 面板只声明所需条目。
 - **A-07（god object，进行中）**：`app/update.rs` 的安装/替换逻辑已拆到 `update/install.rs`；viewer/results/editor/form/model 的拆分仍是纯搬家工作。
 - **A-10（profile 交换模型）**：`Connection` 改成 `profiles + active`，激活配置在数组里，切换/添加/删除/重新加密只动 `profiles[active]`；`connections.json` 写旧布局、读两种布局，旧 fixture 和 7+ 配置文件的边界都有测试。
@@ -88,39 +88,39 @@
 如果只做三件事，按收益排序：
 
 1. **收口三套基础设施**：一个 SQL 词法器、一个 JSON 持久化器、一套错误文案/恢复提示。它们目前各有 6～9 份实现，是后续所有功能都会继续踩的复制源。
-2. **拆开 `navidog-core` 和 `navidog-db` 的 GPUI 依赖**：现在“领域层”和“驱动层”都依赖 UI 框架，headless 消费者要编译整个 GPU 栈；这是 M5 插件和 M14 新数据库之前必须解决的边界问题。
+2. **拆开 `naviduck-core` 和 `naviduck-db` 的 GPUI 依赖**：现在“领域层”和“驱动层”都依赖 UI 框架，headless 消费者要编译整个 GPU 栈；这是 M5 插件和 M14 新数据库之前必须解决的边界问题。
 3. **把驱动元数据收进 `Driver`**：默认端口、图标、连接表单字段、方言现在散在 8 个文件里；再加一个数据库要改 core、ui、connection、query、designer 五个 crate，与插件 API 的承诺不符。
 
 ### 主要问题（按严重度）
 
 | # | 严重度 | 类别 | 问题 | 关键证据 |
 | --- | --- | --- | --- | --- |
-| 1 | 重要 | 架构 | `navidog-core` 同时是领域层、配置层、全局状态层和跨 feature 动作层；49 个字段的 `Settings` 和 15 个模块使它成为 god crate | `crates/navidog-core/src/settings.rs:159`、`crates/navidog-core/src/actions.rs:1`、`crates/navidog-core/Cargo.toml:11` |
-| 2 | 重要 | 架构 | `navidog-core`、`navidog-db` 依赖 `gpui-kit`；驱动栈会带上 GPU/窗口栈，headless 使用和单测都被迫进入 GPUI | `crates/navidog-core/src/store.rs:5`、`crates/navidog-db/src/driver.rs:294`、两份 `Cargo.toml` |
-| 3 | 重要 | 重复 | MySQL 与 PostgreSQL 的 `remember/replay/execute/execute_read/ping` 是逐行复制，恢复逻辑已经出现方言分叉 | `crates/navidog-db/src/mysql.rs:180-318`、`crates/navidog-db/src/postgres.rs:272-537` |
-| 4 | 重要 | 重复 | 结果网格与查询结果各自实现提交、关闭询问、底栏、重载；两份提交协议已经不同（事务标志 vs 恒为 false） | `crates/navidog-grid/src/viewer/mod.rs:1132`、`crates/navidog-query/src/results.rs:939` |
-| 5 | 重要 | 重复 | 9 处 JSON 持久化各写一套 load/save；只有 2 处做坏文件备份，收藏夹/代码段会静默清空 | `crates/navidog-core/src/favorites.rs:43`、`crates/navidog-core/src/snippets.rs:142`、`crates/navidog-core/src/store.rs:218` |
-| 6 | 重要 | 重复 | 6 处手写 SQL 扫描/解析，引号、注释、`$tag$` 规则已经不一致；参数替换会改写 `$$...$$` 中的 `[$x]` | `crates/navidog-util/src/sql_text.rs:59`、`crates/navidog-db/src/sql.rs:74`、`crates/navidog-grid/src/filter.rs:912` |
-| 7 | 重要 | 正确性 | 连接表单把非法端口、非法多节点行静默丢弃或改成默认值，保存后配置与用户输入不符 | `crates/navidog-connection/src/form.rs:440-446`、`crates/navidog-core/src/connection.rs:227` |
-| 8 | 重要 | 规范 | 约 20 条中文注释、15 条中文用户可见文案留在生产代码；`DbError` 把本地化文本烘焙进 `message`，切语言不更新、日志中英混杂 | `crates/navidog-db/src/metadata.rs:15`、`crates/navidog-db/src/sessions.rs:106`、`crates/navidog-core/src/registry.rs:1` |
-| 9 | 重要 | 架构 | 网格 crate 持有事务/方言提交逻辑，查询 crate 为了提交反过来依赖网格；层次方向与 AGENTS 的约定相反 | `crates/navidog-grid/src/commit.rs:31`、`crates/navidog-query/src/results.rs:26` |
-| 10 | 重要 | 安全 | SSH 主机密钥无条件接受；更新包只校验同一镜像给出的 SHA-256，且下载目录可预测、校验后按路径重新打开 | `crates/navidog-db/src/ssh.rs:19-24`、`crates/navidog/src/update.rs:449-505` |
+| 1 | 重要 | 架构 | `naviduck-core` 同时是领域层、配置层、全局状态层和跨 feature 动作层；49 个字段的 `Settings` 和 15 个模块使它成为 god crate | `crates/naviduck-core/src/settings.rs:159`、`crates/naviduck-core/src/actions.rs:1`、`crates/naviduck-core/Cargo.toml:11` |
+| 2 | 重要 | 架构 | `naviduck-core`、`naviduck-db` 依赖 `gpui-kit`；驱动栈会带上 GPU/窗口栈，headless 使用和单测都被迫进入 GPUI | `crates/naviduck-core/src/store.rs:5`、`crates/naviduck-db/src/driver.rs:294`、两份 `Cargo.toml` |
+| 3 | 重要 | 重复 | MySQL 与 PostgreSQL 的 `remember/replay/execute/execute_read/ping` 是逐行复制，恢复逻辑已经出现方言分叉 | `crates/naviduck-db/src/mysql.rs:180-318`、`crates/naviduck-db/src/postgres.rs:272-537` |
+| 4 | 重要 | 重复 | 结果网格与查询结果各自实现提交、关闭询问、底栏、重载；两份提交协议已经不同（事务标志 vs 恒为 false） | `crates/naviduck-grid/src/viewer/mod.rs:1132`、`crates/naviduck-query/src/results.rs:939` |
+| 5 | 重要 | 重复 | 9 处 JSON 持久化各写一套 load/save；只有 2 处做坏文件备份，收藏夹/代码段会静默清空 | `crates/naviduck-core/src/favorites.rs:43`、`crates/naviduck-core/src/snippets.rs:142`、`crates/naviduck-core/src/store.rs:218` |
+| 6 | 重要 | 重复 | 6 处手写 SQL 扫描/解析，引号、注释、`$tag$` 规则已经不一致；参数替换会改写 `$$...$$` 中的 `[$x]` | `crates/naviduck-util/src/sql_text.rs:59`、`crates/naviduck-db/src/sql.rs:74`、`crates/naviduck-grid/src/filter.rs:912` |
+| 7 | 重要 | 正确性 | 连接表单把非法端口、非法多节点行静默丢弃或改成默认值，保存后配置与用户输入不符 | `crates/naviduck-connection/src/form.rs:440-446`、`crates/naviduck-core/src/connection.rs:227` |
+| 8 | 重要 | 规范 | 约 20 条中文注释、15 条中文用户可见文案留在生产代码；`DbError` 把本地化文本烘焙进 `message`，切语言不更新、日志中英混杂 | `crates/naviduck-db/src/metadata.rs:15`、`crates/naviduck-db/src/sessions.rs:106`、`crates/naviduck-core/src/registry.rs:1` |
+| 9 | 重要 | 架构 | 网格 crate 持有事务/方言提交逻辑，查询 crate 为了提交反过来依赖网格；层次方向与 AGENTS 的约定相反 | `crates/naviduck-grid/src/commit.rs:31`、`crates/naviduck-query/src/results.rs:26` |
+| 10 | 重要 | 安全 | SSH 主机密钥无条件接受；更新包只校验同一镜像给出的 SHA-256，且下载目录可预测、校验后按路径重新打开 | `crates/naviduck-db/src/ssh.rs:19-24`、`crates/naviduck/src/update.rs:449-505` |
 
 ## 1. 审查范围与验证
 
 | 项 | 数值 |
 | --- | --- |
-| crate | 11 个（`navidog`、`navidog-core`、`navidog-ui`、`navidog-util`、`navidog-db`、`navidog-plugin`、`navidog-connection`、`navidog-navigator`、`navidog-grid`、`navidog-query`、`navidog-designer`）+ `xtask` |
+| crate | 11 个（`naviduck`、`naviduck-core`、`naviduck-ui`、`naviduck-util`、`naviduck-db`、`naviduck-plugin`、`naviduck-connection`、`naviduck-navigator`、`naviduck-grid`、`naviduck-query`、`naviduck-designer`）+ `xtask` |
 | 生产代码 | 135 个 `src/*.rs`，54,555 行 |
 | 测试代码 | 25 个测试文件（含 `src/*_tests.rs`、`src/tests.rs`），11,050 行；283 个 `#[test]` / `#[gpui_kit::test]`（另有 `xtask` 1 个，共 284 项） |
 | 示例 | 3 个，500 行 |
-| 最大生产文件 | `navidog-grid/src/viewer/mod.rs` 3,064 行；另有 6 个生产文件超过 1,000 行（见附录 A） |
+| 最大生产文件 | `naviduck-grid/src/viewer/mod.rs` 3,064 行；另有 6 个生产文件超过 1,000 行（见附录 A） |
 
 | 检查 | 结果 |
 | --- | --- |
 | `cargo fmt --all --check` | 通过 |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 通过 |
-| `cargo test --workspace --no-fail-fast` | 通过（284 项，含 `xtask`；未设置 `NAVIDOG_LIVE`，实库测试按设计跳过） |
+| `cargo test --workspace --no-fail-fast` | 通过（284 项，含 `xtask`；未设置 `NAVIDUCK_LIVE`，实库测试按设计跳过） |
 | `scripts/check-raw-px.sh` | 通过 |
 | 实库测试、截图测试 | 未运行（需要 Docker / Metal） |
 | `cargo deny`、`cargo audit` | 未运行（需要网络/凭据） |
@@ -135,27 +135,27 @@
 
 | 编号 | 位置 | 自研内容 | 可用库/组件 | 影响 | 建议 |
 | --- | --- | --- | --- | --- | --- |
-| R-01 | `crates/navidog-query/src/editor.rs:1372` | `uuid_v4()` 用两个 `rand_u64()`，随机源是 `RandomState` + 时间 | `uuid`（已在 workspace） | 32 位十六进制串不是 RFC 4122 UUID，无版本/变体位；该值同时用于自动恢复文件名 `recovery.rs:42`，碰撞会覆盖草稿 | `Uuid::new_v4().simple()` |
-| R-02 | `crates/navidog-grid/src/date.rs:104-158` | `days_in_month`、`is_leap`、`weekday_sunday`（Sakamoto）、`month_cells`、`civil_from_days`、`utc_today` | `chrono`（workspace）；`gpui-component 0.8` 已有 `date_picker::DatePicker` / `calendar`（`gpui_kit::component` 下可访问） | 55 行日历数学；`utc_today` 用 UTC，东八区 0:00–8:00 点“今天”写入昨天（`progress.md` §4 已登记） | 用 `chrono::Local` 和 `NaiveDate`；日历控件评估 `Calendar`，保留时区尾串的定制逻辑 |
-| R-03 | `crates/navidog-core/src/uri.rs:168-201`、`crates/navidog-core/src/queries.rs:13-41` | 两套 percent 编解码 | `percent-encoding`、`url`（均在锁） | `uri.rs:190` 把 `+` 解成空格；`mysql://u:p+q@h/db` 的密码变成 `p q`，真实密码含 `+` 时永远连不上；两套编码器对保留字符的集合不同 | 统一用 `percent-encoding`，按 path/query 组件选择字符集；删除 `+`→空格 |
-| R-04 | 见下 | 6 处 SQL 扫描/解析 | `tree-sitter-sequel`（已在锁，供高亮）；`sqlparser` 不在锁中，需单独评估 | 引号、注释、美元引号规则已分叉；`$tag$` 参数替换和 PG 下的 Builder 解析都是实际 bug | 在 `navidog-util` 提供唯一的 `spans(sql, dialect)`，上层全部消费它；DDL 解析再评估 `sqlparser` |
-| R-05 | `crates/navidog-util/src/format.rs:4`、`crates/navidog-util/src/update.rs:61`、`crates/navidog-ui/src/theme.rs:137` | 两套十六进制编码 + 一套颜色十六进制 | `hex`（已在锁） | `format.rs` 每字节 `format!` 再 join；命名上 `encode_hex` 与 `hex_encode` 不区分输出格式，CR-23 说已修但两个函数仍在 | `hex::encode`；带空格的展示格式单独命名 |
-| R-06 | `crates/navidog-core/src/paths.rs:4-34`、`crates/navidog-db/src/params.rs:70` | 手写 macOS/Windows/Linux 配置目录和 `~` 展开 | `dirs`、`shellexpand`（均在锁） | `HOME` 未设时 `unwrap_or_default()` 得到空路径，配置会写到进程 CWD；`expand_home` 只认 `~/`；三个 OS 的分支都编进每个二进制 | `dirs::config_dir()` / `home_dir()`，`shellexpand::tilde`，`config_dir` 返回 `Option` |
-| R-07 | `crates/navidog-core/src/paths.rs:42`、`crates/navidog-core/src/crypto.rs:237` | 两套“临时文件 + rename”原子写 | `tempfile`（已在锁） | 固定 `.tmp` 文件名、无 `sync_all`、进程间不互斥；断电后可能留下空文件，与函数注释的承诺不符。密钥文件另写一套 0600 + sync 的实现 | 一个 `NamedTempFile` + `persist` 的 helper，秘密文件带权限参数 |
-| R-08 | `crates/navidog/src/lib.rs:248-286` | 手写 `objc_msgSend` 的 `transmute` 调用设置 Dock 图标 | `objc2`、`objc2-app-kit`（均在锁） | ABI 脆弱；代码注释自己记录了 arm64 变参 ABI 导致 AppKit 抛异常的事故；`unsafe` 范围大 | 用 `objc2` 的 `NSImage`/`NSApplication`；或只在 bundle 里用 `.icns`，删掉这段 |
-| R-09 | `crates/navidog-core/src/settings.rs:137` | 用 `defaults read -g AppleLanguages` 子进程判断系统语言 | `sys-locale`（已在锁） | 平台分支、解析脆弱、每次读设置都起子进程 | `sys_locale::get_locale()` |
-| R-10 | `crates/navidog-core/src/object.rs:25,39`、`crates/navidog-core/src/connection.rs:441`、`crates/navidog-grid/src/filter.rs:41` | 手写 enum 的 `key` / `from_key` / `as_str` | `strum`（已在锁） | 新增一个 `ObjectKind` 要同步 key、from_key、图标、locale、`Dialect::object_kinds` 五处；漏一处就是静默 `None`/空图标 | `EnumString`/`Display` derive；图标和 locale 仍按类型保留 |
+| R-01 | `crates/naviduck-query/src/editor.rs:1372` | `uuid_v4()` 用两个 `rand_u64()`，随机源是 `RandomState` + 时间 | `uuid`（已在 workspace） | 32 位十六进制串不是 RFC 4122 UUID，无版本/变体位；该值同时用于自动恢复文件名 `recovery.rs:42`，碰撞会覆盖草稿 | `Uuid::new_v4().simple()` |
+| R-02 | `crates/naviduck-grid/src/date.rs:104-158` | `days_in_month`、`is_leap`、`weekday_sunday`（Sakamoto）、`month_cells`、`civil_from_days`、`utc_today` | `chrono`（workspace）；`gpui-component 0.8` 已有 `date_picker::DatePicker` / `calendar`（`gpui_kit::component` 下可访问） | 55 行日历数学；`utc_today` 用 UTC，东八区 0:00–8:00 点“今天”写入昨天（`progress.md` §4 已登记） | 用 `chrono::Local` 和 `NaiveDate`；日历控件评估 `Calendar`，保留时区尾串的定制逻辑 |
+| R-03 | `crates/naviduck-core/src/uri.rs:168-201`、`crates/naviduck-core/src/queries.rs:13-41` | 两套 percent 编解码 | `percent-encoding`、`url`（均在锁） | `uri.rs:190` 把 `+` 解成空格；`mysql://u:p+q@h/db` 的密码变成 `p q`，真实密码含 `+` 时永远连不上；两套编码器对保留字符的集合不同 | 统一用 `percent-encoding`，按 path/query 组件选择字符集；删除 `+`→空格 |
+| R-04 | 见下 | 6 处 SQL 扫描/解析 | `tree-sitter-sequel`（已在锁，供高亮）；`sqlparser` 不在锁中，需单独评估 | 引号、注释、美元引号规则已分叉；`$tag$` 参数替换和 PG 下的 Builder 解析都是实际 bug | 在 `naviduck-util` 提供唯一的 `spans(sql, dialect)`，上层全部消费它；DDL 解析再评估 `sqlparser` |
+| R-05 | `crates/naviduck-util/src/format.rs:4`、`crates/naviduck-util/src/update.rs:61`、`crates/naviduck-ui/src/theme.rs:137` | 两套十六进制编码 + 一套颜色十六进制 | `hex`（已在锁） | `format.rs` 每字节 `format!` 再 join；命名上 `encode_hex` 与 `hex_encode` 不区分输出格式，CR-23 说已修但两个函数仍在 | `hex::encode`；带空格的展示格式单独命名 |
+| R-06 | `crates/naviduck-core/src/paths.rs:4-34`、`crates/naviduck-db/src/params.rs:70` | 手写 macOS/Windows/Linux 配置目录和 `~` 展开 | `dirs`、`shellexpand`（均在锁） | `HOME` 未设时 `unwrap_or_default()` 得到空路径，配置会写到进程 CWD；`expand_home` 只认 `~/`；三个 OS 的分支都编进每个二进制 | `dirs::config_dir()` / `home_dir()`，`shellexpand::tilde`，`config_dir` 返回 `Option` |
+| R-07 | `crates/naviduck-core/src/paths.rs:42`、`crates/naviduck-core/src/crypto.rs:237` | 两套“临时文件 + rename”原子写 | `tempfile`（已在锁） | 固定 `.tmp` 文件名、无 `sync_all`、进程间不互斥；断电后可能留下空文件，与函数注释的承诺不符。密钥文件另写一套 0600 + sync 的实现 | 一个 `NamedTempFile` + `persist` 的 helper，秘密文件带权限参数 |
+| R-08 | `crates/naviduck/src/lib.rs:248-286` | 手写 `objc_msgSend` 的 `transmute` 调用设置 Dock 图标 | `objc2`、`objc2-app-kit`（均在锁） | ABI 脆弱；代码注释自己记录了 arm64 变参 ABI 导致 AppKit 抛异常的事故；`unsafe` 范围大 | 用 `objc2` 的 `NSImage`/`NSApplication`；或只在 bundle 里用 `.icns`，删掉这段 |
+| R-09 | `crates/naviduck-core/src/settings.rs:137` | 用 `defaults read -g AppleLanguages` 子进程判断系统语言 | `sys-locale`（已在锁） | 平台分支、解析脆弱、每次读设置都起子进程 | `sys_locale::get_locale()` |
+| R-10 | `crates/naviduck-core/src/object.rs:25,39`、`crates/naviduck-core/src/connection.rs:441`、`crates/naviduck-grid/src/filter.rs:41` | 手写 enum 的 `key` / `from_key` / `as_str` | `strum`（已在锁） | 新增一个 `ObjectKind` 要同步 key、from_key、图标、locale、`Dialect::object_kinds` 五处；漏一处就是静默 `None`/空图标 | `EnumString`/`Display` derive；图标和 locale 仍按类型保留 |
 
 ### R-04 的六处 SQL 扫描
 
 | 文件 | 职责 | 已观察到的规则差异 |
 | --- | --- | --- |
-| `crates/navidog-db/src/sql.rs:74` | 分句、`DELIMITER`、`BEGIN…END` | 认识 `$tag$`、E 字符串；`#` 注释只对 MySQL |
-| `crates/navidog-util/src/sql_text.rs:59` | `[$name]` 参数 | 不认识 `$tag$`；不处理 `#` 注释 |
-| `crates/navidog-util/src/sql_format.rs:42` | 美化/简化时的 token 切分 | 认识 `$tag$`；`#` 注释由调用方开关 |
-| `crates/navidog-grid/src/filter.rs:912,935` | WHERE/ORDER BY 解析 | `skip_string_body` 只对 MySQL 认反斜杠，`paren_end` 对所有方言认；同一段文本两个函数结论不同 |
-| `crates/navidog-db/src/table_design/parse.rs:7` | DDL 顶层逗号/括号 | 引号集多一个 `[`；错误信息是英文，但与 `sql.rs` 的 `$tag$` 规则不同 |
-| `crates/navidog-db/src/table_design/properties.rs:47`、`entries.rs:158` | 列定义、约束/索引条目 | 只做词切分，不共享上面的引号规则 |
+| `crates/naviduck-db/src/sql.rs:74` | 分句、`DELIMITER`、`BEGIN…END` | 认识 `$tag$`、E 字符串；`#` 注释只对 MySQL |
+| `crates/naviduck-util/src/sql_text.rs:59` | `[$name]` 参数 | 不认识 `$tag$`；不处理 `#` 注释 |
+| `crates/naviduck-util/src/sql_format.rs:42` | 美化/简化时的 token 切分 | 认识 `$tag$`；`#` 注释由调用方开关 |
+| `crates/naviduck-grid/src/filter.rs:912,935` | WHERE/ORDER BY 解析 | `skip_string_body` 只对 MySQL 认反斜杠，`paren_end` 对所有方言认；同一段文本两个函数结论不同 |
+| `crates/naviduck-db/src/table_design/parse.rs:7` | DDL 顶层逗号/括号 | 引号集多一个 `[`；错误信息是英文，但与 `sql.rs` 的 `$tag$` 规则不同 |
+| `crates/naviduck-db/src/table_design/properties.rs:47`、`entries.rs:158` | 列定义、约束/索引条目 | 只做词切分，不共享上面的引号规则 |
 
 **实际后果**（不是理论风险）：`SELECT $$ [$x] $$` 在参数替换时会被改成 `SELECT $$ '值' $$`，语句含义被静默改变；PostgreSQL 的 `standard_conforming_strings=on` 下，`paren_end` 仍把反斜杠当转义，而 `skip_string_body` 只在 MySQL 如此；同一段文本的括号深度因此可能不同，`parse_where` 直接返回 `None`，用户点“Builder”没有任何反应。
 
@@ -163,16 +163,16 @@
 
 | 编号 | 重复内容 | 证据 | 风险 | 建议 |
 | --- | --- | --- | --- | --- |
-| D-01 | 会话丢失/结果未知的本地化包装，6 个包装 + 1 个基函数，每个配一份近 40 行的测试 | `navidog-ui/src/lib.rs:22`、`navidog-grid/src/lib.rs:29`、`navidog-grid/src/commit.rs:76`、`navidog-query/src/errors.rs:6`、`navidog-connection/src/lib.rs:357`、`navidog-connection/src/reload.rs:91`、`navidog-navigator/src/errors.rs:6` | 改一句恢复文案要改 6 处；测试里的 “Reopen”/“重新打开” 断言也是 5 份 | `db_error_text` 接收一个 `Recovery` 枚举（SessionLost/OutcomeUnknown）+ 调用方的两条文案；测试只保留基函数和 1 个 feature 代表 |
+| D-01 | 会话丢失/结果未知的本地化包装，6 个包装 + 1 个基函数，每个配一份近 40 行的测试 | `naviduck-ui/src/lib.rs:22`、`naviduck-grid/src/lib.rs:29`、`naviduck-grid/src/commit.rs:76`、`naviduck-query/src/errors.rs:6`、`naviduck-connection/src/lib.rs:357`、`naviduck-connection/src/reload.rs:91`、`naviduck-navigator/src/errors.rs:6` | 改一句恢复文案要改 6 处；测试里的 “Reopen”/“重新打开” 断言也是 5 份 | `db_error_text` 接收一个 `Recovery` 枚举（SessionLost/OutcomeUnknown）+ 调用方的两条文案；测试只保留基函数和 1 个 feature 代表 |
 | D-02 | 9 处 JSON 文件读写 | `core/store.rs:218,486`、`settings.rs:321,333`、`favorites.rs:43,55`、`vgroups.rs:194,230`、`column_widths.rs:36,58`、`snippets.rs:142,150`、`query/recovery.rs:50`、`db/outline.rs:218,222`、`app/state.rs:75,82` | 只有 store/settings 在解析失败时备份；favorites/snippets 的 `.ok()…unwrap_or_default()` 会让一次截断的写在下一次保存时把整个文件清空；保存失败大多只 `tracing::error!`，UI 无提示 | 一个 `JsonStore<T>`：`load_or_backup` + 原子 `save` + `Result`；按“用户数据/可重建缓存”分两档策略 |
 | D-03 | MySQL/PostgreSQL 会话生命周期 | `mysql.rs:180-318` ↔ `postgres.rs:272-537`：`remember`、`replay`、`execute`、`execute_read`、重连 `ping` | 唯一有意的差异是 `e.disconnected` vs `self.lost(&e)`；恢复策略的未来修复必须做两遍，且已经出现分叉 | 在 `Relational` 上给 `execute`/`execute_read` 默认实现，只要求驱动提供 `attempt`/`reconnect`/`remember`/`lost`；或 `RecoveringSession` 包装器 |
 | D-04 | 网格与查询结果的提交、关闭、底栏、重载 | `viewer/mod.rs:410-494,953-1242,1703` ↔ `query/editor.rs:836-898`、`query/results.rs:939-1015,1181` | 两份提交协议已不同：表查看器把 `in_tx/end_transaction` 传给 `apply`（`viewer/mod.rs:1167`），查询结果恒传 `false,false`（`results.rs:970`）；关闭询问的按钮和标题也各写一套 | 提取 `ResultGrid` 之上的 `GridSession`（提交/重载）与 `close_prompt`（UI）两层；查询结果复用同一流程 |
 | D-05 | SQL 扫描/解析 6 处 | 见 §2 R-04 | 规则分叉、参数替换 bug | 同 R-04 |
-| D-06 | 对话框 OK/Cancel 行 | `connection/secrets.rs:223` 有一个 `footer`，仅 connection crate 内复用；`app/opening.rs:26-46` 又定义 `Ok`/`confirm_on_enter`/`footer`；`form.rs:1381`、`preferences.rs:674`、`snippets.rs:239`、`ops.rs:64/184/320` 手写同样结构 | 同一组元素 id（`"cancel"`/`"ok"`）在多处重复；`show_cancel`、`cancel_text`、图标在各副本间不一致 | `navidog_ui::skin::dialog_footer(ok_label, on_ok)`，所有对话框统一用 |
-| D-07 | 小工具函数 | `driver_name`：`connection/lib.rs:339` ↔ `navigator/lib.rs:164`；`db_text`：`connection/lib.rs:357` ↔ `grid/lib.rs:29`；`kind_label`：`navigator/mod.rs:472` ↔ `ops.rs:127`，`info.rs:387` 又内联一次；拖拽预览：`navigator/mod.rs:307` ↔ `:360` | 改一处忘另一处；`kind_label` 的第三份是内联，搜索不到 | 放到 `navidog-ui` 或 `navidog-core` 的公共 helper；拖拽预览用同一组件 + 不同数据 |
+| D-06 | 对话框 OK/Cancel 行 | `connection/secrets.rs:223` 有一个 `footer`，仅 connection crate 内复用；`app/opening.rs:26-46` 又定义 `Ok`/`confirm_on_enter`/`footer`；`form.rs:1381`、`preferences.rs:674`、`snippets.rs:239`、`ops.rs:64/184/320` 手写同样结构 | 同一组元素 id（`"cancel"`/`"ok"`）在多处重复；`show_cancel`、`cancel_text`、图标在各副本间不一致 | `naviduck_ui::skin::dialog_footer(ok_label, on_ok)`，所有对话框统一用 |
+| D-07 | 小工具函数 | `driver_name`：`connection/lib.rs:339` ↔ `navigator/lib.rs:164`；`db_text`：`connection/lib.rs:357` ↔ `grid/lib.rs:29`；`kind_label`：`navigator/mod.rs:472` ↔ `ops.rs:127`，`info.rs:387` 又内联一次；拖拽预览：`navigator/mod.rs:307` ↔ `:360` | 改一处忘另一处；`kind_label` 的第三份是内联，搜索不到 | 放到 `naviduck-ui` 或 `naviduck-core` 的公共 helper；拖拽预览用同一组件 + 不同数据 |
 | D-08 | 元数据缓存 | `navigator/catalog.rs:24-37`（5 个 map + tasks/generation/revision）与 `db/outline.rs:250-280`（outline 内存缓存 + 文件缓存） | 两套几乎相同的“按 scope 缓存 + 代际丢弃 + 失效”逻辑；一个在 navigator，一个在 db | 一个带类型的 `ScopeCache<T>`；outline 只是其中一种值；缓存失效策略由 shell 统一驱动 |
 | D-09 | `nav.*` locale 块 | `connection/locales/connection.yml:378-461`（26 个键）与 `navigator/locales/navigator.yml:2-69` 重复；`nav.filter_starred` 的值不同（`Show starred` vs `Show only starred connections`） | 每个 crate 的 `i18n!` 是独立后端，所以 connection 的这 26 个键实际无人使用，是死数据；一旦有人复用，加载顺序决定文案，且两个值已经不一致 | 删除 connection.yml 的 `nav` 块；`nav.*` 只归 navigator；加一个跨文件重复键检查 |
-| D-10 | 测试 helper | `wait`/`sql` 在 `query/editor_tests.rs:36`、`grid/tests/viewer.rs:41`、`navigator/tests/keys.rs:42`、`navigator/src/info_tests.rs:32`、`app/tests/query_refresh.rs:24` 各一份 | 20ms 真实 sleep + 10s deadline，和 AGENTS 的确定性指引相反；机器慢时偶发 | 新增 dev-only `navidog-test-support`，集中 `wait`/`open_sqlite`/`seed`；等待改用 `advance_clock` |
+| D-10 | 测试 helper | `wait`/`sql` 在 `query/editor_tests.rs:36`、`grid/tests/viewer.rs:41`、`navigator/tests/keys.rs:42`、`navigator/src/info_tests.rs:32`、`app/tests/query_refresh.rs:24` 各一份 | 20ms 真实 sleep + 10s deadline，和 AGENTS 的确定性指引相反；机器慢时偶发 | 新增 dev-only `naviduck-test-support`，集中 `wait`/`open_sqlite`/`seed`；等待改用 `advance_clock` |
 | D-11 | 更新清单 schema | Rust：`app/update.rs:151-190`；CI：`.github/workflows/publish.yml:564-575` 用 `printf` 手写同一份 JSON，平台作业用 6 字段行 + `awk` 位置解析 | 改一个 Rust 字段，CI 不会编译失败，发布时才暴露 | `cargo xtask manifest` 复用 Rust 结构体序列化；CI 只上传 |
 | D-12 | `ObjectsPanel::content` 的双重构建 | `navigator/lib.rs:171` 的 `status_text` 与 `objects.rs:799` 的 render 各调用一次 | 每个对象行、属性都克隆一遍；见 B-09 | 状态栏只读缓存计数，不重建行 |
 
@@ -181,32 +181,32 @@
 | 编号 | 严重度 | 问题 | 证据 | 建议 |
 | --- | --- | --- | --- | --- |
 | S-01 | 重要 | 生产代码里仍有中文注释和用户可见中文；`DbError` 把本地化文案烘焙进 `message` | 注释：`core/registry.rs:1-111`（整文件）、`core/paths.rs:3,36,41`、`db/runtime.rs:1-2`、`db/ssh.rs:1,18,27`、`plugin/lib.rs:1-8`；文案：`db/metadata.rs:15,96`、`db/sqlite.rs:95,99`、`db/sessions.rs:106,168`、`db/mysql.rs:122,168,211`、`db/postgres.rs:77,188`、`db/ssh.rs:72`、`db/runtime.rs:16`、`app/lib.rs:178`、`app/state.rs:83,85` | 注释按 AGENTS 改英文；文案全部进 `locales/*.yml`。`DbError` 增加 `kind`（AppClosed/NotRelational/…），只在 UI 边界用 `t!` 渲染；服务器消息保持原文 |
-| S-02 | 一般 | 未使用的依赖 | `anyhow` 在 6 个 manifest 中声明，源码只有 `query/completion.rs:13` 一处；`navidog-connection` 的 `tokio` 无使用、`serde_json` 仅测试 | 删除 5 个未使用的 `anyhow` 和 connection 的 `tokio`；测试专用依赖移到 `dev-dependencies`；把 `udeps` 从每周改到 PR/每次推送 |
+| S-02 | 一般 | 未使用的依赖 | `anyhow` 在 6 个 manifest 中声明，源码只有 `query/completion.rs:13` 一处；`naviduck-connection` 的 `tokio` 无使用、`serde_json` 仅测试 | 删除 5 个未使用的 `anyhow` 和 connection 的 `tokio`；测试专用依赖移到 `dev-dependencies`；把 `udeps` 从每周改到 PR/每次推送 |
 | S-03 | 一般 | 配置保存失败的处理不一致 | `store.rs:486` 返回 `Result` 并弹通知；`settings.rs:333`、`favorites.rs:55`、`snippets.rs:150`、`column_widths.rs:58`、`state.rs:82` 只记日志；`favorites`/`snippets`/`state` 解析失败不备份 | 统一为 `JsonStore::save -> Result`；调用方弹一次“配置无法保存”；用户数据（收藏/代码段）保留 `.bak` |
 | S-04 | 一般 | 同一状态有多份 | `AppState` 全局 + `MainWindow.state`（`app/lib.rs:71,107`、`main_window.rs:41,474`）；raw 标志三份（`viewer/mod.rs:211`、`grid/mod.rs:170`、`delegate.rs:20`）；`Settings` 启动读两次（`app/lib.rs:33`、`core/settings.rs:381`） | 一份为唯一所有者；`AppState` 只留全局或只留 window，另一个用借用；raw 只留 `ResultGrid` 并向 delegate 同步 |
 | S-05 | 建议 | 命名/生命周期约定不一致 | `Tab_`（`connection/form.rs:82`，为避开 `Tab` 导入）；`run_once` 已弃用但仍公开（`db/sessions.rs:348`），只被 `tests/error_api.rs:16` 用；`store_error_message` 弃用转发（`connection/lib.rs:319`）；`StoreError::localized_message` 与自由函数 `error_message` 重复（`core/store.rs:15,195`）；`hex_encode` vs `encode_hex` | 统一命名；删除兼容入口前先改测试；一个错误一个本地化入口 |
 | S-06 | 重要 | 文档与代码版本漂移 | `AGENTS.md:3,26` 与 `docs/design/00-overview.md:67,109` 写 gpui-kit 0.7/0.7.3；`Cargo.toml:27` 是 0.8；`deny.toml:7` 的注释也写 0.7.3 | 更新文档版本与“已知的坑”；这一步不做，后续按 AGENTS 排查 0.8 问题会走错方向 |
-| S-07 | 一般 | 每个 crate 一个 i18n 后端，导致跨 crate 键不可复用，只能复制文案和测试 | `crates/*/src/lib.rs` 各自 `rust_i18n::i18n!`；`nav.database_session_lost`/`query.session_lost`/`viewer.session_lost` 三套 | 共享的恢复文案放 `navidog-ui`，以函数形式暴露；feature 只传自己的两条语境文案；测试只测基函数 |
+| S-07 | 一般 | 每个 crate 一个 i18n 后端，导致跨 crate 键不可复用，只能复制文案和测试 | `crates/*/src/lib.rs` 各自 `rust_i18n::i18n!`；`nav.database_session_lost`/`query.session_lost`/`viewer.session_lost` 三套 | 共享的恢复文案放 `naviduck-ui`，以函数形式暴露；feature 只传自己的两条语境文案；测试只测基函数 |
 | S-08 | 建议 | 面板标题与内容不符 | `navigator/mod.rs:464` 返回 `t!("nav.refresh")`（导航器标题显示 “Refresh”）；`info.rs:92` 永远返回 “General”，但信息窗格会切 DDL/Fields/Snippets | 加 `nav.title`/`info.title`，或按当前页返回；`title_bar(false)` 只是隐藏，不代表可以写错 |
-| S-09 | 建议 | `navidog-designer` 的 i18n 声明顺序与其他 crate 不同，且没有 `include_str!` 跟踪 locale 变更 | `crates/navidog-designer/src/lib.rs:7` 在 `mod`/`init` 之后才 `i18n!`；其他 crate 在文件头并 `include_str!` | 统一到同一模板，避免只改 yml 时 Cargo 不重编译 |
+| S-09 | 建议 | `naviduck-designer` 的 i18n 声明顺序与其他 crate 不同，且没有 `include_str!` 跟踪 locale 变更 | `crates/naviduck-designer/src/lib.rs:7` 在 `mod`/`init` 之后才 `i18n!`；其他 crate 在文件头并 `include_str!` | 统一到同一模板，避免只改 yml 时 Cargo 不重编译 |
 
 ## 5. 架构
 
-### A-01 `navidog-core` 是 god crate，领域层与应用状态层混在一起
+### A-01 `naviduck-core` 是 god crate，领域层与应用状态层混在一起
 
 16 个源文件、4,478 行，包含：连接/对象模型、加密、路径、连接存储、`Settings`（49 个字段）、`Workspace`（选择、状态栏、query context）、`Favorites`、`VirtualGroups`、`Snippets`、`Saved queries`、`Column widths`、`Registry`、全部跨 feature 的 `actions`。`Settings` 同时保存外观、网格、编辑器、补全、自动恢复、更新、日志的设置；任何 feature 加一个偏好都要改 core。
 
-**影响**：`navidog-core` 无法在不引入 gpui-kit 的情况下作为纯领域模型复用；M5 插件、M14 新数据库、未来的 CLI/同步都会先碰到这层；`Settings` 的 49 个字段让序列化兼容和测试都变重。
+**影响**：`naviduck-core` 无法在不引入 gpui-kit 的情况下作为纯领域模型复用；M5 插件、M14 新数据库、未来的 CLI/同步都会先碰到这层；`Settings` 的 49 个字段让序列化兼容和测试都变重。
 
-**建议**：拆成 `navidog-model`（纯数据：`connection`、`object`、`crypto`、`paths`、`queries`、`settings` 的数据结构）和 `navidog-app-state`（GPUI `Global`/`Entity`、`Workspace`、`Favorites`、`VirtualGroups`、`actions`、`ConnectionStore`）。先做“只搬代码”的提交，再逐个把 feature 设置收进各自的 `Settings` 子结构。
+**建议**：拆成 `naviduck-model`（纯数据：`connection`、`object`、`crypto`、`paths`、`queries`、`settings` 的数据结构）和 `naviduck-app-state`（GPUI `Global`/`Entity`、`Workspace`、`Favorites`、`VirtualGroups`、`actions`、`ConnectionStore`）。先做“只搬代码”的提交，再逐个把 feature 设置收进各自的 `Settings` 子结构。
 
 ### A-02 领域层和驱动层依赖 `gpui-kit`
 
-`navidog-core/Cargo.toml:11`、`navidog-db/Cargo.toml:13` 都引入 `gpui-kit`；`core/store.rs:5` 使用 `Entity/Global/AppContext`，`settings.rs:307` 实现 `Global`，`db/driver.rs:294` 实现 `Global`。依赖链变成 `navidog-db -> navidog-core -> gpui-kit -> gpui-pre/wgpu`。headless 使用驱动时要编译 GPU 栈；`navidog-db` 的单测需要 `gpui_kit::test`；驱动层与窗口框架的生命周期绑死。
+`naviduck-core/Cargo.toml:11`、`naviduck-db/Cargo.toml:13` 都引入 `gpui-kit`；`core/store.rs:5` 使用 `Entity/Global/AppContext`，`settings.rs:307` 实现 `Global`，`db/driver.rs:294` 实现 `Global`。依赖链变成 `naviduck-db -> naviduck-core -> gpui-kit -> gpui-pre/wgpu`。headless 使用驱动时要编译 GPU 栈；`naviduck-db` 的单测需要 `gpui_kit::test`；驱动层与窗口框架的生命周期绑死。
 
-**建议**：`navidog-model` 不依赖 gpui；`DriverRegistry` 由 shell 持有，`Sessions` 接收 `&Registry` 或泛型 `D: Driver`；`navidog-db` 只保留 `Driver/Session/Relational` 与纯 SQL；把 `sessions`、`log`、`outline`、`table_design` 里的应用状态移到 `navidog-app-state` 或新 crate `navidog-session`。
+**建议**：`naviduck-model` 不依赖 gpui；`DriverRegistry` 由 shell 持有，`Sessions` 接收 `&Registry` 或泛型 `D: Driver`；`naviduck-db` 只保留 `Driver/Session/Relational` 与纯 SQL；把 `sessions`、`log`、`outline`、`table_design` 里的应用状态移到 `naviduck-app-state` 或新 crate `naviduck-session`。
 
-### A-03 `navidog-db` 的职责超出“驱动”
+### A-03 `naviduck-db` 的职责超出“驱动”
 
 24 个文件、8,970 行，除 MySQL/PostgreSQL/SQLite/SSH 外，还包含：
 
@@ -215,9 +215,9 @@
 - `outline.rs`：补全元数据缓存 + 用户目录写文件；
 - `table_design/*`（1,600+ 行）：表设计的 DDL 解析/生成/迁移。
 
-这些都是“应用会话/缓存/功能规划”，不是数据库协议。它们让 `navidog-db` 成为最重的两个 crate 之一，也让 feature crate 为了元数据缓存反向依赖 db 的全局实体。
+这些都是“应用会话/缓存/功能规划”，不是数据库协议。它们让 `naviduck-db` 成为最重的两个 crate 之一，也让 feature crate 为了元数据缓存反向依赖 db 的全局实体。
 
-**建议**：`navidog-db` 保留 driver、dialect、metadata、sql、params、ssh；`sessions` 移到 `navidog-app-state`；`outline` 与 catalog 合并；`table_design` 的规划部分可以留在 db（它确实是方言），但把 UI 草稿模型移回 designer。
+**建议**：`naviduck-db` 保留 driver、dialect、metadata、sql、params、ssh；`sessions` 移到 `naviduck-app-state`；`outline` 与 catalog 合并；`table_design` 的规划部分可以留在 db（它确实是方言），但把 UI 草稿模型移回 designer。
 
 ### A-04 驱动元数据散落，插件驱动的承诺无法兑现
 
@@ -237,9 +237,9 @@
 
 ### A-05 事务/提交逻辑在 feature crate，层次反向
 
-`navidog-grid/src/commit.rs:31` 的 `apply(rel: &mut dyn Relational, ...)` 发 `BEGIN/SAVEPOINT/ROLLBACK/COMMIT`；`matched_a_row`（`commit.rs:63`）按 SQL 前缀判断 DELETE/UPDATE，是纯方言策略。`navidog-query` 为了复用提交，`results.rs:26` 依赖 `navidog-grid`；AGENTS 只允许这一条跨 feature 依赖，但根本原因是提交逻辑放错了层。
+`naviduck-grid/src/commit.rs:31` 的 `apply(rel: &mut dyn Relational, ...)` 发 `BEGIN/SAVEPOINT/ROLLBACK/COMMIT`；`matched_a_row`（`commit.rs:63`）按 SQL 前缀判断 DELETE/UPDATE，是纯方言策略。`naviduck-query` 为了复用提交，`results.rs:26` 依赖 `naviduck-grid`；AGENTS 只允许这一条跨 feature 依赖，但根本原因是提交逻辑放错了层。
 
-**建议**：把 `commit.rs` 移到 `navidog-db`（如 `dialect::commit` 或 `sessions::tx`），grid 只保留 UI 和 `ChangeSet`；query 不再需要为提交依赖 grid。`ChangeSet` 生成 SQL 时同时携带 `enum StatementKind { Insert, Update, Delete }`，不要用字符串前缀反推。
+**建议**：把 `commit.rs` 移到 `naviduck-db`（如 `dialect::commit` 或 `sessions::tx`），grid 只保留 UI 和 `ChangeSet`；query 不再需要为提交依赖 grid。`ChangeSet` 生成 SQL 时同时携带 `enum StatementKind { Insert, Update, Delete }`，不要用字符串前缀反推。
 
 ### A-06 缓存/选择状态多处复制，且出现层次倒挂
 
@@ -265,10 +265,10 @@
 
 ### A-08 提前抽象与死代码
 
-- `navidog-plugin` 只有 13 行 `pub fn init(_cx: &mut App) {}`，却在 workspace 成员、`navidog` 依赖和发布清单里。
+- `naviduck-plugin` 只有 13 行 `pub fn init(_cx: &mut App) {}`，却在 workspace 成员、`naviduck` 依赖和发布清单里。
 - `registry.rs` 的 `PanelRegistry`、`FormatRegistry`、`CellFormatterRegistry`、`FormatInfo`、`CellFormatterInfo` 无任何使用；`PanelInfo` 与 gpui 的 `PanelInfo` 同名但不同物。
 - `Document`/`KeyValue` trait、`Family::Document/KeyValue` 没有实现，M14 之前是纯占位。
-- `Sessions::run_once` 已弃用但仍公开，仅一个兼容测试使用；`navidog_connection::store_error_message` 同样。
+- `Sessions::run_once` 已弃用但仍公开，仅一个兼容测试使用；`naviduck_connection::store_error_message` 同样。
 
 提前定义接口本身不算错，但这些代码现在既没有测试也没有调用方，会随主分支演进而腐烂（例如 `PanelRegistry` 的 `PanelPlacement` 与真实 dock 注册已经脱节）。**建议**：M5 开工前把 plugin crate 从 workspace 移除或标 `publish = false` 并加 `#[doc(hidden)]`；registry 里未实现的类型先删，等实现时再加。
 
@@ -277,11 +277,11 @@
 283 个测试是优点，但组织方式有债务：
 
 - 没有共享的 test-support crate，`wait`/`sql`/`open_viewer` 在 5 个文件里复制（D-10）。
-- `NAVIDOG_HOME` 是进程全局变量，各 crate 用互不相同的锁；`grid/viewer/mod.rs:2205` 的单个测试 859 行，`unsafe { std::env::set_var }`，失败时只报一个函数名，无法定位是哪一段场景。
+- `NAVIDUCK_HOME` 是进程全局变量，各 crate 用互不相同的锁；`grid/viewer/mod.rs:2205` 的单个测试 859 行，`unsafe { std::env::set_var }`，失败时只报一个函数名，无法定位是哪一段场景。
 - 交互测试用 `("designer-flag", 12usize)` 这样的 magic 索引（`designer/tests.rs:67`），加一列就会悄悄点到别的控件。
 - 测试文件有的放 `tests/`，有的放 `src/*_tests.rs`，还有 `src/tests.rs`，没有统一规则。
 
-**建议**：新增 dev-only `navidog-test-support`；把 859 行的测试拆成命名子流程；元素 id 改成 `(row, col)` 复合；统一测试位置规则并写进 AGENTS。
+**建议**：新增 dev-only `naviduck-test-support`；把 859 行的测试拆成命名子流程；元素 id 改成 `(row, col)` 复合；统一测试位置规则并写进 AGENTS。
 
 ### A-10 `Connection` 用“交换字段”表示配置文件
 
@@ -299,7 +299,7 @@
 | --- | --- | --- | --- | --- |
 | B-01 | 重要 | 连接表单静默丢配置 | `form.rs:440` `g.port = value.parse().ok()`；`:446` 多节点 `filter_map(Member::parse)`，非法行直接消失；`:483` SSH 端口 `unwrap_or(22)`；`core/connection.rs:227` 端口解析失败返回 `None` | `collect` 对每个数值字段做显式校验，非法时返回 `Err(t!("conn.bad_port", …))`；多节点保留原始行并标错，不要过滤 |
 | B-02 | 重要 | SSH 主机密钥无条件接受 | `db/ssh.rs:19-24` `Ok(true)`；`progress.md` §4 已登记“不校验服务器主机密钥” | 默认 `known_hosts` 校验 + 首次信任提示；设置里允许关闭；至少记录服务器指纹 |
-| B-03 | 重要 | 更新包的临时路径与校验/执行窗口 | `app/update.rs:449-470` 固定 `temp_dir()/navidog-update`，`File::create` 跟随 symlink；`:501-505` 校验后返回路径，`install` 在 `:567` 再按路径打开；`:597/:732` 交给 `hdiutil`/`open` 执行 | 用 `tempfile::Builder` 建 0700 私有目录；校验后使用同一文件句柄/`persist`，避免 TOCTOU；正式签名后校验 `codesign`/Team ID 与 Windows Authenticode；清单与包同源，SHA-256 不能防镜像被篡改 |
+| B-03 | 重要 | 更新包的临时路径与校验/执行窗口 | `app/update.rs:449-470` 固定 `temp_dir()/naviduck-update`，`File::create` 跟随 symlink；`:501-505` 校验后返回路径，`install` 在 `:567` 再按路径打开；`:597/:732` 交给 `hdiutil`/`open` 执行 | 用 `tempfile::Builder` 建 0700 私有目录；校验后使用同一文件句柄/`persist`，避免 TOCTOU；正式签名后校验 `codesign`/Team ID 与 Windows Authenticode；清单与包同源，SHA-256 不能防镜像被篡改 |
 | B-04 | 一般 | 连接 id 未校验就拼进 profile 路径 | `column_widths.rs:21`、`vgroups.rs:190`、`db/outline.rs:201` 都 `profiles.join(connection)`；只有 database/schema 走 `encode_segment` | `paths::profile_dir` 校验 id 格式（`c-` + hex）或编码；所有 profile 文件走同一个 helper |
 | B-05 | 重要 | 参数替换改写 PostgreSQL 美元引号字符串 | `util/sql_text.rs:59` 的 `find_params` 跳过 `'`/`"`/`` ` ``/`--`/`/*`，不跳过 `$tag$`；`db/sql.rs:126` 的分句器有 `$tag$` | 参数扫描复用 R-04 的统一词法器；补 `SELECT $$ [$x] $$` 的测试 |
 | B-06 | 一般 | TSV 复制/粘贴不转义制表符和换行 | `grid/model.rs:640-642` 注释自己承认；`paste` 在 `:786`/`:792` 按 `\t`/`\n` 拆；`progress.md` §4 已登记 | 带引号 TSV（RFC 4180 风格）或只在值含分隔符时加引号；补往返测试。数据库客户端里的静默错列比“暂不支持”更糟 |
@@ -327,22 +327,22 @@
 
 ### P1：两到四周，建立可复用的基础设施
 
-1. **`navidog-util::sql::spans`**：带方言的引号/注释/`$tag$` 扫描；迁移 `sql.rs`、`sql_text.rs`、`sql_format.rs`、`filter.rs`、`table_design/parse.rs`、`properties.rs`；每迁移一处保留现有测试，补一致性测试（同一段 SQL 六个消费者结论一致）。
+1. **`naviduck-util::sql::spans`**：带方言的引号/注释/`$tag$` 扫描；迁移 `sql.rs`、`sql_text.rs`、`sql_format.rs`、`filter.rs`、`table_design/parse.rs`、`properties.rs`；每迁移一处保留现有测试，补一致性测试（同一段 SQL 六个消费者结论一致）。
 2. **`JsonStore<T>`**：`load_or_backup`、原子 `save -> Result`、坏文件策略；迁移 9 处；收藏/代码段至少保留 `.bak`。
 3. **恢复文案**：`db_error_text(Recovery)` 一个入口，删除 6 个包装和 5 份重复测试。
-4. **提交逻辑下移**：`grid/commit.rs` → `navidog-db`；`ChangeSet` 带 `StatementKind`；统一表查看器与查询结果的提交流程，消除 `false,false` 分叉。
+4. **提交逻辑下移**：`grid/commit.rs` → `naviduck-db`；`ChangeSet` 带 `StatementKind`；统一表查看器与查询结果的提交流程，消除 `false,false` 分叉。
 5. **MySQL/PG 恢复默认实现**：`Relational` 默认 `execute`/`execute_read`，驱动只实现 `attempt`/`reconnect`/`remember`/`lost`；补一个共享的恢复测试套件。
 6. **驱动元数据**：`DriverInfo` 加 `icon`/`dialect`/`form`；删除 `ui::driver_icon`、`params.rs` 的端口分支、`connection/form.rs` 的 `mysql/pg` 字符串判断；M5 前完成。
 7. **UI 样板**：`dialog_footer`、`close_prompt`、`GridSession` 三个 helper；`TableViewer`/`QueryEditor` 改用。
 
 ### P2：与 M5/M6 并行，做结构性拆分
 
-1. **拆 core**：`navidog-model`（纯）+ `navidog-app-state`（GPUI 全局/动作/workspace）；先搬代码，后改 API。
-2. **拆 db**：driver 与 session/log/outline 分离；`navidog-db` 不再依赖 gpui-kit；`Sessions` 由 shell 注入注册表。
+1. **拆 core**：`naviduck-model`（纯）+ `naviduck-app-state`（GPUI 全局/动作/workspace）；先搬代码，后改 API。
+2. **拆 db**：driver 与 session/log/outline 分离；`naviduck-db` 不再依赖 gpui-kit；`Sessions` 由 shell 注入注册表。
 3. **拆 god object**：`TableViewer`（1,448 行 impl）、`ConnectionForm`（1,091 行）、`update.rs`（1,415 行）、`ResultView`（694 行）。
 4. **缓存/选择统一**：`ScopeCache<T>`、`Catalog::require`、选择只留 `Workspace`。
 5. **连接配置文件模型**：`profiles + active`，迁移 `reencrypt`/`swap_profile` 调用点。
-6. **测试基础设施**：`navidog-test-support`；拆 859 行测试；元素 id 复合化。
+6. **测试基础设施**：`naviduck-test-support`；拆 859 行测试；元素 id 复合化。
 7. **死代码清理**：plugin crate 暂退 workspace/发布清单；未使用的 registry 类型、`Document`/`KeyValue`、`run_once`/`store_error_message` 删除或标 `doc(hidden)`。
 
 ### 建议新增的 CI 门禁
@@ -361,33 +361,33 @@
 
 | crate | 源文件 | 生产行数 | 测试文件 | 测试行数 | 测试数 | 最大生产文件 |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| navidog | 13 | 4,712 | 5 | 1,910 | 18 | `src/update.rs` 1,415 |
-| navidog-connection | 7 | 3,042 | 5 | 670 | 8 | `src/form.rs` 1,396 |
-| navidog-core | 16 | 4,478 | 1 | 68 | 35 | `src/store.rs` 979 |
-| navidog-db | 24 | 8,970 | 5 | 2,709 | 76 | `src/table_design/properties.rs` 731 |
-| navidog-designer | 7 | 2,986 | 1 | 1,005 | 8 | `src/panel.rs` 965 |
-| navidog-grid | 18 | 10,069 | 2 | 1,049 | 45 | `src/viewer/mod.rs` 3,064 |
-| navidog-navigator | 17 | 6,915 | 4 | 1,013 | 18 | `src/navigator/mod.rs` 1,104 |
-| navidog-plugin | 1 | 13 | 0 | 0 | 0 | `src/lib.rs` 13 |
-| navidog-query | 17 | 9,350 | 1 | 2,518 | 34 | `src/results.rs` 1,884 |
-| navidog-ui | 7 | 2,042 | 1 | 108 | 14 | `src/tokens.rs` 559 |
-| navidog-util | 8 | 1,978 | 0 | 0 | 27 | `src/explain.rs` 571 |
+| naviduck | 13 | 4,712 | 5 | 1,910 | 18 | `src/update.rs` 1,415 |
+| naviduck-connection | 7 | 3,042 | 5 | 670 | 8 | `src/form.rs` 1,396 |
+| naviduck-core | 16 | 4,478 | 1 | 68 | 35 | `src/store.rs` 979 |
+| naviduck-db | 24 | 8,970 | 5 | 2,709 | 76 | `src/table_design/properties.rs` 731 |
+| naviduck-designer | 7 | 2,986 | 1 | 1,005 | 8 | `src/panel.rs` 965 |
+| naviduck-grid | 18 | 10,069 | 2 | 1,049 | 45 | `src/viewer/mod.rs` 3,064 |
+| naviduck-navigator | 17 | 6,915 | 4 | 1,013 | 18 | `src/navigator/mod.rs` 1,104 |
+| naviduck-plugin | 1 | 13 | 0 | 0 | 0 | `src/lib.rs` 13 |
+| naviduck-query | 17 | 9,350 | 1 | 2,518 | 34 | `src/results.rs` 1,884 |
+| naviduck-ui | 7 | 2,042 | 1 | 108 | 14 | `src/tokens.rs` 559 |
+| naviduck-util | 8 | 1,978 | 0 | 0 | 27 | `src/explain.rs` 571 |
 | **合计** | **135** | **54,555** | **25** | **11,050** | **283**（另 `xtask` 1） | |
 
 ### B. 跨 crate 依赖边（`Cargo.toml`）
 
 ```
-navidog            -> ui, core, db, plugin, connection, navigator, grid, query, designer, util
-navidog-connection -> ui, core, db
-navidog-core       -> (无 navidog 依赖；依赖 gpui-kit)
-navidog-db         -> core, util (依赖 gpui-kit)
-navidog-designer   -> ui, util, core, db
-navidog-grid       -> ui, core, util, db
-navidog-navigator  -> ui, core, db, util
-navidog-plugin     -> (无)
-navidog-query      -> ui, core, util, db, grid   # 唯一允许的 feature 间依赖
-navidog-ui         -> (无 navidog 依赖)
-navidog-util       -> (无 navidog 依赖)
+naviduck            -> ui, core, db, plugin, connection, navigator, grid, query, designer, util
+naviduck-connection -> ui, core, db
+naviduck-core       -> (无 naviduck 依赖；依赖 gpui-kit)
+naviduck-db         -> core, util (依赖 gpui-kit)
+naviduck-designer   -> ui, util, core, db
+naviduck-grid       -> ui, core, util, db
+naviduck-navigator  -> ui, core, db, util
+naviduck-plugin     -> (无)
+naviduck-query      -> ui, core, util, db, grid   # 唯一允许的 feature 间依赖
+naviduck-ui         -> (无 naviduck 依赖)
+naviduck-util       -> (无 naviduck 依赖)
 ```
 
 **垂直方向的泄漏**是主要问题：`core` 和 `db` 都依赖 `gpui-kit`，所以“纯领域/纯驱动”的分层只存在于文档。水平方向干净：除 `query -> grid` 外没有 feature 互依赖。
@@ -412,25 +412,25 @@ navidog-util       -> (无 navidog 依赖)
 - 子代理报告中未采纳的结论：
   - “`status_text` 从未被调用”：实际在 `query/editor_tests.rs:2484` 使用，只是测试专用；已改为“测试专用访问器”。
   - “连接表单 7 个标签自带冒号”：当前 `connection.yml` 已无尾冒号；`form.rs:845` 的 `trim_end_matches(':')` 现在是冗余代码，属于 P3 清理项，不是 bug。
-  - “`navidog-designer/src/lib.rs` 没有模块头”：实际有 `//!`，只是 `i18n!` 在文件末尾。
+  - “`naviduck-designer/src/lib.rs` 没有模块头”：实际有 `//!`，只是 `i18n!` 在文件末尾。
 - 未运行实库/截图；文中的性能问题是静态分析（每帧调用、每格解析、分配次数），不是本次实测的帧时间。既有验收记录的性能数字（`docs/pr/acceptance-m3.md`、`acceptance-m4.md`）只用于判断基线。
 
 ### E. 快速索引（最重要的 15 条）
 
 | 编号 | 位置 |
 | --- | --- |
-| R-01 | `crates/navidog-query/src/editor.rs:1372` |
-| R-02 | `crates/navidog-grid/src/date.rs:104-158` |
-| R-03 | `crates/navidog-core/src/uri.rs:168-201` |
-| R-04 | `crates/navidog-util/src/sql_text.rs:59`、`crates/navidog-db/src/sql.rs:74`、`crates/navidog-grid/src/filter.rs:912` |
-| D-01 | `crates/navidog-ui/src/lib.rs:22`、`crates/navidog-query/src/errors.rs:6` |
-| D-02 | `crates/navidog-core/src/favorites.rs:43`、`crates/navidog-core/src/snippets.rs:142` |
-| D-03 | `crates/navidog-db/src/mysql.rs:180-318`、`crates/navidog-db/src/postgres.rs:272-537` |
-| D-04 | `crates/navidog-grid/src/viewer/mod.rs:1132`、`crates/navidog-query/src/results.rs:939` |
-| S-01 | `crates/navidog-db/src/metadata.rs:15`、`crates/navidog-core/src/registry.rs:1` |
-| A-01 | `crates/navidog-core/src/settings.rs:159`、`crates/navidog-core/src/actions.rs:1` |
-| A-02 | `crates/navidog-core/src/store.rs:5`、`crates/navidog-db/src/driver.rs:294` |
-| A-05 | `crates/navidog-grid/src/commit.rs:31` |
-| B-01 | `crates/navidog-connection/src/form.rs:440-446` |
-| B-02 | `crates/navidog-db/src/ssh.rs:19-24` |
-| B-03 | `crates/navidog/src/update.rs:449-505` |
+| R-01 | `crates/naviduck-query/src/editor.rs:1372` |
+| R-02 | `crates/naviduck-grid/src/date.rs:104-158` |
+| R-03 | `crates/naviduck-core/src/uri.rs:168-201` |
+| R-04 | `crates/naviduck-util/src/sql_text.rs:59`、`crates/naviduck-db/src/sql.rs:74`、`crates/naviduck-grid/src/filter.rs:912` |
+| D-01 | `crates/naviduck-ui/src/lib.rs:22`、`crates/naviduck-query/src/errors.rs:6` |
+| D-02 | `crates/naviduck-core/src/favorites.rs:43`、`crates/naviduck-core/src/snippets.rs:142` |
+| D-03 | `crates/naviduck-db/src/mysql.rs:180-318`、`crates/naviduck-db/src/postgres.rs:272-537` |
+| D-04 | `crates/naviduck-grid/src/viewer/mod.rs:1132`、`crates/naviduck-query/src/results.rs:939` |
+| S-01 | `crates/naviduck-db/src/metadata.rs:15`、`crates/naviduck-core/src/registry.rs:1` |
+| A-01 | `crates/naviduck-core/src/settings.rs:159`、`crates/naviduck-core/src/actions.rs:1` |
+| A-02 | `crates/naviduck-core/src/store.rs:5`、`crates/naviduck-db/src/driver.rs:294` |
+| A-05 | `crates/naviduck-grid/src/commit.rs:31` |
+| B-01 | `crates/naviduck-connection/src/form.rs:440-446` |
+| B-02 | `crates/naviduck-db/src/ssh.rs:19-24` |
+| B-03 | `crates/naviduck/src/update.rs:449-505` |

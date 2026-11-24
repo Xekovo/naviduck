@@ -13,9 +13,9 @@
 | --- | --- | --- | --- | --- | --- |
 | R-04 / D-05 | 统一 SQL 扫描/词法 | 已完成 | SQL lexer | 无 | 大 |
 | D-08 | Catalog/OutlineCache 统一缓存 | 已完成 | ScopeCache | 无 | 中 |
-| A-01 | `navidog-core` 拆 app-state | 已完成 | app-state split | 无 | 大 |
+| A-01 | `naviduck-core` 拆 app-state | 已完成 | app-state split | 无 | 大 |
 | A-02 | core 去掉 gpui-kit | 已完成 | 随 A-01 | A-01 | 中 |
-| A-03 | `navidog-db` 去掉 table_design | 已完成 | schema crate | R-04 | 大 |
+| A-03 | `naviduck-db` 去掉 table_design | 已完成 | schema crate | R-04 | 大 |
 | A-06 | 缓存/选择状态收口 | 已完成 | Cache/selection | D-08 | 中 |
 | A-07 | god object/超长文件 | 已完成 | file splits | 无 | 大 |
 | A-10 | Connection `profiles + active` | 已完成 | connection model | 无 | 中 |
@@ -27,8 +27,8 @@
 
 ### 当前做到哪
 
-- `navidog_util::sql_text` 已收拢 `skip_quoted`、`skip_dollar_quoted`、`is_dollar_quote_start`。
-- `navidog-db::sql` 已用共享跳过函数，并修正了 `foo$tag$` 和自定义 `DELIMITER` 的 UTF-8 边界。
+- `naviduck_util::sql_text` 已收拢 `skip_quoted`、`skip_dollar_quoted`、`is_dollar_quote_start`。
+- `naviduck-db::sql` 已用共享跳过函数，并修正了 `foo$tag$` 和自定义 `DELIMITER` 的 UTF-8 边界。
 - 参数扫描、语句切分、筛选解析、格式化和 table_design 解析仍是各自实现。
 
 ### 缺口
@@ -39,14 +39,14 @@
 
 ### 目标
 
-在 `navidog-util` 或新的 `navidog-sql` 提供：
+在 `naviduck-util` 或新的 `naviduck-sql` 提供：
 
 ```rust
 pub struct Span { pub range: Range<usize>, pub kind: SpanKind }
 pub fn spans(sql: &str, dialect: Dialect) -> Vec<Span>;
 ```
 
-至少覆盖字符串、引号标识符、行/块注释、`$tag$`、参数标记、语句分隔符和括号深度。`Dialect` 不能反向依赖 `navidog-db`；把方言枚举放在 `navidog-model` 或 `navidog-util`，db 再 re-export。
+至少覆盖字符串、引号标识符、行/块注释、`$tag$`、参数标记、语句分隔符和括号深度。`Dialect` 不能反向依赖 `naviduck-db`；把方言枚举放在 `naviduck-model` 或 `naviduck-util`，db 再 re-export。
 
 ### 验收
 
@@ -57,19 +57,19 @@ pub fn spans(sql: &str, dialect: Dialect) -> Vec<Span>;
 
 ### 主要文件
 
-`crates/navidog-util/src/sql_text.rs`、`crates/navidog-util/src/sql_format.rs`、`crates/navidog-db/src/sql.rs`、`crates/navidog-grid/src/filter.rs`、`crates/navidog-db/src/table_design/parse.rs`、`properties.rs`、`entries.rs`。
+`crates/naviduck-util/src/sql_text.rs`、`crates/naviduck-util/src/sql_format.rs`、`crates/naviduck-db/src/sql.rs`、`crates/naviduck-grid/src/filter.rs`、`crates/naviduck-db/src/table_design/parse.rs`、`properties.rs`、`entries.rs`。
 
 ### 完成情况（2026-10-26，`refactor/remaining-work`）
 
-- 新建 `navidog-sql`：`dialect`（从 `navidog-db` 移入，`db` 用 `pub use navidog_sql::dialect` 保持旧路径）、`keywords`（同上）和 `span` 词法器。`span::spans(sql, dialect)` 给出字符串、引号标识符、行/块注释（PostgreSQL 嵌套）、`$tag$`、`[$name]` 参数、括号深度、语句分隔符（含 MySQL `DELIMITER` 与 `BEGIN…END` 例外）和 MySQL `#` 注释；`span::check` 报告未闭合引号/注释与括号不平衡；`span::separators` 给出深度 0 的分隔符位置。
+- 新建 `naviduck-sql`：`dialect`（从 `naviduck-db` 移入，`db` 用 `pub use naviduck_sql::dialect` 保持旧路径）、`keywords`（同上）和 `span` 词法器。`span::spans(sql, dialect)` 给出字符串、引号标识符、行/块注释（PostgreSQL 嵌套）、`$tag$`、`[$name]` 参数、括号深度、语句分隔符（含 MySQL `DELIMITER` 与 `BEGIN…END` 例外）和 MySQL `#` 注释；`span::check` 报告未闭合引号/注释与括号不平衡；`span::separators` 给出深度 0 的分隔符位置。
 - 六个消费者全部改为消费同一份 span 结果，各自的跳过函数已删除：`db/sql.rs`（分句）、`util/sql_text.rs`（参数）、`util/sql_format.rs`（格式化/括号配对）、`grid/filter.rs`（WHERE/ORDER BY 拆分）、`db/table_design/parse.rs`（表体与片段校验）、`properties.rs` 与 `entries.rs`（列属性与索引/约束表单）。table_design 的解析函数增加 `Dialect` 参数，由调用方（designer、plan）传入。
-- 回归用例集中在 `navidog-sql/src/span/tests.rs`；跨消费者一致性测试在 `navidog-grid/src/filter/consistency_tests.rs`（同一段 SQL 的字符串在分句、字段列表、参数、筛选、格式化、列属性六处都按文本处理）。MySQL/PostgreSQL/SQLite 三种方言的既有测试全过。
+- 回归用例集中在 `naviduck-sql/src/span/tests.rs`；跨消费者一致性测试在 `naviduck-grid/src/filter/consistency_tests.rs`（同一段 SQL 的字符串在分句、字段列表、参数、筛选、格式化、列属性六处都按文本处理）。MySQL/PostgreSQL/SQLite 三种方言的既有测试全过。
 
 ## 2. D-08：Catalog/OutlineCache 统一缓存
 
 ### 当前做到哪
 
-- `Load<T>`、`ScopeCache<K,T>`、OutlineCache 已迁移到 `navidog-session::scope_cache`。
+- `Load<T>`、`ScopeCache<K,T>`、OutlineCache 已迁移到 `naviduck-session::scope_cache`。
 - OutlineCache 使用统一的 entries/tasks/失效清理。
 
 ### 缺口
@@ -99,7 +99,7 @@ pub fn spans(sql: &str, dialect: Dialect) -> Vec<Span>;
 
 ### 主要文件
 
-`crates/navidog-session/src/scope_cache.rs`、`crates/navidog-navigator/src/catalog.rs`、`crates/navidog-session/src/outline.rs`。
+`crates/naviduck-session/src/scope_cache.rs`、`crates/naviduck-navigator/src/catalog.rs`、`crates/naviduck-session/src/outline.rs`。
 
 ### 完成情况（2026-10-26，`refactor/remaining-work` 分支）
 
@@ -108,16 +108,16 @@ pub fn spans(sql: &str, dialect: Dialect) -> Vec<Span>;
 - 面板不再判断“是否要 load”：`Catalog::require(Requirement)` / `require_all` / `reload_all` 是唯一入口，`Catalog::require_selection` 由 Workspace 的 `SelectionChanged` 驱动；objects 面板的 `ensure_loaded` 与渲染期 `stalled_load` 补偿已删除，navigator/信息/DDL 面板只声明 `Requirement`。Session 打开后 Catalog 自己重启当前选择需要的加载。
 - 测试：`catalog.rs` 覆盖缓存命中不查询、invalidate 清理 entries/tasks/generation、延迟结果不能覆盖新代际、失败条目只在 reload 时重试；`tests/catalog_lifecycle.rs` 覆盖选择驱动加载、关闭连接清空、重开恢复、删除连接清空；`tests/database_refresh.rs` 覆盖切库刷新和打开中的 DDL 面板。
 
-## 3. A-01：拆开 `navidog-core` 的 app-state
+## 3. A-01：拆开 `naviduck-core` 的 app-state
 
 ### 当前做到哪
 
-- 纯数据层 `navidog-model` 已抽出：`connection`、`object`、`crypto`、`paths`、`queries`、`json_store`、`column_widths`。
-- `navidog-core` 通过 `pub use` 保持旧路径，feature crate 的 import 基本不变。
+- 纯数据层 `naviduck-model` 已抽出：`connection`、`object`、`crypto`、`paths`、`queries`、`json_store`、`column_widths`。
+- `naviduck-core` 通过 `pub use` 保持旧路径，feature crate 的 import 基本不变。
 
 ### 缺口
 
-`navidog-core` 仍有：
+`naviduck-core` 仍有：
 
 - `settings`（`Settings` Global，49 个字段）
 - `store`（`ConnectionStore` Entity/Global）
@@ -126,68 +126,68 @@ pub fn spans(sql: &str, dialect: Dialect) -> Vec<Span>;
 - `actions`、`registry`
 - `uri`（依赖 `Workspace::Selection`）
 
-这些是 GPUI 应用状态，不适合与纯模型放在同一个 crate；`navidog-core` 仍是 god crate。
+这些是 GPUI 应用状态，不适合与纯模型放在同一个 crate；`naviduck-core` 仍是 god crate。
 
 ### 目标
 
-新建 `navidog-app-state`：
+新建 `naviduck-app-state`：
 
 - 拥有 GPUI `Global`/`Entity`、`Workspace`、`ConnectionStore`、`Favorites`、`VirtualGroups`、`Snippets`、`actions`、`Saved query` 路径逻辑。
-- `navidog-core` 变成薄的兼容 re-export，或者删除；feature crate 改为直接依赖 app-state/model。
+- `naviduck-core` 变成薄的兼容 re-export，或者删除；feature crate 改为直接依赖 app-state/model。
 - `Settings` 拆分：纯数据留在 model 或 app-state 的 settings 子模块，`Global` 包装留在 app-state。
 
 ### 验收
 
-- `navidog-core`（若保留）不再直接依赖 `gpui-kit`；app-state 的依赖方向是 app-state → model，不反向。
+- `naviduck-core`（若保留）不再直接依赖 `gpui-kit`；app-state 的依赖方向是 app-state → model，不反向。
 - 所有既有 import 路径有迁移方案；不要求一次改完 feature crate 的公开路径。
 - `Settings`/`ConnectionStore`/`Workspace` 的序列化和 headless 测试全过。
 - `cargo tree` 能证明 model 不包含 gpui。
 
 ### 主要文件
 
-`crates/navidog-core/src/{settings,store,workspace,favorites,snippets,vgroups,actions,registry,uri}.rs`、`crates/navidog-core/Cargo.toml`。
+`crates/naviduck-core/src/{settings,store,workspace,favorites,snippets,vgroups,actions,registry,uri}.rs`、`crates/naviduck-core/Cargo.toml`。
 
 ### 完成情况（2026-10-26，`refactor/remaining-work`）
 
-- `navidog-core` 整体改名为 `navidog-app-state`：9 个 GPUI 模块（settings/store/workspace/favorites/snippets/vgroups/actions/registry/uri）加 `init` 迁入新 crate，内部 `crate::object` 等纯数据引用改为 `navidog_model::…`，i18n 域从 `core.*` 改为 `app_state.*`（`locales/app_state.yml`）。
-- `navidog-core` 已删除，没有兼容 facade：71 个文件里的 322 处 `navidog_core::…` 按模块直接迁到 `navidog_model::…`（connection/crypto/object/paths/queries/json_store/column_widths）或 `navidog_app_state::…`，Cargo 依赖按实际使用拆成 `navidog-model` / `navidog-app-state` 两条。
-- A-02：`navidog-db` 只依赖 `navidog-model`，`cargo check -p navidog-db` 不再出现 gpui；新增 `crates/navidog-headless`（只依赖 model + db）证明驱动栈可以脱离 GPUI 编译并运行 SQLite；`scripts/check-deps.sh` 断言 model/db/sql/util/sql-log/headless 的 normal 依赖里没有 `gpui`，并禁止 `crates/navidog-core` 回潮，已接入 `lint.yml`。
-- `docs/design/00-overview.md` 的 crate 表、依赖规则和里程碑 crate 列已同步；M7 的 ER 图 crate 暂记作 `navidog-er`，因为 `navidog-model` 已是纯数据层。
+- `naviduck-core` 整体改名为 `naviduck-app-state`：9 个 GPUI 模块（settings/store/workspace/favorites/snippets/vgroups/actions/registry/uri）加 `init` 迁入新 crate，内部 `crate::object` 等纯数据引用改为 `naviduck_model::…`，i18n 域从 `core.*` 改为 `app_state.*`（`locales/app_state.yml`）。
+- `naviduck-core` 已删除，没有兼容 facade：71 个文件里的 322 处 `naviduck_core::…` 按模块直接迁到 `naviduck_model::…`（connection/crypto/object/paths/queries/json_store/column_widths）或 `naviduck_app_state::…`，Cargo 依赖按实际使用拆成 `naviduck-model` / `naviduck-app-state` 两条。
+- A-02：`naviduck-db` 只依赖 `naviduck-model`，`cargo check -p naviduck-db` 不再出现 gpui；新增 `crates/naviduck-headless`（只依赖 model + db）证明驱动栈可以脱离 GPUI 编译并运行 SQLite；`scripts/check-deps.sh` 断言 model/db/sql/util/sql-log/headless 的 normal 依赖里没有 `gpui`，并禁止 `crates/naviduck-core` 回潮，已接入 `lint.yml`。
+- `docs/design/00-overview.md` 的 crate 表、依赖规则和里程碑 crate 列已同步；M7 的 ER 图 crate 暂记作 `naviduck-er`，因为 `naviduck-model` 已是纯数据层。
 
 ## 4. A-02：core 去掉 `gpui-kit`
 
 ### 当前做到哪
 
-- `navidog-db` 已不依赖 gpui-kit。
-- `navidog-session` 承担 DriverRegistry/Sessions/OutlineCache/scope_cache。
+- `naviduck-db` 已不依赖 gpui-kit。
+- `naviduck-session` 承担 DriverRegistry/Sessions/OutlineCache/scope_cache。
 
 ### 缺口
 
-`navidog-core` 仍直接依赖 gpui-kit，且 9 个 app-state 模块尚未搬走。`A-02` 依赖 `A-01` 完成；不能只把依赖写在 app-state 里而继续让 core re-export GPUI 类型。
+`naviduck-core` 仍直接依赖 gpui-kit，且 9 个 app-state 模块尚未搬走。`A-02` 依赖 `A-01` 完成；不能只把依赖写在 app-state 里而继续让 core re-export GPUI 类型。
 
 ### 目标
 
-- `navidog-model` 和 `navidog-db` 的 normal dependencies 中不再出现 `gpui-kit`。
-- `navidog-core` 只保留纯 re-export 或完全移除；GPUI 只出现在 app-state/session/ui。
-- 增加一个 headless 编译检查：只用 `navidog-model` + `navidog-db` 建一个 SQLite 连接/执行 SQL 的测试，不链接 GPUI。
+- `naviduck-model` 和 `naviduck-db` 的 normal dependencies 中不再出现 `gpui-kit`。
+- `naviduck-core` 只保留纯 re-export 或完全移除；GPUI 只出现在 app-state/session/ui。
+- 增加一个 headless 编译检查：只用 `naviduck-model` + `naviduck-db` 建一个 SQLite 连接/执行 SQL 的测试，不链接 GPUI。
 
 ### 验收
 
-- `cargo tree -p navidog-model -e normal` 无 gpui。
-- `cargo check -p navidog-db` 在 `default-features` 下无 gpui。
-- headless 测试可编译运行；`navidog-session` 仍明确是 GPUI 层。
+- `cargo tree -p naviduck-model -e normal` 无 gpui。
+- `cargo check -p naviduck-db` 在 `default-features` 下无 gpui。
+- headless 测试可编译运行；`naviduck-session` 仍明确是 GPUI 层。
 - CI 增加依赖方向检查，防止 core/db 回退。
 
 ### 主要文件
 
-`crates/navidog-core/Cargo.toml`、`crates/navidog-model/Cargo.toml`、`crates/navidog-db/Cargo.toml`、`crates/navidog-session/Cargo.toml`。
+`crates/naviduck-core/Cargo.toml`、`crates/naviduck-model/Cargo.toml`、`crates/naviduck-db/Cargo.toml`、`crates/naviduck-session/Cargo.toml`。
 
-## 5. A-03：`navidog-db` 去掉 table_design
+## 5. A-03：`naviduck-db` 去掉 table_design
 
 ### 当前做到哪
 
-- `sessions`、`outline` cache、`log` 已移出 db（`navidog-session` / `navidog-sql-log`）。
-- `navidog-db` 仍保留 `table_design/*`（约 4,000 行）、`metadata`、driver、dialect、SQL。
+- `sessions`、`outline` cache、`log` 已移出 db（`naviduck-session` / `naviduck-sql-log`）。
+- `naviduck-db` 仍保留 `table_design/*`（约 4,000 行）、`metadata`、driver、dialect、SQL。
 
 ### 缺口
 
@@ -195,26 +195,26 @@ pub fn spans(sql: &str, dialect: Dialect) -> Vec<Span>;
 
 ### 目标
 
-- 新建 `navidog-schema`（或放回 `navidog-designer` 的非 UI 子模块），只依赖 `navidog-model` + `navidog-db` 的 dialect/driver 接口。
+- 新建 `naviduck-schema`（或放回 `naviduck-designer` 的非 UI 子模块），只依赖 `naviduck-model` + `naviduck-db` 的 dialect/driver 接口。
 - `table_design` 的纯规划/解析留在 schema；UI 草稿状态留在 designer。
-- `navidog-db` 只保留 driver/session trait、dialect、metadata、sql、params、ssh。
+- `naviduck-db` 只保留 driver/session trait、dialect、metadata、sql、params、ssh。
 
 ### 验收
 
-- `rg 'table_design' crates/navidog-db/src` 为空；designer/query 的 import 更新。
+- `rg 'table_design' crates/naviduck-db/src` 为空；designer/query 的 import 更新。
 - 现有 table_design 测试全部迁移并通过；实库 DDL 测试通过。
-- `navidog-db` 的 public API 不破坏 feature crate；先加 re-export 过渡再删。
+- `naviduck-db` 的 public API 不破坏 feature crate；先加 re-export 过渡再删。
 - 与 R-04 共用 SQL span/token 层，避免第 7 份解析器。
 
 ### 主要文件
 
-`crates/navidog-db/src/table_design/`、`crates/navidog-designer/`、`crates/navidog-db/Cargo.toml`。
+`crates/naviduck-db/src/table_design/`、`crates/naviduck-designer/`、`crates/naviduck-db/Cargo.toml`。
 
 ### 完成情况（2026-10-26，`refactor/remaining-work`）
 
-- 新建 `navidog-schema`：`table_design`（parse/properties/entries/options/comments/plan/tests，约 4,000 行）整体迁入，依赖 `navidog-model` + `navidog-db`（`DbError`/`DbResult`/`Relational`/`Dialect`/`sql::split_script`）+ `navidog-sql`，没有复制任何驱动类型。
-- `navidog-db` 删除 `pub mod table_design`，`rg 'table_design' crates/navidog-db/src` 为空，只保留 driver/session trait、dialect、metadata、sql、params、ssh、commit。唯一的仓库内消费者（designer、grid 一致性测试）改为 `navidog_schema::table_design`；公开 API 在同一次提交内完成迁移（仓库外没有消费者，因此没有保留过渡 re-export）。
-- table_design 的解析改用 R-04 的 `navidog_sql::span`（`parse::positions`/`fragment`、properties `words`、entries `group`），没有第 7 份解析器；实库 DDL 测试随模块迁到 `navidog-schema` 的 `tests` 并保留 `NAVIDOG_LIVE` 开关。
+- 新建 `naviduck-schema`：`table_design`（parse/properties/entries/options/comments/plan/tests，约 4,000 行）整体迁入，依赖 `naviduck-model` + `naviduck-db`（`DbError`/`DbResult`/`Relational`/`Dialect`/`sql::split_script`）+ `naviduck-sql`，没有复制任何驱动类型。
+- `naviduck-db` 删除 `pub mod table_design`，`rg 'table_design' crates/naviduck-db/src` 为空，只保留 driver/session trait、dialect、metadata、sql、params、ssh、commit。唯一的仓库内消费者（designer、grid 一致性测试）改为 `naviduck_schema::table_design`；公开 API 在同一次提交内完成迁移（仓库外没有消费者，因此没有保留过渡 re-export）。
+- table_design 的解析改用 R-04 的 `naviduck_sql::span`（`parse::positions`/`fragment`、properties `words`、entries `group`），没有第 7 份解析器；实库 DDL 测试随模块迁到 `naviduck-schema` 的 `tests` 并保留 `NAVIDUCK_LIVE` 开关。
 
 ## 6. A-06：缓存/选择状态收口
 
@@ -245,7 +245,7 @@ pub fn spans(sql: &str, dialect: Dialect) -> Vec<Span>;
 
 ### 主要文件
 
-`crates/navidog-navigator/src/{catalog,objects,info,ddl,navigator}.rs`、`crates/navidog-session/src/scope_cache.rs`。
+`crates/naviduck-navigator/src/{catalog,objects,info,ddl,navigator}.rs`、`crates/naviduck-session/src/scope_cache.rs`。
 
 ## 7. A-07：god object 与超长文件
 
@@ -279,7 +279,7 @@ pub fn spans(sql: &str, dialect: Dialect) -> Vec<Span>;
 
 ### 主要文件
 
-`crates/navidog-grid/src/viewer/`、`crates/navidog-query/src/{results,editor}.rs`、`crates/navidog-connection/src/form.rs`、`crates/navidog-grid/src/model.rs`、`crates/navidog/src/update.rs`。
+`crates/naviduck-grid/src/viewer/`、`crates/naviduck-query/src/{results,editor}.rs`、`crates/naviduck-connection/src/form.rs`、`crates/naviduck-grid/src/model.rs`、`crates/naviduck/src/update.rs`。
 
 ### 完成情况（2026-10-26，`refactor/remaining-work`）
 
@@ -339,20 +339,20 @@ pub struct Connection {
 
 ### 主要文件
 
-`crates/navidog-model/src/connection.rs`、`crates/navidog-core/src/store.rs`（或 app-state 迁移后的 store）。
+`crates/naviduck-model/src/connection.rs`、`crates/naviduck-core/src/store.rs`（或 app-state 迁移后的 store）。
 
 ### 完成情况（2026-10-26，`refactor/remaining-work`）
 
 - `Connection` 的内部模型改成 `profiles: Vec<Profile>` + `active: usize`（激活项也在 `profiles` 里），删掉顶层 `general/advanced/ssl/ssh` 和 `profile` 字段；`active()`/`active_mut()`/`active_profile_name()` 访问激活配置，`Deref`/`DerefMut` 到 `Profile` 让 `connection.general` 这类既有字段访问不用改。`switch_profile`/`add_profile`/`remove_active_profile`/`with_active_profile` 只改 `active` 和 `profiles`，不再 `mem::swap` 五组字段；`with_active_profile` 仍用 Drop 守卫恢复激活项。
 - 序列化：仍写旧布局（顶层是激活设置、`profile` 是激活名、`profiles` 只放其余配置），旧版本能读新版本写的文件；自定义 `Deserialize` 同时接受旧布局和 `profiles` 含全部配置 + `active` 索引的新布局（两代 fixture 都有测试）。`ConnectionsFile::reencrypt` 改成按索引遍历所有配置文件，`duplicate` 随克隆带走全部配置。
-- 边界测试：7 个以上配置文件切换、重名、空名字（`navidog-model` 的 `many_profiles_keep_their_own_settings`）、旧/新两种 JSON 布局、panic 后激活项恢复；store 的 rekey/duplicate 覆盖两个配置文件的秘密字段。
+- 边界测试：7 个以上配置文件切换、重名、空名字（`naviduck-model` 的 `many_profiles_keep_their_own_settings`）、旧/新两种 JSON 布局、panic 后激活项恢复；store 的 rekey/duplicate 覆盖两个配置文件的秘密字段。
 ## 9. S-07：共享 i18n 后端（可选）
 
 ### 当前做到哪
 
 - 契约已收敛为 crate-local：每个 crate 的 `rust_i18n::i18n!` 只加载自己的 locale。
 - `scripts/check-i18n.sh` 强制字面量 `t!` key 在本 crate 定义，并要求 en/zh-CN 双值。
-- 跨 crate 文案走 `navidog_ui::db_error_text` 等显式 helper。
+- 跨 crate 文案走 `naviduck_ui::db_error_text` 等显式 helper。
 
 ### 缺口
 
@@ -374,7 +374,7 @@ pub struct Connection {
 ### 完成情况（2026-10-26，`refactor/remaining-work`，选择方案 1）
 
 - 明确采用方案 1（保持 crate-local 契约）：不合并 backend，跨 crate 文案继续走显式 helper。
-- `scripts/check-i18n.sh` 增加动态 key 检查：`t!` 的第一个参数不是字面量时，必须逐条出现在 `scripts/i18n-dynamic-keys.txt`（`<path> TAB <第一个参数>`），当前共 19 条（`navidog-ui` 的跨 crate helper、designer 的表头/选项、navigator 的 `col.*`/`kind.*`/`nav.color_*`、外壳的菜单 label）。脚本注释说明只做静态字面量检查，动态 key 的清单就是约束。
+- `scripts/check-i18n.sh` 增加动态 key 检查：`t!` 的第一个参数不是字面量时，必须逐条出现在 `scripts/i18n-dynamic-keys.txt`（`<path> TAB <第一个参数>`），当前共 19 条（`naviduck-ui` 的跨 crate helper、designer 的表头/选项、navigator 的 `col.*`/`kind.*`/`nav.color_*`、外壳的菜单 label）。脚本注释说明只做静态字面量检查，动态 key 的清单就是约束。
 - `docs/design/00-overview.md` 的 i18n 段写入契约（crate-local、跨 crate helper、动态 key 登记、为什么不合并 backend），`AGENTS.md` 的“文案”条目同步；没有把“统一 backend 未做”继续记成已修。
 
 ## 建议的 PR 切分
@@ -413,7 +413,7 @@ scripts/check-i18n.sh
 涉及 SQL/table_design/A-01/store 的改动还要跑：
 
 - 实库测试（MySQL/MariaDB/PostgreSQL，`docker compose`）；
-- `navidog-query` 的 Builder/参数/筛选测试；
+- `naviduck-query` 的 Builder/参数/筛选测试；
 - 旧 `connections.json` fixture（A-10）；
 - 依赖方向检查（A-02）；
 - 需要时跑 Metal 截图测试（A-07 的 UI 拆分）。

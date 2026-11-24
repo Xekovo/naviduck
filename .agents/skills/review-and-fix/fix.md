@@ -21,10 +21,10 @@
 
 ## headless 测试写法
 
-参考：`crates/navidog-grid/tests/viewer.rs`、`crates/navidog-navigator/tests/keys.rs`、`crates/navidog/tests/close_prompt.rs`、`crates/navidog-connection/tests/unlock.rs`。
+参考：`crates/naviduck-grid/tests/viewer.rs`、`crates/naviduck-navigator/tests/keys.rs`、`crates/naviduck/tests/close_prompt.rs`、`crates/naviduck-connection/tests/unlock.rs`。
 
-- 每个测试文件只放一个测试：它用 `unsafe { std::env::set_var("NAVIDOG_HOME", 临时目录) }` 改了进程环境。
-- 建表：在 `navidog_db::runtime::runtime().block_on` 里用 `navidog_db::connect` 加 `SqliteDriver` 执行 SQL。断言写入结果时，用另一个连接查数据库文件。
+- 每个测试文件只放一个测试：它用 `unsafe { std::env::set_var("NAVIDUCK_HOME", 临时目录) }` 改了进程环境。
+- 建表：在 `naviduck_db::runtime::runtime().block_on` 里用 `naviduck_db::connect` 加 `SqliteDriver` 执行 SQL。断言写入结果时，用另一个连接查数据库文件。
 - 连接：`ConnectionStore` 先 `set_key(Key::random())`（避开钥匙串）再 `upsert`；`cx.executor().allow_parking()`；`Sessions::open(id, Secrets::default(), cx)`。
 - 等待：循环 `run_until_parked` 加 `sleep(20ms)`，10 秒超时并说明在等什么。
 - 网格数据到了，`render_frame` 之后 `window.try_find(ElementId::NamedInteger("row".into(), 0))` 能找到。提交触发了重新加载的，编辑之前先空转约 20 轮等加载结束。
@@ -33,4 +33,4 @@
 
 ## 性能项
 
-修之前和修之后都量一次：`cargo run --release -p navidog-grid --example spike`（沙箱外，需要 Metal）。比较编译选项时用环境变量（如 `CARGO_PROFILE_RELEASE_OPT_LEVEL=3`），不改 `Cargo.toml`。release 加 fat LTO 要编好几分钟，期间它占着 target 锁：放到后台，先改文档。数据写进对应规格的性能小节。
+修之前和修之后都量一次：`cargo run --release -p naviduck-grid --example spike`（沙箱外，需要 Metal）。比较编译选项时用环境变量（如 `CARGO_PROFILE_RELEASE_OPT_LEVEL=3`），不改 `Cargo.toml`。release 加 fat LTO 要编好几分钟，期间它占着 target 锁：放到后台，先改文档。数据写进对应规格的性能小节。

@@ -1,0 +1,88 @@
+[package]
+name = "naviduck"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "An open-source alternative to Navicat, written in Rust"
+
+[dependencies]
+naviduck-session = { path = "../naviduck-session" }
+gpui-kit.workspace = true
+rust-i18n.workspace = true
+naviduck-ui.workspace = true
+naviduck-model.workspace = true
+naviduck-app-state.workspace = true
+naviduck-db.workspace = true
+naviduck-connection.workspace = true
+naviduck-navigator.workspace = true
+naviduck-grid.workspace = true
+naviduck-query.workspace = true
+naviduck-designer.workspace = true
+naviduck-util.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+sha2 = "0.10"
+ureq = { version = "3", default-features = false, features = ["rustls", "socks-proxy"] }
+mimalloc = { version = "0.1", optional = true }
+
+[features]
+# Release and CI builds only (`cargo build --features mimalloc`).
+mimalloc = ["dep:mimalloc"]
+
+[dev-dependencies]
+naviduck-sqlite = { path = "../naviduck-sqlite" }
+naviduck-test-support = { path = "../naviduck-test-support" }
+gpui-kit = { workspace = true, features = ["test-support"] }
+
+# Needs Metal, so `cargo test` skips it. Run `cargo test -p naviduck --test snapshot` by hand.
+[[test]]
+name = "snapshot"
+harness = false
+test = false
+
+[target.'cfg(target_os = "windows")'.build-dependencies]
+winres = "0.1"
+
+[package.metadata.bundle]
+name = "Naviduck"
+identifier = "com.ekovovo.naviduck"
+# cargo-bundle globs from the process working directory, not this crate.
+# `cargo bundle -p naviduck` and CI run at the workspace root.
+icon = ["crates/naviduck/icons/naviduck.icns"]
+category = "public.app-category.developer-tools"
+osx_minimum_system_version = "15.0"
+short_description = "An open-source alternative to Navicat, written in Rust"
+
+# Paths are relative to this crate. The workspace target dir is two levels up.
+[package.metadata.deb]
+name = "naviduck"
+section = "database"
+priority = "optional"
+depends = "$auto"
+extended-description = "An open-source alternative to Navicat, written in Rust. MySQL, MariaDB, PostgreSQL and SQLite."
+assets = [
+    ["../../target/release/naviduck", "usr/bin/", "755"],
+    ["assets/naviduck.desktop", "usr/share/applications/naviduck.desktop", "644"],
+    ["icons/naviduck.png", "usr/share/icons/hicolor/512x512/apps/naviduck.png", "644"],
+    ["resources/naviduck.svg", "usr/share/icons/hicolor/scalable/apps/naviduck.svg", "644"],
+]
+
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSImage"] }
+objc2-foundation = { version = "0.3", features = ["NSData"] }
+
+[package.metadata.generate-rpm]
+name = "naviduck"
+assets = [
+    { source = "../../target/release/naviduck", dest = "/usr/bin/naviduck", mode = "755" },
+    { source = "assets/naviduck.desktop", dest = "/usr/share/applications/naviduck.desktop", mode = "644" },
+    { source = "icons/naviduck.png", dest = "/usr/share/icons/hicolor/512x512/apps/naviduck.png", mode = "644" },
+    { source = "resources/naviduck.svg", dest = "/usr/share/icons/hicolor/scalable/apps/naviduck.svg", mode = "644" },
+]

@@ -1,17 +1,17 @@
 # 140 达梦 DM8 接入
 
-M14 的第一个数据库。新建不依赖 GPUI 的 `navidog-dameng` crate，实现 `Driver`/`Session`/`Relational`/`Dialect`，在 `navidog-session::init` 注册。界面零分支：连接表单只读 `DriverInfo` 标志，grid/query/designer/schema 只问能力方法。专属功能清单见 [db/dameng/features.md](db/dameng/features.md)，技术验证证据见 [pr/acceptance-dameng.md](../pr/acceptance-dameng.md)。
+M14 的第一个数据库。新建不依赖 GPUI 的 `naviduck-dameng` crate，实现 `Driver`/`Session`/`Relational`/`Dialect`，在 `naviduck-session::init` 注册。界面零分支：连接表单只读 `DriverInfo` 标志，grid/query/designer/schema 只问能力方法。专属功能清单见 [db/dameng/features.md](db/dameng/features.md)，技术验证证据见 [pr/acceptance-dameng.md](../pr/acceptance-dameng.md)。
 
-驱动：`dm-pure`（MIT，纯 Rust 同步 API）。阶段 0 判据 1–4 全部通过，ODBC 兜底不启用。dm-pure 1.2.4 有四处协议缺陷，已定位并验证补丁（验收记录「dm-pure 缺陷与补丁」节）。上游仓库 `zhangtao103239/dm8_pure_rs` 已从 GitHub 消失（404，全站含 fork 搜索无镜像），暂无法 fork/提 PR。**依赖策略（已确认）**：补丁托管在自建公开镜像 `github.com/ekovovo/dm8_pure_rs`（`main` = crates.io 1.2.4 原版镜像，`fix/protocol-lob-explain-error-status` 分支仅含四补丁），`navidog-dameng` 经 `[patch.crates-io]` git 依赖引用修复分支；上游恢复后向其提 PR，上游发布修复版后切回 crates.io 精确版本。
+驱动：`dm-pure`（MIT，纯 Rust 同步 API）。阶段 0 判据 1–4 全部通过，ODBC 兜底不启用。dm-pure 1.2.4 有四处协议缺陷，已定位并验证补丁（验收记录「dm-pure 缺陷与补丁」节）。上游仓库 `zhangtao103239/dm8_pure_rs` 已从 GitHub 消失（404，全站含 fork 搜索无镜像），暂无法 fork/提 PR。**依赖策略（已确认）**：补丁托管在自建公开镜像 `github.com/ekovovo/dm8_pure_rs`（`main` = crates.io 1.2.4 原版镜像，`fix/protocol-lob-explain-error-status` 分支仅含四补丁），`naviduck-dameng` 经 `[patch.crates-io]` git 依赖引用修复分支；上游恢复后向其提 PR，上游发布修复版后切回 crates.io 精确版本。
 
 ## 1. 范围与首版边界
 
 首版实现：
 
-- 连接：常规（主机/端口/用户/密码）、SSH 隧道（`russh`，复用 `navidog_db::connect` 编排）。SSL 不支持（第 7 节偏差 D3）。
+- 连接：常规（主机/端口/用户/密码）、SSH 隧道（`russh`，复用 `naviduck_db::connect` 编排）。SSL 不支持（第 7 节偏差 D3）。
 - 导航树到对象级：模式 → 表、视图、函数、过程、序列、触发器、索引（表下）；系统模式随系统对象开关过滤。用户/角色/表空间只读列表（F-DM-008/009 的设计器后续）。
-- 表查看器与网格编辑：分批读取（`execute_lazy` + `fetch_more`，首批 100 行）、单元格编辑、提交流程（`navidog_db::commit`，SAVEPOINT 已验证兼容）。
-- 查询编辑器：执行、停止（第 3.4 节）、解释（第 5.6 节）、历史日志（复用 `navidog-sql-log`，无方言分支）。
+- 表查看器与网格编辑：分批读取（`execute_lazy` + `fetch_more`，首批 100 行）、单元格编辑、提交流程（`naviduck_db::commit`，SAVEPOINT 已验证兼容）。
+- 查询编辑器：执行、停止（第 3.4 节）、解释（第 5.6 节）、历史日志（复用 `naviduck-sql-log`，无方言分支）。
 - 表设计器：单列第 6 节，首版限制迁移能力。
 
 首版不做（后续里程碑或 M14 后续任务）：实体化视图、包、同义词/类型/数据库链接设计器、分区设计器、函数索引、虚拟列、用户/角色设计器、表空间创建修改、disql 风格命令列、数据泵/回收站（DM 未验证）。
@@ -38,7 +38,7 @@ context_selection: Schema  // 单数据库固定，SET SCHEMA 切换模式
 - 常规页：`supports_network=true` 且 `multi_host=false` → 主机、端口、用户、密码；初始数据库输入只在 `multi_host=true` 时显示，DM 不显示（单数据库，连接后取 `V$DATABASE.NAME`）。
 - 高级页：`protocol_timeouts=false`、`connection_params=false` → 只有通用项（设置位置、keepalive、自动连接等），无协议超时组、无连接参数表。
 - SSL 页：`supports_ssl=false` → 不显示。SSH 页照常。
-- 连接超时：`ConnectParams.timeout()` 映射到 `ClientConfig.timeout`（连接与读取共用，dm-pure 无独立读取超时）。`auto_reconnect` 固定 `false`（重连由 `navidog-db` 的恢复宏编排，驱动不自作主张）。
+- 连接超时：`ConnectParams.timeout()` 映射到 `ClientConfig.timeout`（连接与读取共用，dm-pure 无独立读取超时）。`auto_reconnect` 固定 `false`（重连由 `naviduck-db` 的恢复宏编排，驱动不自作主张）。
 
 图标：决策 3 要求已授权第三方 SVG。Tabler/Devicon 均无达梦，**已确认自绘抽象图形**：原创 SVG，尺寸/位置与现有数据库图标一致，不照抄达梦商标图形，不提取 Navicat 图标。
 
@@ -46,7 +46,7 @@ context_selection: Schema  // 单数据库固定，SET SCHEMA 切换模式
 
 ### 3.1 线程模型
 
-照 `navidog-sqlite`：`Arc<Mutex<DmClient>>` + `navidog_db::runtime::spawn_blocking`，watch channel 做 workers 退休栅栏。dm-pure 是同步 API，所有协议调用在阻塞线程上；界面经 `Sessions::run_rel` / `sessions::run_on` 在 `cx.spawn` 中等待。
+照 `naviduck-sqlite`：`Arc<Mutex<DmClient>>` + `naviduck_db::runtime::spawn_blocking`，watch channel 做 workers 退休栅栏。dm-pure 是同步 API，所有协议调用在阻塞线程上；界面经 `Sessions::run_rel` / `sessions::run_on` 在 `cx.spawn` 中等待。
 
 ### 3.2 Session 方法
 
@@ -68,7 +68,7 @@ context_selection: Schema  // 单数据库固定，SET SCHEMA 切换模式
 
 ### 3.3 执行语义与恢复
 
-`execute` / `execute_read` / `execute_statement` 按 `navidog-db` driver.rs 注释区分（读结果集 / 受影响行数 / 语句执行）。dm-pure `ExecuteResult::Query` → `ResultSet`（列元数据来自 `Column`，行值按第 5.5 节映射）；`Affected(n)` → 受影响行数；`Call` → 按存储过程结果处理（首版 `CALL` 走 `execute_read`，多结果集后续）。
+`execute` / `execute_read` / `execute_statement` 按 `naviduck-db` driver.rs 注释区分（读结果集 / 受影响行数 / 语句执行）。dm-pure `ExecuteResult::Query` → `ResultSet`（列元数据来自 `Column`，行值按第 5.5 节映射）；`Affected(n)` → 受影响行数；`Call` → 按存储过程结果处理（首版 `CALL` 走 `execute_read`，多结果集后续）。
 
 错误映射 `DbError { code, message, disconnected, outcome_unknown }`：
 
@@ -91,7 +91,7 @@ dm-pure 无协议级取消。实现：`cancel_handle` 持有连接参数副本�
 
 ## 4. 目录 SQL
 
-八个目录方法经 `navidog_db::relational_catalog!(metadata)` 转发到 `metadata.rs`；测试替身用 `unsupported_catalog!`。所有目录查询用绑定参数（`Param::Str`），OWNER 过滤模式名。
+八个目录方法经 `naviduck_db::relational_catalog!(metadata)` 转发到 `metadata.rs`；测试替身用 `unsupported_catalog!`。所有目录查询用绑定参数（`Param::Str`），OWNER 过滤模式名。
 
 | 方法 | SQL 来源 |
 | --- | --- |
@@ -189,7 +189,7 @@ dm-pure 无协议级取消。实现：`cancel_handle` 持有连接参数副本�
 | --- | --- |
 | 开始事务 | `START TRANSACTION`（`BEGIN TRANSACTION` 报 -2004，不用；协议级 begin 仅驱动内部用） |
 | 提交/回滚 | `COMMIT` / `ROLLBACK` |
-| 保存点 | `SAVEPOINT p` / `ROLLBACK TO SAVEPOINT p` / `RELEASE SAVEPOINT p`（`navidog_db::commit` 现有流程兼容） |
+| 保存点 | `SAVEPOINT p` / `ROLLBACK TO SAVEPOINT p` / `RELEASE SAVEPOINT p`（`naviduck_db::commit` 现有流程兼容） |
 | 切换模式 | `SET SCHEMA "s"`（补丁 4 后可用；`ALTER SESSION SET CURRENT_SCHEMA` 等价，统一用前者） |
 | 分页 | `LIMIT n OFFSET m`（四种语法均可用，统一 LIMIT；`TOP`/`ROWNUM`/`FETCH FIRST` 不用） |
 | 改列类型/可空/默认 | `ALTER TABLE t MODIFY col <type> [NULL|NOT NULL]`；默认值 `ALTER TABLE t ALTER COLUMN col SET DEFAULT <v>` / `DROP DEFAULT` |
@@ -208,7 +208,7 @@ dm-pure 无协议级取消。实现：`cancel_handle` 持有连接参数副本�
 
 **设计器 SQL 钩子（新增方言方法，语义在此登记，实现由编译器强制补齐）：**
 
-表设计器「读 DDL 后从目录富集」路径（`enriches_from_catalog`）目前在 `navidog-schema` 里硬编码 PG 的 `pg_class`/`pg_attribute` 查询与 `GENERATED … AS IDENTITY` 文本。为让 DM 复用同一路径而界面不按产品分支，把这些 SQL/文本生成移进方言方法；默认实现保持 PG 现状，DM 覆盖：
+表设计器「读 DDL 后从目录富集」路径（`enriches_from_catalog`）目前在 `naviduck-schema` 里硬编码 PG 的 `pg_class`/`pg_attribute` 查询与 `GENERATED … AS IDENTITY` 文本。为让 DM 复用同一路径而界面不按产品分支，把这些 SQL/文本生成移进方言方法；默认实现保持 PG 现状，DM 覆盖：
 
 | 方法 | 签名语义 | 默认（PG 现状） | DM |
 | --- | --- | --- | --- |
@@ -218,11 +218,11 @@ dm-pure 无协议级取消。实现：`cancel_handle` 持有连接参数副本�
 | `add_column` | `(&self, table, column, definition, position) -> String`；单条 `ALTER TABLE … ADD` | `ALTER TABLE {table} ADD COLUMN {column} {definition}{position}`（现有文本） | `ALTER TABLE {table} ADD ({column} {definition})`（Oracle 式括号；DM 不支持列位置，`position` 恒空，阶段 2 实库回归） |
 | `modify_column` | `(&self, table, old_name, new_name, old_definition, new_definition) -> Option<Result<Vec<String>, String>>`；`Some` 表示方言接管「改已有列」整段语句序列，`None` 回退现有 PG 路径 | `None` | `Some`：改名用 `ALTER TABLE … RENAME COLUMN old TO new`；类型/NOT NULL 变化用 `ALTER TABLE … MODIFY (col …)`；默认值用 `ALTER COLUMN col SET DEFAULT …` / `DROP DEFAULT`（均阶段 2 实库回归）；**旧或新定义含 IDENTITY 子句 → `Err`**（首版 IDENTITY 列只读，任何结构变化提示删列重加、数据丢失，6.3） |
 
-两个查询的列布局是 `navidog-schema` 与方言之间的契约，DM 必须产出相同列数与语义，加载器（`load_in_context`）不再按产品分支。两个查询入参取 `scope`+表名（而非已拼好的限定名）：DM 需把 owner（`scope.schema`）与表名分开过滤，PG 在方法内部自拼限定名。`session_setup`（`navidog-db`）目前只认 `USE`/`SET search_path`，新增对 `SET SCHEMA <name>` 的通用识别（`ContextSelection::Schema` 产品），记为会话当前模式，不按产品分支。
+两个查询的列布局是 `naviduck-schema` 与方言之间的契约，DM 必须产出相同列数与语义，加载器（`load_in_context`）不再按产品分支。两个查询入参取 `scope`+表名（而非已拼好的限定名）：DM 需把 owner（`scope.schema`）与表名分开过滤，PG 在方法内部自拼限定名。`session_setup`（`naviduck-db`）目前只认 `USE`/`SET search_path`，新增对 `SET SCHEMA <name>` 的通用识别（`ContextSelection::Schema` 产品），记为会话当前模式，不按产品分支。
 
 ### 5.5 类型映射
 
-dm-pure `Value` → 网格文本（`navidog_util::format` 现有工具优先）：
+dm-pure `Value` → 网格文本（`naviduck_util::format` 现有工具优先）：
 
 | Value | 显示 |
 | --- | --- |
@@ -242,7 +242,7 @@ dm-pure `Value` → 网格文本（`navidog_util::format` 现有工具优先）�
 
 ### 5.6 解释（新增 ExplainStyle 变体）
 
-`ExplainStyle` 新增 **`TextLines`**：计划是缩进文本行，无结构化节点。语义：`explain_sql` 返回 `EXPLAIN <sql>`；结果按单列文本行展示在查询编辑器的**文本视图**；网格、可视化、统计信息视图对该样式隐藏（`navidog_util::explain` 不解析）。现有三种样式（TableAndJson/JsonNodes/QueryPlanRows）不变。dm-pure 补丁 2 把 cmd=149 帧解析为单列 `PLAN` 行，正好对接。
+`ExplainStyle` 新增 **`TextLines`**：计划是缩进文本行，无结构化节点。语义：`explain_sql` 返回 `EXPLAIN <sql>`；结果按单列文本行展示在查询编辑器的**文本视图**；网格、可视化、统计信息视图对该样式隐藏（`naviduck_util::explain` 不解析）。现有三种样式（TableAndJson/JsonNodes/QueryPlanRows）不变。dm-pure 补丁 2 把 cmd=149 帧解析为单列 `PLAN` 行，正好对接。
 
 ### 5.7 关键字
 
@@ -252,7 +252,7 @@ dm-pure `Value` → 网格文本（`navidog_util::format` 现有工具优先）�
 
 ### 6.1 DDL 隐式提交的影响
 
-实测：DM 的 DDL 触发隐式提交——事务内未提交的 DML 会被随后的 DDL 提交，DDL 本身不可回滚（SQL 路径与协议路径各验一次）。因此 `transactional_ddl=false`，`navidog-schema` 走现有的非事务迁移路径（逐条执行，无 BEGIN/COMMIT 包裹）。
+实测：DM 的 DDL 触发隐式提交——事务内未提交的 DML 会被随后的 DDL 提交，DDL 本身不可回滚（SQL 路径与协议路径各验一次）。因此 `transactional_ddl=false`，`naviduck-schema` 走现有的非事务迁移路径（逐条执行，无 BEGIN/COMMIT 包裹）。
 
 后果：迁移中途失败时，已执行的 DDL 留在服务器上，草稿与服务器状态不一致。现有非事务路径（SQLite 重建同样非事务）已处理「失败保留草稿、提示部分执行」，DM 复用。
 
@@ -277,7 +277,7 @@ dm-pure `Value` → 网格文本（`navidog_util::format` 现有工具优先）�
 
 ### 6.5 DefinitionFamily::Dameng 与安全工具只读列表
 
-`navidog-sql` 的 `DefinitionFamily` 新增 `Dameng` 变体，`DamengDialect::definition_family()` 返回 `Some(Dameng)`。编译器强制所有 `match family` 补臂，语义在此登记：
+`naviduck-sql` 的 `DefinitionFamily` 新增 `Dameng` 变体，`DamengDialect::definition_family()` 返回 `Some(Dameng)`。编译器强制所有 `match family` 补臂，语义在此登记：
 
 - **定义编辑器**（`definition.rs`）：首版支持 View / Function / Procedure / Sequence。View/Function/Procedure 用 `CREATE OR REPLACE …`（DM 支持 OR REPLACE，阶段 2 实库回归）；Sequence 用 `CREATE SEQUENCE` / `ALTER SEQUENCE`（参数变化语法阶段 2 实测核对），改名不支持（`rename_object(Sequence)` 返回 `None`）。Index/Trigger 走表设计器的索引/触发器页，不走独立定义编辑器。
 - **安全**（`security.rs`）：`account_form` → `Unavailable("Dameng user and role designers are not available yet; …")`；`account_statements`/`grant_statements` → `Err`；`account_list_sql` → `Some`（`SELECT USERNAME AS name, … FROM ALL_USERS ORDER BY USERNAME`，列布局通用，列表面板按返回列名渲染）。`manages_privileges`/`monitors_server` false（基线）。`maintenance` → 空（ANALYZE/REBUILD 等后续，F-DM-007）；`kill_sql` → `Ok(None)`、`set_variable_sql` → 空（`monitors_server=false` 时均不可达，补臂仅为穷尽）。
@@ -305,16 +305,16 @@ dm-pure `Value` → 网格文本（`navidog_util::format` 现有工具优先）�
 ### 8.1 测试
 
 - 单元测试（不进 CI 的实库部分除外，全部进 CI）：方言（引用/折叠/分页/事务 SQL/能力字段随 CS 与 mode 变化）、目录 SQL 文本与参数绑定、类型映射、错误码映射、words.rs 非空且含核心保留字。
-- 实库测试（**本地可选，不进 CI**——DM 镜像许可限定学习/测试/开发，1 年试用）：环境变量 `NAVIDOG_DM_LIVE=1` + `DM_PORT`（默认 15236）开关，照现有 `NAVIDOG_LIVE` 模式。覆盖：连接/错误密码、目录八方法、中文读写（UTF-8 与 GB18030 各一实例）、LOB 读写、事务与 DDL 隐式提交、取消杀会话后重连、SET SCHEMA、分页、EXPLAIN、lazy fetch、设计器迁移语法。测完 `docker compose down`（DM 容器手动起，compose 文件只含现有三库；DM 实例的起法写验收记录）。
-- `navidog-headless` 增加 dameng 编译回归（可选但推荐，证明驱动栈不链接 GPUI）。
-- `scripts/check-deps.sh` 名单加 `navidog-dameng`；`check-dialect-branches.sh` 必须过。
+- 实库测试（**本地可选，不进 CI**——DM 镜像许可限定学习/测试/开发，1 年试用）：环境变量 `NAVIDUCK_DM_LIVE=1` + `DM_PORT`（默认 15236）开关，照现有 `NAVIDUCK_LIVE` 模式。覆盖：连接/错误密码、目录八方法、中文读写（UTF-8 与 GB18030 各一实例）、LOB 读写、事务与 DDL 隐式提交、取消杀会话后重连、SET SCHEMA、分页、EXPLAIN、lazy fetch、设计器迁移语法。测完 `docker compose down`（DM 容器手动起，compose 文件只含现有三库；DM 实例的起法写验收记录）。
+- `naviduck-headless` 增加 dameng 编译回归（可选但推荐，证明驱动栈不链接 GPUI）。
+- `scripts/check-deps.sh` 名单加 `naviduck-dameng`；`check-dialect-branches.sh` 必须过。
 
 ### 8.2 验收清单
 
 - [x] 连接表单：常规/高级/SSH 页按标志显示，无数据库输入、无 SSL 页；错误密码报干净中文消息（实库测试 `-2501`；消息前缀彻底消除仍依赖补丁 3）。
 - [x] 导航树目录来源：模式列表、系统模式过滤（`is_system_schema`）、表/视图/函数/过程/序列/触发器到对象级；DDL 显示 SP_TABLEDEF 原文（实库测试覆盖目录八方法）。
-- [x] 表查看器：分批读取 5000 行、中文列名/数据、BLOB 十六进制显示（实库测试）；单元格编辑提交走 `navidog_db::commit` 通用路径（三方言回归），SAVEPOINT 语法阶段 0 实测。
-- [x] 查询编辑器：执行/停止（停止后重连提示事务丢失）/解释文本视图（EXPLAIN 项在补丁接线前自动跳过，接线后转正）；历史日志走 `navidog-sql-log` 无方言分支。
+- [x] 表查看器：分批读取 5000 行、中文列名/数据、BLOB 十六进制显示（实库测试）；单元格编辑提交走 `naviduck_db::commit` 通用路径（三方言回归），SAVEPOINT 语法阶段 0 实测。
+- [x] 查询编辑器：执行/停止（停止后重连提示事务丢失）/解释文本视图（EXPLAIN 项在补丁接线前自动跳过，接线后转正）；历史日志走 `naviduck-sql-log` 无方言分支。
 - [x] 表设计器：迁移语法 17 条实库执行（含 IDENTITY/注释/索引/外键/检查/改表名）、迁移预览提示不可回滚（`transactional_ddl=false` 能力驱动）、IDENTITY 结构变化拒绝（plan 测试 + 实库）。
 - [x] 新能力字段 `folds_unquoted_upper`/`empty_string_is_null`/`identity_editable` 与 `ExplainStyle::TextLines` 按第 5 节实现，消费者按能力分支（`typed_name`、`written_sql` 空输入写 NULL、筛选 `= ''`→`IS NULL`、解释文本视图、设计器自增行禁用），无产品名分支。
 - [x] 设计器 SQL 钩子（`table_options_sql`/`column_metadata_sql`/`identity_definition`/`add_column`/`modify_column`）默认实现保持 PG 现状（PG 回归不变），DM 覆盖产出同布局结果；加载器无产品分支。

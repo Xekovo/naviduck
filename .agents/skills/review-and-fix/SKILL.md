@@ -38,9 +38,9 @@ cargo fmt --all --check && scripts/check-raw-px.sh
 env -u CARGO_TARGET_DIR cargo clippy --workspace --all-targets -- -D warnings
 env -u CARGO_TARGET_DIR cargo test --workspace
 # 改了 SQL 生成或驱动时
-docker compose up -d --wait && NAVIDOG_LIVE=1 env -u CARGO_TARGET_DIR cargo test -p navidog-db --test live; docker compose down
+docker compose up -d --wait && NAVIDUCK_LIVE=1 env -u CARGO_TARGET_DIR cargo test -p naviduck-db --test live; docker compose down
 # 改了界面时，跑完逐张看 target/snapshots/
-env -u CARGO_TARGET_DIR cargo test -p navidog --test snapshot
+env -u CARGO_TARGET_DIR cargo test -p naviduck --test snapshot
 ```
 
 target 目录有锁：cargo 命令一次一个，并行的子代理只读代码。

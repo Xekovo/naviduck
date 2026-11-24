@@ -17,11 +17,11 @@
 # HEAD_SHA. success also requires ARTIFACT and SHA256.
 set -euo pipefail
 
-marker="<!-- navidog-preview -->"
+marker="<!-- naviduck-preview -->"
 # ponytail: values are space-separated and unescaped. Run URLs, ids, SHAs, and
 # the artifact name have no spaces; a record that fails the charset check is
 # dropped. If a field ever needs spaces, switch this to JSON.
-success_prefix="<!-- navidog-preview-success "
+success_prefix="<!-- naviduck-preview-success "
 
 PREV_RUN_URL=""
 PREV_RUN_ID=""
@@ -165,7 +165,7 @@ ${header}
 - **CLI:** \`gh run download ${run_id} -R ${repo} -n ${artifact}\`
 - **SHA-256:** \`${sha256}\`
 
-The app is ad-hoc signed and not notarized. Open the DMG, move \`Navidog.app\`
+The app is ad-hoc signed and not notarized. Open the DMG, move \`Naviduck.app\`
 to \`~/Applications\` (create it if needed), then allow it in **System Settings
 → Privacy & Security → Open Anyway** if macOS blocks the first launch.
 
@@ -225,12 +225,12 @@ upsert() {
 }
 
 if [ "${1:-}" = "--check" ]; then
-  export GITHUB_REPOSITORY="example/navidog"
+  export GITHUB_REPOSITORY="example/naviduck"
   export GITHUB_SERVER_URL="https://github.com"
-  export RUN_URL="https://github.com/example/navidog/actions/runs/1"
+  export RUN_URL="https://github.com/example/naviduck/actions/runs/1"
   export RUN_ID="1"
   export HEAD_SHA="0123456789abcdef0123456789abcdef01234567"
-  export ARTIFACT="Navidog-preview-macos-aarch64"
+  export ARTIFACT="Naviduck-preview-macos-aarch64"
   export SHA256="deadbeef"
   for status in building success failure; do
     body="$(render "$status")"
@@ -244,14 +244,14 @@ if [ "${1:-}" = "--check" ]; then
   success="$(render success)"
   failure="$(render failure)"
   printf '%s' "$building" | grep -q "in progress"
-  printf '%s' "$success" | grep -q "Navidog-preview-macos-aarch64"
+  printf '%s' "$success" | grep -q "Naviduck-preview-macos-aarch64"
   printf '%s' "$success" | grep -q "deadbeef"
   printf '%s' "$failure" | grep -q "failed"
   printf '%s' "$building" | grep -q "0123456"
   second="${success#*$'\n'}"
   second="${second%%$'\n'*}"
   case "$second" in
-    "<!-- navidog-preview-success "*) ;;
+    "<!-- naviduck-preview-success "*) ;;
     *)
       echo "success: hidden marker is not the second line" >&2
       exit 1
@@ -259,7 +259,7 @@ if [ "${1:-}" = "--check" ]; then
   esac
   printf '%s' "$second" | grep -q "run_id=1"
   printf '%s' "$second" | grep -q "sha256=deadbeef"
-  printf '%s' "$second" | grep -q "artifact=Navidog-preview-macos-aarch64"
+  printf '%s' "$second" | grep -q "artifact=Naviduck-preview-macos-aarch64"
   if printf '%s' "$success" | grep -q "Last successful"; then
     echo "success: duplicated the last-success section" >&2
     exit 1
@@ -274,7 +274,7 @@ if [ "${1:-}" = "--check" ]; then
   fi
 
   # A later run keeps the success recorded by the marker.
-  export RUN_URL="https://github.com/example/navidog/actions/runs/42"
+  export RUN_URL="https://github.com/example/naviduck/actions/runs/42"
   export RUN_ID="42"
   export HEAD_SHA="abcdef0123456789abcdef0123456789abcdef01"
   export SHA256="cafebabe"
@@ -282,11 +282,11 @@ if [ "${1:-}" = "--check" ]; then
   load_success_from_body "$previous"
   [ "$PREV_RUN_ID" = "42" ]
   [ "$PREV_SHA256" = "cafebabe" ]
-  [ "$PREV_ARTIFACT" = "Navidog-preview-macos-aarch64" ]
+  [ "$PREV_ARTIFACT" = "Naviduck-preview-macos-aarch64" ]
   [ "$PREV_HEAD_SHA" = "abcdef0123456789abcdef0123456789abcdef01" ]
-  [ "$PREV_RUN_URL" = "https://github.com/example/navidog/actions/runs/42" ]
+  [ "$PREV_RUN_URL" = "https://github.com/example/naviduck/actions/runs/42" ]
 
-  export RUN_URL="https://github.com/example/navidog/actions/runs/99"
+  export RUN_URL="https://github.com/example/naviduck/actions/runs/99"
   export RUN_ID="99"
   export HEAD_SHA="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   building="$(render building)"
@@ -299,7 +299,7 @@ if [ "${1:-}" = "--check" ]; then
     second="${body#*$'\n'}"
     second="${second%%$'\n'*}"
     case "$second" in
-      "<!-- navidog-preview-success "*) ;;
+      "<!-- naviduck-preview-success "*) ;;
       *)
         echo "kept comment: hidden marker is not the second line" >&2
         exit 1
@@ -329,7 +329,7 @@ if [ "${1:-}" = "--check" ]; then
   fi
   [ -z "$PREV_RUN_ID" ]
 
-  poison='<!-- navidog-preview-success run_url=https://github.com/example/navidog/actions/runs/42 run_id=42 head_sha=abcdef0123456789abcdef0123456789abcdef01 artifact=ok;rm sha256=cafebabe -->'
+  poison='<!-- naviduck-preview-success run_url=https://github.com/example/naviduck/actions/runs/42 run_id=42 head_sha=abcdef0123456789abcdef0123456789abcdef01 artifact=ok;rm sha256=cafebabe -->'
   if load_success_from_body "$poison"; then
     echo "poisoned artifact was accepted" >&2
     exit 1

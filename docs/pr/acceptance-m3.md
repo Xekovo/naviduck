@@ -17,11 +17,11 @@
 | `cargo fmt --all --check`、裸值检查、`git diff --check` | 通过 |
 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | 通过；依赖 `block`、`proc-macro-error2` 有 future-incompatibility 提示 |
 | `cargo test --workspace --locked` | 199 项通过；实库用下面单独开启环境变量的命令验证 |
-| `NAVIDOG_LIVE=1 cargo test -p navidog-query --locked` | 27 项通过，包含服务端计划解析和新增编辑器实库测试 |
-| `NAVIDOG_LIVE=1 cargo test -p navidog-db --test live --locked` | 11 项通过 |
+| `NAVIDUCK_LIVE=1 cargo test -p naviduck-query --locked` | 27 项通过，包含服务端计划解析和新增编辑器实库测试 |
+| `NAVIDUCK_LIVE=1 cargo test -p naviduck-db --test live --locked` | 11 项通过 |
 | `cargo deny --all-features check` | advisories、bans、licenses、sources 全部通过；有重复依赖和未使用允许项警告 |
 | `cargo audit` | 通过；9 条已允许的间接依赖 unmaintained 警告 |
-| `cargo test -p navidog --test snapshot --locked` | 通过，检查本次生成的 27 张截图（包括查询和历史的浅深色、SQLite 解释视图） |
+| `cargo test -p naviduck --test snapshot --locked` | 通过，检查本次生成的 27 张截图（包括查询和历史的浅深色、SQLite 解释视图） |
 
 性能程序全部实际执行。并行编译期间首次网格测量受负载影响，不用作基线；编译结束后直接重新运行已构建的网格程序：10 万行 × 20 列，逐行滚动平均 3.48ms、p95 4.82ms；跳跃平均 5.35ms、p95 7.47ms，3/300 帧超过 8.3ms。导航树逐行/跳跃平均 0.54/0.72ms。5 万行 SQL 编辑器首次解析约 346ms，四个输入/滚动场景平均 1.62~1.71ms，均 0/300 帧超过 8.3ms。这些是本机本次测量，不是所有机器的保证。
 

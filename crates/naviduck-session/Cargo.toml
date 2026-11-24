@@ -1,0 +1,28 @@
+[package]
+name = "naviduck-session"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Open connection runtime state, metadata cache and code-completion outline."
+
+[dependencies]
+naviduck-model.workspace = true
+naviduck-sql = { path = "../naviduck-sql" }
+naviduck-app-state.workspace = true
+naviduck-db = { path = "../naviduck-db" }
+naviduck-mysql = { path = "../naviduck-mysql" }
+naviduck-postgres = { path = "../naviduck-postgres" }
+naviduck-sqlite = { path = "../naviduck-sqlite" }
+naviduck-dameng = { path = "../naviduck-dameng" }
+gpui-kit.workspace = true
+tokio.workspace = true
+futures.workspace = true
+tracing.workspace = true
+chrono.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+gpui-kit = { workspace = true, features = ["test-support"] }
+tempfile = "3"

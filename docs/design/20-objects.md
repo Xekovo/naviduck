@@ -8,7 +8,7 @@
 
 行为来源：`navigation_pane.html`、`object_pane.html`、`information_pane.html`、`virtual_group.html`、`favorites.html`、`focus.html`、`share_uri.html`、`con_manage.html`、`mysql_table.html`、`postgresql_table.html`、`sqlite_table.html`。
 
-本里程碑新建 crate `navidog-navigator`，把 M1 暂放在 `navidog-connection` 中的导航窗格、对象选项卡、信息窗格迁移过去。`navidog-connection` 只保留连接对话框、会话和连接相关命令。
+本里程碑新建 crate `naviduck-navigator`，把 M1 暂放在 `naviduck-connection` 中的导航窗格、对象选项卡、信息窗格迁移过去。`naviduck-connection` 只保留连接对话框、会话和连接相关命令。
 
 ## 1. 技术验证：导航树（M2 第一周完成，结论写回本节）
 
@@ -25,17 +25,17 @@ M1 用 `gpui-component` 的 `Tree` 实现了单选、键盘导航和右键原生
 
 **结论：继续用 `Tree`。** 四项都在外层实现，没有改动 `Tree` 内部：
 
-- **多选**：选择集合放在 `Workspace`（主选择加附加选择），`TreeState` 的选中项只作为主选择和键盘焦点；⌘ 点按、⇧ 点按的规则在 `navidog-navigator/src/selection.rs`，有单元测试。
+- **多选**：选择集合放在 `Workspace`（主选择加附加选择），`TreeState` 的选中项只作为主选择和键盘焦点；⌘ 点按、⇧ 点按的规则在 `naviduck-navigator/src/selection.rs`，有单元测试。
 - **拖放**：行（`ListItem`）上加 `on_drag`、`drag_over`、`on_drop`，和 `uniform_list` 的滚动可以共存。拖动一个已选中的连接时，所有选中的连接一起移动。
 - **原地重命名**：被重命名的行把标签换成 `Input`。注意行是由 `TreeState` 自己的视图渲染的，只改导航面板的状态不会重绘行，必须同时通知 `TreeState`。
-- **5000 个对象**：验证程序是 `cargo run --release -p navidog-navigator --example tree_spike`（280 × 900 的 headless Metal 窗口；一个分类下 5000 个对象，每行都挂着多选和拖放的处理器，其中一行是重命名用的 `Input`；各测 300 帧）：
+- **5000 个对象**：验证程序是 `cargo run --release -p naviduck-navigator --example tree_spike`（280 × 900 的 headless Metal 窗口；一个分类下 5000 个对象，每行都挂着多选和拖放的处理器，其中一行是重命名用的 `Input`；各测 300 帧）：
 
 | 场景 | 平均 | p95 | 最大 | 超过 8.3ms 的帧 |
 | --- | --- | --- | --- | --- |
 | 逐行滚动（每帧 3 行） | 1.4ms | 2.7ms | 3.4ms | 0 / 300 |
 | 跳跃滚动（每帧 397 行） | 2.6ms | 3.1ms | 3.5ms | 0 / 300 |
 
-debug 构建平均为 2.0ms 和 4.8ms。多选、拖进组、拖到空白处回到顶层、新建组和重命名组由 `crates/navidog-navigator/tests/navigator.rs` 通过真实的点击、拖动和键盘输入验证。
+debug 构建平均为 2.0ms 和 4.8ms。多选、拖进组、拖到空白处回到顶层、新建组和重命名组由 `crates/naviduck-navigator/tests/navigator.rs` 通过真实的点击、拖动和键盘输入验证。
 
 ⇧ + 上/下方向键按可见行扩展选择（规则与 ⇧ 点按相同，锚点是上次普通选择）。方向键由导航面板处理，因为点选行之后焦点在面板上，树控件自己的方向键绑定收不到。拖动进行中、指针在树的可视区域内且距上沿或下沿不足一行时，每 80ms 向该方向滚动一行；指针停在边缘也会继续滚（拖动本身每帧重绘）。指针在树以外（例如右侧的对象列表）不滚动。拖动组和对象随 F-NAV-007 已实现。
 
@@ -72,7 +72,7 @@ debug 构建平均为 2.0ms 和 4.8ms。多选、拖进组、拖到空白处回�
 - **展开**：单击只选中，不展开。双击和 Return：关闭的连接会打开，对象会打开，其余节点展开或折叠。行首箭头同样展开或折叠（关闭的连接会打开），但表只展开其下的字段、索引、外键和触发器，不打开表查看器。方向键右展开（关闭的连接会打开），左折叠。
 - **字段图标**：表下的字段里，主键用钥匙图标（`key`，黄色），其它字段仍用列图标（`columns-3`）。是否主键读目录里的 `ColumnInfo.primary_key`，不写进节点 id。
 
-## 3. 驱动接口扩展（`navidog-db`）
+## 3. 驱动接口扩展（`naviduck-db`）
 
 ```rust
 pub enum ObjectKind { Table, View, MaterializedView, Function, Procedure, Event, Trigger, Index, Sequence, Type, Schema }
@@ -135,7 +135,7 @@ pub struct Scope { pub database: String, pub schema: Option<String> }
 
 - **虚拟组**（F-NAV-007）：每个连接一份，保存在该连接目录的 `.vgroups.json`（作用域不重复连接 ID）；右键“管理组”可以新建组、添加到组、从组中排除；支持拖放。
 - **收藏夹**（F-APP-011）：保存在 `favorites.json`；新增“收藏夹”菜单；⌥⇧1-9 添加，⌃⇧1-9 打开。
-- **navidog URI**（F-APP-014、F-APP-015）：格式为 `navidog://open?conn=<名称>&host=<主机>&db=<库>&schema=<模式>&kind=<分类>&name=<对象>`；连接映射规则见 `share_uri.html`。
+- **naviduck URI**（F-APP-014、F-APP-015）：格式为 `naviduck://open?conn=<名称>&host=<主机>&db=<库>&schema=<模式>&kind=<分类>&name=<对象>`；连接映射规则见 `share_uri.html`。
 - **管理连接窗口**（F-CONN-015）：用表格列出全部连接；工具栏提供新建、编辑、标星、隐藏、删除；搜索时匹配名称、主机、端口和用户名，并高亮匹配内容。
 - **重载**（F-CONN-019，仅 MySQL）：在对话框里勾选要执行的 FLUSH 选项后执行。
 

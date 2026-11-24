@@ -27,7 +27,7 @@ git merge-base HEAD main && git log --oneline main..HEAD && git diff --stat main
 你是资深 Rust / GPUI 代码审查者。只读审查，不要修改任何文件，不要运行 cargo（主代理在跑，会抢 target 锁）。可以用 git、rg、读文件。
 
 ## 背景
-仓库 /Users/xhofe/code/i/navidog：用 gpui-kit 复刻 Navicat Premium 17 的 Rust workspace。分支 <分支>，相对 main 有 <N> 个提交。
+仓库 /Users/ekovovo/code/i/naviduck：用 gpui-kit 复刻 Navicat Premium 17 的 Rust workspace。分支 <分支>，相对 main 有 <N> 个提交。
 审查命令：git diff main...HEAD -- <路径>；行号以 HEAD 下的文件为准。
 gpui-kit 源码在 ~/.cargo/git/checkouts/gpui-kit-*/<rev>/crates，gpui 在 ~/.cargo/registry/src/*/gpui-pre-<版本>/src，确认组件行为时去读。
 
@@ -68,9 +68,9 @@ Mysterious Name、Duplicated Code、Feature Envy、Data Clumps、Primitive Obses
 ```bash
 git worktree add -f /tmp/cr-bisect <好的提交>
 cd /tmp/cr-bisect && git bisect start <坏的提交> <好的提交>
-git bisect run sh -c 'CARGO_TARGET_DIR=/Users/xhofe/code/i/navidog/target cargo test -p <crate> --test <测试> 2>&1 | grep -q "test result: ok"'
+git bisect run sh -c 'CARGO_TARGET_DIR=/Users/ekovovo/code/i/naviduck/target cargo test -p <crate> --test <测试> 2>&1 | grep -q "test result: ok"'
 git bisect reset
-cd /Users/xhofe/code/i/navidog && git worktree remove --force /tmp/cr-bisect
+cd /Users/ekovovo/code/i/naviduck && git worktree remove --force /tmp/cr-bisect
 ```
 
 定位后在 worktree 里加调试输出找原因，用户的工作区保持不动。
@@ -85,8 +85,8 @@ cd /Users/xhofe/code/i/navidog && git worktree remove --force /tmp/cr-bisect
 
 这个项目里反复出现过的问题，派子代理和自己核实时都对照：
 
-- 按字节长度切 `&str`（`s[..kw.len()]`）再比关键字，非 ASCII 输入会 panic；应改用 `navidog_util::starts_with_ignore_ascii_case`。
-- 对话框里既订阅输入框的 `PressEnter` 又设 `on_ok`：单行输入框会把回车传给对话框的 Confirm，确认执行两次。默认 `on_ok` 则是回车直接关闭、不应用。应统一用 `navidog_ui::skin::confirm_with`。
+- 按字节长度切 `&str`（`s[..kw.len()]`）再比关键字，非 ASCII 输入会 panic；应改用 `naviduck_util::starts_with_ignore_ascii_case`。
+- 对话框里既订阅输入框的 `PressEnter` 又设 `on_ok`：单行输入框会把回车传给对话框的 Confirm，确认执行两次。默认 `on_ok` 则是回车直接关闭、不应用。应统一用 `naviduck_ui::skin::confirm_with`。
 - 实体里只有一个 `task: Option<Task>` 槽：新任务覆盖旧任务会取消正在进行的加载，`busy` 永远不复位。
 - `run_on`、`run_rel` 调用即开始执行：丢掉界面回调不会取消语句，忙时再提交会重复执行；缓存命中前不要创建任务。
 - 所有会触发重新加载的路径（翻页、排序、筛选、刷新、重连），`set_data` 都会丢掉未提交的修改。

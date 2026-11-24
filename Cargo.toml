@@ -1,28 +1,28 @@
 [workspace]
 resolver = "3"
 members = ["crates/*", "xtask"]
-default-members = ["crates/navidog"]
+default-members = ["crates/naviduck"]
 
 [workspace.package]
 version = "0.0.1"
 edition = "2024"
 rust-version = "1.99"
 license = "Apache-2.0"
-repository = "https://github.com/xhofe/navidog"
+repository = "https://github.com/ekovovo/naviduck"
 
 [workspace.dependencies]
 # `version` lets `cargo publish` rewrite the path to a crates.io requirement.
 # Keep it equal to workspace.package.version.
-navidog-ui = { version = "0.0.1", path = "crates/navidog-ui" }
-navidog-model = { version = "0.0.1", path = "crates/navidog-model" }
-navidog-app-state = { version = "0.0.1", path = "crates/navidog-app-state" }
-navidog-util = { version = "0.0.1", path = "crates/navidog-util" }
-navidog-db = { version = "0.0.1", path = "crates/navidog-db" }
-navidog-connection = { version = "0.0.1", path = "crates/navidog-connection" }
-navidog-navigator = { version = "0.0.1", path = "crates/navidog-navigator" }
-navidog-grid = { version = "0.0.1", path = "crates/navidog-grid" }
-navidog-designer = { version = "0.0.1", path = "crates/navidog-designer" }
-navidog-query = { version = "0.0.1", path = "crates/navidog-query" }
+naviduck-ui = { version = "0.0.1", path = "crates/naviduck-ui" }
+naviduck-model = { version = "0.0.1", path = "crates/naviduck-model" }
+naviduck-app-state = { version = "0.0.1", path = "crates/naviduck-app-state" }
+naviduck-util = { version = "0.0.1", path = "crates/naviduck-util" }
+naviduck-db = { version = "0.0.1", path = "crates/naviduck-db" }
+naviduck-connection = { version = "0.0.1", path = "crates/naviduck-connection" }
+naviduck-navigator = { version = "0.0.1", path = "crates/naviduck-navigator" }
+naviduck-grid = { version = "0.0.1", path = "crates/naviduck-grid" }
+naviduck-designer = { version = "0.0.1", path = "crates/naviduck-designer" }
+naviduck-query = { version = "0.0.1", path = "crates/naviduck-query" }
 
 gpui-kit = { version = "0.8", features = ["gpui-fast"] }
 rust-i18n = "4"
