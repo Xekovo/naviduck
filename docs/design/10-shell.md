@@ -13,7 +13,7 @@
 3. `application().with_assets(NaviduckAssets)`，其中 `NaviduckAssets` 先查找 naviduck 自有的图标，找不到再回退 gpui-kit 的 `Assets`。
 4. 在 `run` 回调中依次执行：
    1. `gpui_kit::init(cx)`；
-   2. `cx.set_app_identity(...)`，Bundle ID 为 `com.ekovovo.naviduck`。Dock 图标用 `crates/naviduck/resources/naviduck.svg`。本地 `scripts/bundle-macos.sh` 把它做成 `naviduck.icns` 放进应用包。GitHub Actions 的 `cargo bundle` 在仓库根目录解析图标路径，使用 `crates/naviduck/icons/naviduck.icns`；打包后检查 `Contents/Resources/naviduck.icns` 存在，且 `CFBundleIconFile` 为 `naviduck.icns`。`cargo run` 启动时用同一张 SVG 调用 `setApplicationIconImage`（gpui 在 macOS 上忽略窗口的 `icon`）；
+   2. `cx.set_app_identity(...)`，Bundle ID 为 `com.ekovovo.naviduck`。Dock 图标用 `crates/naviduck/resources/naviduck.png`。本地 `scripts/bundle-macos.sh` 把 `crates/naviduck/icons/naviduck.icns` 做进应用包。GitHub Actions 的 `cargo bundle` 在仓库根目录解析图标路径，使用 `crates/naviduck/icons/naviduck.icns`；打包后检查 `Contents/Resources/naviduck.icns` 存在，且 `CFBundleIconFile` 为 `naviduck.icns`。`cargo run` 启动时用同一张 PNG 调用 `setApplicationIconImage`（gpui 在 macOS 上忽略窗口的 `icon`）；
    3. 加载主题（默认 gpui-kit 的 Default；偏好设置可选 Navicat），`font_size` 设为 13，外观跟随系统或使用偏好设置中固定的外观；
    4. 初始化各 crate：`naviduck_app_state::init`、`naviduck_db::init`（启动 tokio 运行时）、`naviduck_connection::init`；
    5. 先 `cx.bind_keys(...)`，再 `cx.set_menus(...)`；

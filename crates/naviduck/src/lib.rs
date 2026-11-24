@@ -317,15 +317,15 @@ fn set_dock_icon() {
     use objc2_app_kit::{NSApplication, NSImage};
     use objc2_foundation::NSData;
 
-    const SVG: &[u8] = include_bytes!("../resources/naviduck.svg");
+    const ICON: &[u8] = include_bytes!("../resources/naviduck.png");
     let Some(mtm) = MainThreadMarker::new() else {
         tracing::warn!("the dock icon must be set on the main thread");
         return;
     };
     let data =
-        unsafe { NSData::initWithBytes_length(NSData::alloc(), SVG.as_ptr().cast(), SVG.len()) };
+        unsafe { NSData::initWithBytes_length(NSData::alloc(), ICON.as_ptr().cast(), ICON.len()) };
     let Some(image) = NSImage::initWithData(NSImage::alloc(), &data) else {
-        tracing::warn!("the dock icon SVG did not load");
+        tracing::warn!("the dock icon image did not load");
         return;
     };
     let app = NSApplication::sharedApplication(mtm);
