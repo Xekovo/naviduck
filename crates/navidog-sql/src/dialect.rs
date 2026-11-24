@@ -346,7 +346,8 @@ pub trait Dialect: std::fmt::Debug + Send + Sync {
         format!("ALTER TABLE {table} ADD COLUMN {column} {definition}{position}")
     }
     /// `Some` takes over the whole statement sequence for changing an existing column; `None`
-    /// falls back to the shared path. `Err` refuses the change with a reason.
+    /// falls back to the shared path. `Err` refuses the change with a reason. The table and
+    /// the old/new names arrive quoted, like `add_column`'s column.
     fn modify_column(
         &self,
         _table: &str,
@@ -424,6 +425,10 @@ pub trait Dialect: std::fmt::Debug + Send + Sync {
                 .filter(|s| !s.is_empty())
         {
             expr.to_string()
+        } else if self.features().empty_string_is_null && written.value.as_deref() == Some("") {
+            // The server stores '' as NULL (Dameng COMPATIBLE_MODE=2), so an emptied
+            // cell writes NULL (140-dameng.md §5.2).
+            "NULL".into()
         } else {
             self.literal(written.value.as_deref())
         }

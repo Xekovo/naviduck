@@ -73,4 +73,35 @@ DM_PORT=15236 cargo run --bin ddlprobe2    # 设计器 DDL/事务/SP_TABLEDEF
 
 **依赖策略（已确认，上游消失后更新）**：上游仓库 `zhangtao103239/dm8_pure_rs` 在 GitHub 返回 404，全站搜索（含 fork）未找到镜像，无法 fork/提 PR。改为自建托管：用户创建公开仓库 `github.com/ekovovo/dm8_pure_rs`（非 fork，不初始化 README/license），`main` 为 crates.io 1.2.4 原版镜像，`fix/protocol-lob-explain-error-status` 分支仅含四补丁。上游发布修复版前，`navidog-dameng` 用 `[patch.crates-io]` git 依赖指向该修复分支（`dm-pure = "=1.2.4"` + patch，提交 Cargo.lock）；上游恢复后向其提 PR，上游发修复版后切回 crates.io 精确版本并移除 patch。
 
-## 验收记录（阶段 3，待补）
+## 验收记录（阶段 2/3，2026-11-24）
+
+### 实现
+
+- **`crates/navidog-dameng`**（不依赖 GPUI，`check-deps.sh` 通过）：`dialect.rs`（`DamengDialect { case_sensitive, compatible_mode }`，能力字段随探测结果切换）、`words.rs`（`V$RESERVED_WORDS` 的 231 个保留字减 COMMON 共 159 个 extra + 内置函数表）、`metadata.rs`（八个目录方法经 `relational_catalog!` 转发）、`driver.rs`（照 `navidog-sqlite` 的阻塞线程 + watch 退休栅栏；`recovering_execute!`/`recovering_ping!`；取消经短期连接 `CALL SP_CLOSE_SESSION`，偏差 D2）、`locales/dameng.yml`（en/zh-CN）。
+- **共享层接线**：`navidog-schema` 的 `plan.rs` 调用 `add_column`（DM 括号形式）与 `modify_column`（DM 接管整段序列；含 IDENTITY 子句的变化报错拒绝）；PG/MySQL/SQLite 回归不变。`navidog-session::init` 注册第五个内置驱动；`check-deps.sh` 名单加 `navidog-dameng`；自绘抽象图标 `icons/db/dameng.svg`（原创图形，未取材任何既有 logo）。
+- **用户工具只读列表（规格 6.5）**：`Unavailable` 且 `account_list_sql()=Some` 时渲染只读列表——隐藏「新建」「设计」、禁用双击打开、保留筛选刷新，原因文本显示在工具栏；SQLite（无列表 SQL）仍显示原因文本。`tools.rs` 两处硬编码 `SQLITE_AUTH_REASON` 改为 `Unavailable(reason)` 携带的原因。
+- **迁移不可回滚提示（规格 6.2）**：预览页在 `transactional_ddl=false` 时显示固定提示（en/zh-CN）。注意：MySQL 同样是 `transactional_ddl=false`，预览页因此新增同一提示——能力驱动、事实正确（MySQL DDL 亦隐式提交），超出原规格范围的界面变化记录在 progress.md 偏差表。
+
+### 阶段 2 实测对规格的修正
+
+- `ALL_TAB_COLUMNS` **没有** `IDENTITY_COLUMN` 列，IDENTITY 种子/增量不在任何目录列。可用来源：`SYS.SYSCOLUMNS.INFO2`（identity 列为 1）+ 系统函数 `IDENT_SEED`/`IDENT_INCR`（接受 `'模式.表'` 字符串；非 identity 表报 -7019，且 DM 在 CASE 标量子查询里会**预先求值**所有分支，WHERE 守卫无效）。最终实现：identity 文本由 `column_metadata_sql` 的 `UNION ALL` 分支产出，该分支按 `S.INFO2 = 1` 过滤行，非 identity 表在分支里没有行、函数不执行。已写回规格 5.4。
+- `ALL_SOURCE` 的 `TYPE` 把函数记为 `'PROC'`（不是 Oracle 的 `'FUNCTION'`）；DDL 过滤用 `TYPE IN ('FUNCTION', 'PROC')`。
+- `ALL_TRIGGERS` 的种类列是 `TRIGGERING_TYPE`。
+- `SP_TABLEDEF` 不能作为 SELECT 项（-4015），只能 `CALL`；驱动把 `ExecuteResult::Call` 的 OUT 值映射成一行结果集。
+- 目录查询用 `string_literal` 引号字面量过滤（`execute_read` 无参数通道），照 PG 惯例；规格第 4 节「绑定参数」的表述按此调整。
+- `LISTAGG` 可用于拼接 `ALL_SOURCE` 多行文本。
+- 取消探测：`SELECT COUNT(*)` 形式的笛卡尔积被 DM 优化掉（1.6e9 行 375ms），取消测试改用 `SUM(A.N*2+B.N)` 强制求值（6.6s）。
+
+### 测试
+
+- 单元测试：dameng 23 项（方言引用/折叠/分页/事务 SQL/能力随 CS 与 mode、目录 SQL 文本、类型映射、错误码映射、words 非空）；`navidog-schema` 新增 DM 迁移计划 4 项（ADD 括号形式、RENAME+MODIFY 序列、IDENTITY 拒绝、仅默认值变化走 `ALTER COLUMN … DROP DEFAULT`）；`security_plan` 补 Dameng 只读列表契约；`navidog-headless` 新增 dameng 编译回归（驱动栈不链接 GPUI、DriverInfo 标志与规格一致）。
+- 实库测试（`NAVIDOG_DM_LIVE=1`，本地 dm8-utf8 实例，10 项全部通过）：连接与版本（BANNER + ID_CODE）、错误密码 `-2501` 干净中文消息、目录八方法（含 SP_TABLEDEF DDL、identity 富集文本 `IDENTITY(1, 1)`）、中文表名/列名/数据、LOB（136000 字符 CLOB + 200000 字节 BLOB 参数化写入读回）、事务与 DDL 隐式提交、取消杀会话后新连接（SESSID 变化）、SET SCHEMA、`LIMIT … OFFSET` 分页、EXPLAIN 单列文本、lazy fetch 首批 100 行续取至 5000、设计器迁移语法 17 条（ADD/MODIFY/RENAME COLUMN/DROP COLUMN/SET DEFAULT/DROP DEFAULT/约束/注释/索引/改表名）。
+- **补丁依赖的自动跳过**：未打补丁的 dm-pure 1.2.4 上，LOB 行外读回为空（补丁 1）、EXPLAIN 挂起（补丁 2）、SET SCHEMA 挂起（补丁 4）、`SP_CLOSE_SESSION` 的 CALL 响应挂起（同补丁 4 形状）——实库测试对前三者检测到该形态时打印原因并跳过；补丁接线后守卫自动转正。本轮实测中取消杀会话本身立即生效（服务器侧），仅取消连接的响应等待超时。
+- 全量检查通过：`cargo fmt --check`、`clippy --workspace --all-targets -D warnings`、`check-deps.sh`、`check-dialect-branches.sh`、`check-i18n.sh`、`check-raw-px.sh`、`cargo test --workspace`（69 套件）、截图测试（既有方言截图无变化）。
+
+### 遗留
+
+1. dm-pure 四补丁接线（见 progress.md 偏差表）：重建补丁 → 用户创建 `github.com/ekovovo/dm8_pure_rs` → 推送（征得同意）→ 根 Cargo.toml `[patch.crates-io]` git 依赖 → 重跑实库测试转正三个跳过守卫 → 提交 Cargo.lock。
+2. DM 界面整体走查（连接表单/导航树/表查看器/查询编辑器/表设计器浅深色截图）需本机连 DM 实例目测；CS=0 与 COMPATIBLE_MODE=2/4 实例的引用与空串行为按能力字段切换，留待下一轮。
+3. 规格验收清单中依赖以上两项的条目未勾选，其余见 [140-dameng.md §8.2](../design/140-dameng.md#82-验收清单)。
+

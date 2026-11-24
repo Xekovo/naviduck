@@ -357,8 +357,10 @@ async fn load_in_context(
             }
             ddl.push_str(&format!(
                 "\n-- Table options: {}",
-                serde_json::to_string(&option_sets.iter().flat_map(|s| &s.rows).collect::<Vec<_>>())
-                    .unwrap_or_default()
+                serde_json::to_string(
+                    &option_sets.iter().flat_map(|s| &s.rows).collect::<Vec<_>>()
+                )
+                .unwrap_or_default()
             ));
         }
         if let Some(query) = dialect.column_metadata_sql(scope, name) {
@@ -396,8 +398,10 @@ async fn load_in_context(
             }
             ddl.push_str(&format!(
                 "\n-- Column metadata: {}",
-                serde_json::to_string(&sets.iter().flat_map(|s| s.rows.clone()).collect::<Vec<_>>())
-                    .unwrap_or_default()
+                serde_json::to_string(
+                    &sets.iter().flat_map(|s| s.rows.clone()).collect::<Vec<_>>()
+                )
+                .unwrap_or_default()
             ));
         }
     }

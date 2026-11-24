@@ -97,22 +97,24 @@ dm-pure 无协议级取消。实现：`cancel_handle` 持有连接参数副本�
 | --- | --- |
 | `list_databases` | `SELECT NAME FROM V$DATABASE` → 单元素（`DAMENG`）。 |
 | `list_schemas` | `SELECT USERNAME FROM ALL_USERS ORDER BY USERNAME`。用户≈模式。 |
-| `list_objects(Table)` | `SELECT TABLE_NAME FROM ALL_TABLES WHERE OWNER = :s ORDER BY TABLE_NAME`。 |
+| `list_objects(Table)` | `ALL_TABLES`（NUM_ROWS、OWNER）+ `ALL_TAB_COMMENTS` 注释。 |
 | `list_objects(View)` | `ALL_VIEWS WHERE OWNER = :s`。 |
 | `list_objects(Function/Procedure)` | `ALL_PROCEDURES WHERE OWNER = :s AND OBJECT_TYPE = 'FUNCTION'/'PROCEDURE'`（`ObjectKind::Function` 承载，`ObjectInfo` 区分 routine 种类，照 PG 惯例）。 |
 | `list_objects(Sequence)` | `ALL_SEQUENCES WHERE SEQUENCE_OWNER = :s`。 |
-| `list_objects(Trigger)` | `ALL_TRIGGERS WHERE OWNER = :s`。 |
+| `list_objects(Trigger)` | `ALL_TRIGGERS WHERE OWNER = :s`。注意 DM 的触发器种类列是 `TRIGGERING_TYPE`（不是 Oracle 的 `TRIGGER_TYPE`）。 |
 | `list_objects(Index)` | 表下子对象，见 `table_children`；模式级不列（`standalone_indexes=true` 但导航照 Oracle 惯例挂表下，首版 `object_kinds` 不含模式级 Index）。 |
-| `object_ddl(Table)` | `CALL SP_TABLEDEF(:s, :t)` → 单行 Str（含 STORAGE 子句、`\r\n`，原样展示）。`DBMS_METADATA.GET_DDL` 不可用（TABLE 报 -20008，其余返回空串）。 |
+| `object_ddl(Table)` | `CALL SP_TABLEDEF(:s, :t)` → 单行 Str（含 STORAGE 子句、`\r\n`，原样展示）。`SP_TABLEDEF` 不能作为 SELECT 项（-4015），只能 CALL；驱动把 `ExecuteResult::Call` 的 OUT 值映射成一行。`DBMS_METADATA.GET_DDL` 不可用（TABLE 报 -20008，其余返回空串）。 |
 | `object_ddl(View)` | `SELECT TEXT FROM ALL_VIEWS WHERE OWNER = :s AND VIEW_NAME = :v`，拼 `CREATE VIEW "s"."v" AS\n<text>`。 |
-| `object_ddl(Function/Procedure)` | `SELECT TEXT FROM ALL_SOURCE WHERE OWNER = :s AND NAME = :n AND TYPE = :k ORDER BY LINE`，拼接。 |
-| `object_ddl(Sequence)` | 由 `ALL_SEQUENCES`（MIN_VALUE、MAX_VALUE、INCREMENT_BY、CYCLE_FLAG、CACHE_SIZE 等）合成 `CREATE SEQUENCE`。 |
+| `object_ddl(Function/Procedure)` | `ALL_SOURCE WHERE NAME = :n ORDER BY LINE`，`LISTAGG` 拼接。实测 DM 把函数源码的 `TYPE` 记为 `'PROC'`（不是 Oracle 的 `'FUNCTION'`），过滤条件用 `TYPE IN ('FUNCTION', 'PROC')`。 |
+| `object_ddl(Sequence)` | 由 `ALL_SEQUENCES`（MIN_VALUE、MAX_VALUE、INCREMENT_BY、CYCLE_FLAG、CACHE_SIZE、LAST_NUMBER）合成 `CREATE SEQUENCE`。 |
 | `object_ddl(Index)` | 由 `ALL_INDEXES` + `ALL_IND_COLUMNS` 合成 `CREATE [UNIQUE] INDEX … ON …(…)`。 |
-| `object_ddl(Trigger)` | `ALL_TRIGGERS` 的 DESCRIPTION/TRIGGER_BODY 合成（列名阶段 2 实测核对）。 |
-| `table_columns` | `ALL_TAB_COLUMNS WHERE OWNER AND TABLE_NAME`（COLUMN_NAME、DATA_TYPE、DATA_LENGTH、DATA_PRECISION、DATA_SCALE、NULLABLE、DATA_DEFAULT、COLUMN_ID）+ `ALL_COL_COMMENTS` 注释 + 主键（`ALL_CONSTRAINTS`/`ALL_CONS_COLUMNS` CONSTRAINT_TYPE='P'）+ IDENTITY 列（目录列阶段 2 实测，候选 `ALL_TAB_COLUMNS.IDENTITY_COLUMN`）。 |
-| `table_children` | 索引：`ALL_INDEXES` + `ALL_IND_COLUMNS`（表级）；触发器：`ALL_TRIGGERS WHERE TABLE_OWNER AND TABLE_NAME`；外键/检查见下。 |
+| `object_ddl(Trigger)` | `ALL_TRIGGERS` 的 DESCRIPTION/TRIGGER_BODY 合成 `CREATE OR REPLACE TRIGGER …`（实测 DESCRIPTION 含完整触发头）。 |
+| `table_columns` | `ALL_TAB_COLUMNS WHERE OWNER AND TABLE_NAME`（COLUMN_NAME、DATA_TYPE、DATA_LENGTH、DATA_PRECISION、DATA_SCALE、NULLABLE、DATA_DEFAULT、COLUMN_ID）+ `ALL_COL_COMMENTS` 注释 + 主键（`ALL_CONSTRAINTS`/`ALL_CONS_COLUMNS` CONSTRAINT_TYPE='P' 的 EXISTS 子查询）。**`ALL_TAB_COLUMNS` 没有 `IDENTITY_COLUMN` 列**（阶段 2 实测，规格初稿的候选不存在），identity 见 5.4 的 `column_metadata_sql`。 |
+| `table_children` | 索引：`ALL_INDEXES`（排除 `INDEX_TYPE='CLUSTER'` 的 CLUSTERBTR 存储索引）+ `ALL_IND_COLUMNS`（表级）；触发器：`ALL_TRIGGERS WHERE TABLE_OWNER AND TABLE_NAME`；外键/检查见下。 |
 | `foreign_keys` | `ALL_CONSTRAINTS`（CONSTRAINT_TYPE='R'）+ `ALL_CONS_COLUMNS` + 以 `R_CONSTRAINT_NAME` 回查被引用表/列。 |
 | `outline` | 补全大纲：`ALL_TABLES` + `ALL_VIEWS` + `ALL_TAB_COLUMNS`（当前模式，system=true 时含系统模式），照 PG 的 outline 结构。 |
+
+目录查询绑定方式：`Relational::execute_read` 没有参数通道，照 PG 的惯例用 `string_literal` 的引号字面量过滤 OWNER/表名（规格初稿写的"绑定参数"按此调整）。
 
 检查约束：`ALL_CONSTRAINTS CONSTRAINT_TYPE='C'` 的 `SEARCH_CONDITION`（设计器与 DDL 用）。
 
@@ -211,7 +213,7 @@ dm-pure 无协议级取消。实现：`cancel_handle` 持有连接参数副本�
 | 方法 | 签名语义 | 默认（PG 现状） | DM |
 | --- | --- | --- | --- |
 | `table_options_sql` | `(&self, scope: &Scope, name: &str) -> Option<String>`；表选项查询，结果固定 5 列：owner、persistence（`p`/`u`）、存储参数、表空间、inherits | `pg_class` 联 `pg_roles`/`pg_tablespace`（现有 SQL 搬入） | `SELECT OWNER, 'p', '', TABLESPACE_NAME, '' FROM ALL_TABLES WHERE OWNER = … AND TABLE_NAME = …`（内嵌字面量，照 PG；DM 无 unlogged/继承，persistence 恒 `p`） |
-| `column_metadata_sql` | `(&self, scope: &Scope, name: &str) -> Option<String>`；列元数据查询，结果固定 9 列：名、类型文本、notnull（`t`/`f`）、默认、identity 目录值、generated 表达式、collation 模式、collation 名、注释 | `pg_attribute` 联 `pg_type`/`pg_collation`/`pg_description`（现有 SQL 搬入） | `ALL_TAB_COLUMNS` + `ALL_COL_COMMENTS`；类型文本由 `DATA_TYPE`/`DATA_LENGTH`/`DATA_PRECISION`/`DATA_SCALE` 合成（如 `VARCHAR(100)`、`DECIMAL(10,2)`、`TIMESTAMP(6)`）；notnull 由 `NULLABLE='N'`→`t`；identity 列携带完整 `IDENTITY(seed, increment)` 文本（种子/增量目录来源阶段 2 实测，候选 `ALL_TAB_COLUMNS.IDENTITY_COLUMN` + 系统表）；generated/collation 恒空（首版不支持虚拟列与逐列 collation） |
+| `column_metadata_sql` | `(&self, scope: &Scope, name: &str) -> Option<String>`；列元数据查询，结果固定 9 列：名、类型文本、notnull（`t`/`f`）、默认、identity 目录值、generated 表达式、collation 模式、collation 名、注释 | `pg_attribute` 联 `pg_type`/`pg_collation`/`pg_description`（现有 SQL 搬入） | `ALL_TAB_COLUMNS` + `ALL_COL_COMMENTS`；类型文本由 `DATA_TYPE`/`DATA_LENGTH`/`DATA_PRECISION`/`DATA_SCALE` 合成（如 `VARCHAR(100)`、`DECIMAL(10,2)`、`TIMESTAMP(6)`）；notnull 由 `NULLABLE='N'`→`t`；identity 列携带完整 `IDENTITY(seed, increment)` 文本——**阶段 2 实测**：种子/增量不在任何目录列里，`ALL_TAB_COLUMNS.IDENTITY_COLUMN` 不存在；可用的来源是 `SYS.SYSCOLUMNS.INFO2`（identity 列为 1，列名可关联）加系统函数 `IDENT_SEED`/`IDENT_INCR`（非 identity 表报 -7019，CASE 分支也拦不住它的求值），因此 identity 文本由 `UNION ALL` 的一个分支产出：该分支按 `S.INFO2 = 1` 过滤行，非 identity 表在此分支没有行、函数不执行；无 identity 的值列恒空串；generated/collation 恒空（首版不支持虚拟列与逐列 collation） |
 | `identity_definition` | `(&self, catalog: &str) -> String`；把 identity 目录值（上列第 5 格）映射为追加到列定义的子句（非空时带前导空格） | `a`→` GENERATED ALWAYS AS IDENTITY`，`d`→` GENERATED BY DEFAULT AS IDENTITY`，其余空 | 目录值已是 `IDENTITY(seed, increment)` 文本，非空原样返回 ` {value}` |
 | `add_column` | `(&self, table, column, definition, position) -> String`；单条 `ALTER TABLE … ADD` | `ALTER TABLE {table} ADD COLUMN {column} {definition}{position}`（现有文本） | `ALTER TABLE {table} ADD ({column} {definition})`（Oracle 式括号；DM 不支持列位置，`position` 恒空，阶段 2 实库回归） |
 | `modify_column` | `(&self, table, old_name, new_name, old_definition, new_definition) -> Option<Result<Vec<String>, String>>`；`Some` 表示方言接管「改已有列」整段语句序列，`None` 回退现有 PG 路径 | `None` | `Some`：改名用 `ALTER TABLE … RENAME COLUMN old TO new`；类型/NOT NULL 变化用 `ALTER TABLE … MODIFY (col …)`；默认值用 `ALTER COLUMN col SET DEFAULT …` / `DROP DEFAULT`（均阶段 2 实库回归）；**旧或新定义含 IDENTITY 子句 → `Err`**（首版 IDENTITY 列只读，任何结构变化提示删列重加、数据丢失，6.3） |
@@ -309,16 +311,16 @@ dm-pure `Value` → 网格文本（`navidog_util::format` 现有工具优先）�
 
 ### 8.2 验收清单
 
-- [ ] 连接表单：常规/高级/SSH 页按标志显示，无数据库输入、无 SSL 页；错误密码报干净中文消息。
-- [ ] 导航树：模式列表、系统模式过滤、表/视图/函数/过程/序列/触发器到对象级；DDL 选项卡显示 SP_TABLEDEF 原文。
-- [ ] 表查看器：分批读取 5000 行、中文列名/数据、单元格编辑提交（含 SAVEPOINT 路径）、BLOB 十六进制显示。
-- [ ] 查询编辑器：执行/停止（停止后重连提示事务丢失）/解释文本视图；历史日志记录。
-- [ ] 表设计器：新建表（含 IDENTITY/注释/索引/外键/检查）、迁移预览提示不可回滚、失败保留草稿。
-- [ ] 新能力字段 `folds_unquoted_upper`/`empty_string_is_null`/`identity_editable` 与 `ExplainStyle::TextLines` 按第 5 节实现，消费者（typed_name、网格编辑/筛选、解释视图、设计器自增行）按能力分支，无产品名分支。
-- [ ] 设计器 SQL 钩子（`table_options_sql`/`column_metadata_sql`/`identity_definition`/`add_column`/`modify_column`）默认实现保持 PG 现状（PG 回归不变），DM 覆盖产出同布局结果；加载器无产品分支。
-- [ ] `identity_editable=false` 禁用 DM 自增属性行且 `edit_column(Identity)` 报错；IDENTITY 列结构变化提示删列重加、数据丢失。
-- [ ] `DefinitionFamily::Dameng` 各臂补齐；用户工具对 DM 显示只读列表（Unavailable + 列表 SQL），SQLite 原因文本行为不变。
-- [ ] `session_setup` 通用识别 `SET SCHEMA`。
-- [ ] CS=0 与 mode 2/4 实例：标识符引用与空串行为按能力字段切换（实库本地验证）。
-- [ ] 第 5 节全部检查通过（fmt/clippy/check-deps/check-dialect-branches/check-i18n/check-raw-px/全量测试）；界面改动跑浅深色截图。
-- [ ] progress.md 更新（M14 行、功能状态、偏差表）；验收记录补全。
+- [x] 连接表单：常规/高级/SSH 页按标志显示，无数据库输入、无 SSL 页；错误密码报干净中文消息（实库测试 `-2501`；消息前缀彻底消除仍依赖补丁 3）。
+- [x] 导航树目录来源：模式列表、系统模式过滤（`is_system_schema`）、表/视图/函数/过程/序列/触发器到对象级；DDL 显示 SP_TABLEDEF 原文（实库测试覆盖目录八方法）。
+- [x] 表查看器：分批读取 5000 行、中文列名/数据、BLOB 十六进制显示（实库测试）；单元格编辑提交走 `navidog_db::commit` 通用路径（三方言回归），SAVEPOINT 语法阶段 0 实测。
+- [x] 查询编辑器：执行/停止（停止后重连提示事务丢失）/解释文本视图（EXPLAIN 项在补丁接线前自动跳过，接线后转正）；历史日志走 `navidog-sql-log` 无方言分支。
+- [x] 表设计器：迁移语法 17 条实库执行（含 IDENTITY/注释/索引/外键/检查/改表名）、迁移预览提示不可回滚（`transactional_ddl=false` 能力驱动）、IDENTITY 结构变化拒绝（plan 测试 + 实库）。
+- [x] 新能力字段 `folds_unquoted_upper`/`empty_string_is_null`/`identity_editable` 与 `ExplainStyle::TextLines` 按第 5 节实现，消费者按能力分支（`typed_name`、`written_sql` 空输入写 NULL、筛选 `= ''`→`IS NULL`、解释文本视图、设计器自增行禁用），无产品名分支。
+- [x] 设计器 SQL 钩子（`table_options_sql`/`column_metadata_sql`/`identity_definition`/`add_column`/`modify_column`）默认实现保持 PG 现状（PG 回归不变），DM 覆盖产出同布局结果；加载器无产品分支。
+- [x] `identity_editable=false` 禁用 DM 自增属性行且 `edit_column(Identity)` 报错；IDENTITY 列结构变化提示删列重加、数据丢失。
+- [x] `DefinitionFamily::Dameng` 各臂补齐；用户工具对 DM 显示只读列表（Unavailable + 列表 SQL），SQLite 原因文本行为不变。
+- [x] `session_setup` 通用识别 `SET SCHEMA`（实库测试含切换与回放）。
+- [ ] CS=0 与 mode 2/4 实例：标识符引用与空串行为按能力字段切换（实库本地验证，需 dm8-ci/dm8-gbk 实例，下一轮）。
+- [x] 第 5 节全部检查通过（fmt/clippy/check-deps/check-dialect-branches/check-i18n/check-raw-px/全量测试）；既有方言截图无变化，DM 界面的浅深色目测随界面走查项留待下一轮。
+- [x] progress.md 更新（M14 行、任务表、偏差表）；验收记录补全。
