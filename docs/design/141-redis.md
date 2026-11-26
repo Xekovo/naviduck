@@ -36,7 +36,7 @@ per_database_sessions: false
 
 fred 配置映射：host/port → 地址；`general.user` 非空时作为 ACL 用户名（RESP3 AUTH username password）；`general.password` → 密码；初始数据库 → `general.database` 解析为编号，fred `database` 字段；SSL → `enable-rustls` 特性，验证模式沿用现有 `SslMode` 映射（Required/VerifyFull 同 fred 的证书校验开关）。连接/读写超时沿用 `ConnectParams::timeout()`。`auto_reconnect` 固定关闭（恢复由 naviduck-db 编排，驱动不自作主张）。
 
-图标：自绘抽象 SVG `icons/db/redis.svg`，不提取 Navicat 图标。
+图标：Redis 官方 logo（用户提供位图，抠黑底为透明 PNG `icons/db/redis.png`，128×128）；用于标识 Redis 连接属指示性使用，与达梦「自绘抽象图形」的策略不同，是用户确认的选择。
 
 ## 3. 会话与执行
 

@@ -26,7 +26,7 @@ impl Default for RedisDriver {
         Self {
             info: DriverInfo {
                 default_port: naviduck_model::connection::driver_defaults("redis").port,
-                icon: "icons/db/redis.svg",
+                icon: "icons/db/redis.png",
                 supports_network: true,
                 supports_ssl: true,
                 supports_ssh: true,

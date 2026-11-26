@@ -55,7 +55,7 @@ impl FakeKvDriver {
         Self {
             info: DriverInfo {
                 default_port: Some(6390),
-                icon: "icons/db/redis.svg",
+                icon: "icons/db/redis.png",
                 supports_network: true,
                 database_number: true,
                 ..DriverInfo::key_value("redis-fake", "Redis (test)")
