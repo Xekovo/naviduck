@@ -11,17 +11,17 @@ use gpui_kit::{App, AppContext as _, Context, Entity, EventEmitter, Global};
 use naviduck_session::sessions::Sessions;
 
 /// Keys fetched per SCAN round (141-redis.md §5.1).
-pub(crate) const PAGE: u32 = 250;
+pub const PAGE: u32 = 250;
 
 /// Load state of one page, mirroring `catalog::Load`.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum Load<T> {
+pub enum Load<T> {
     Loading,
     Ready(T),
     Failed(String),
 }
 
-pub(crate) struct KeyPage {
+pub struct KeyPage {
     /// The MATCH pattern the page was loaded with; a new search replaces it.
     pub pattern: String,
     /// The cursor from the last SCAN round; 0 means the page is complete.
@@ -44,13 +44,13 @@ impl KeyPage {
     }
 }
 
-pub(crate) enum KeyspaceEvent {
+pub enum KeyspaceEvent {
     /// A page changed; the navigator rebuilds the tree.
     Changed,
 }
 
 #[derive(Default)]
-pub(crate) struct Keyspace {
+pub struct Keyspace {
     pages: HashMap<(String, String), KeyPage>,
     revision: u64,
 }
@@ -60,53 +60,68 @@ impl EventEmitter<KeyspaceEvent> for Keyspace {}
 struct GlobalKeyspace(Entity<Keyspace>);
 impl Global for GlobalKeyspace {}
 
-pub(crate) fn init(cx: &mut App) {
+pub fn init(cx: &mut App) {
     let keyspace = cx.new(|_| Keyspace::default());
     cx.set_global(GlobalKeyspace(keyspace));
 }
 
 impl Keyspace {
-    pub(crate) fn global(cx: &App) -> Entity<Self> {
+    pub fn global(cx: &App) -> Entity<Self> {
         cx.global::<GlobalKeyspace>().0.clone()
     }
 
-    pub(crate) fn page(&self, connection: &str, db: &str) -> Option<&KeyPage> {
+    pub fn page(&self, connection: &str, db: &str) -> Option<&KeyPage> {
         self.pages.get(&(connection.to_string(), db.to_string()))
     }
 
-    pub(crate) fn page_mut(&mut self, connection: &str, db: &str) -> &mut KeyPage {
+    pub fn page_mut(&mut self, connection: &str, db: &str) -> &mut KeyPage {
         self.pages
             .entry((connection.to_string(), db.to_string()))
             .or_insert_with(|| KeyPage::empty("*".into()))
     }
 
-    /// Drops one database's page and reloads it (⌘R, rename, delete).
-    pub(crate) fn reload(&mut self, connection: &str, db: &str, cx: &mut Context<Self>) {
-        if let Some(page) = self
+    /// Drops one database's page and reloads it from cursor 0 (⌘R, rename, delete).
+    pub fn reload(&mut self, connection: &str, db: &str, cx: &mut Context<Self>) {
+        let pattern = self
             .pages
-            .get_mut(&(connection.to_string(), db.to_string()))
-        {
-            *page = KeyPage::empty(page.pattern.clone());
-        }
-        self.require(connection, db, cx);
+            .get(&(connection.to_string(), db.to_string()))
+            .map(|p| p.pattern.clone())
+            .unwrap_or_else(|| "*".into());
+        self.pages.insert(
+            (connection.to_string(), db.to_string()),
+            KeyPage::empty(pattern),
+        );
+        self.scan(connection, db, cx);
     }
 
-    /// Starts the first page unless one is already loaded or loading.
-    pub(crate) fn require(&mut self, connection: &str, db: &str, cx: &mut Context<Self>) {
-        let page = self.page_mut(connection, db);
-        if matches!(page.state, Load::Loading) {
-            return;
+    /// Starts a scan unless one is already in flight or the page is complete. A missing page
+    /// starts at cursor 0; a finished-but-nonzero cursor continues (the load-more row).
+    pub fn require(&mut self, connection: &str, db: &str, cx: &mut Context<Self>) {
+        let should_scan = match self.page(connection, db) {
+            None => true,
+            Some(p) => match &p.state {
+                Load::Loading | Load::Failed(_) => false,
+                Load::Ready(()) => p.cursor != 0,
+            },
+        };
+        if should_scan {
+            self.scan(connection, db, cx);
         }
-        page.state = Load::Loading;
-        let cursor = page.cursor;
-        let pattern = page.pattern.clone();
-        let count = page.count.is_none();
+    }
+
+    /// Runs one SCAN round from the page's current cursor and appends the keys.
+    fn scan(&mut self, connection: &str, db: &str, cx: &mut Context<Self>) {
+        let (cursor, pattern, with_count) = {
+            let page = self.page_mut(connection, db);
+            page.state = Load::Loading;
+            (page.cursor, page.pattern.clone(), page.count.is_none())
+        };
         let (connection, db) = (connection.to_string(), db.to_string());
         let (scan_db, scan_pattern) = (db.clone(), pattern.clone());
         let Some(job) = Sessions::global(cx)
             .read(cx)
             .run_kv(&connection, move |kv| {
-                Self::scan_page(kv, scan_db, scan_pattern, cursor, count).boxed()
+                Self::scan_page(kv, scan_db, scan_pattern, cursor, with_count).boxed()
             })
         else {
             let page = self.page_mut(&connection, &db);

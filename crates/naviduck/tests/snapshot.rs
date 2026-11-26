@@ -24,6 +24,7 @@ mod macos {
     use naviduck_app_state::settings::Settings;
     use naviduck_app_state::store::ConnectionStore;
     use naviduck_app_state::workspace::{Selection, Workspace};
+    use naviduck_db::driver::KeyValueData;
     use naviduck_model::connection::Connection;
     use naviduck_model::crypto::Key;
     use naviduck_model::object::{ObjectKind, ObjectRef, Scope};
@@ -1138,6 +1139,119 @@ mod macos {
                 cx.update(|cx| Sessions::global(cx).update(cx, |s, cx| s.close(&id, cx)));
             }
         }
+        // Redis via the in-memory fake driver: keyspace tree, key editor and command console.
+        // Collapse the table folders so the redis connection fits into the visible tree.
+        cx.update(|cx| {
+            Settings::update(cx, |s| s.show_schema_objects = false);
+        });
+        let kv_data = naviduck_test_support::kv::new_data();
+        {
+            let mut m = std::collections::BTreeMap::new();
+            m.insert(
+                "user:1001".to_string(),
+                naviduck_test_support::kv::FakeKey::string("penelope"),
+            );
+            m.insert(
+                "user:1002".to_string(),
+                naviduck_test_support::kv::FakeKey::string("nick"),
+            );
+            m.insert(
+                "user:1001:votes".to_string(),
+                naviduck_test_support::kv::FakeKey::typed(
+                    "hash",
+                    KeyValueData::Hash(vec![
+                        ("film".into(), "24".into()),
+                        ("score".into(), "9".into()),
+                    ]),
+                ),
+            );
+            m.insert(
+                "queue".to_string(),
+                naviduck_test_support::kv::FakeKey::typed(
+                    "list",
+                    KeyValueData::List(vec!["a".into(), "b".into(), "c".into()]),
+                ),
+            );
+            kv_data.lock().unwrap().insert(0, m);
+        }
+        cx.update(|cx| {
+            cx.global_mut::<naviduck_session::DriverRegistry>()
+                .0
+                .register(
+                    "redis-fake",
+                    naviduck_app_state::registry::Source::Builtin,
+                    Arc::new(naviduck_test_support::kv::FakeKvDriver::new(
+                        kv_data.clone(),
+                    )),
+                )
+                .unwrap();
+            ConnectionStore::global(cx).update(cx, |s, cx| {
+                let mut c = Connection::new("redis-fake");
+                c.name = "本地 Redis".into();
+                s.upsert(c, &[], cx).unwrap();
+            });
+        });
+        let redis = cx.update(|cx| {
+            ConnectionStore::global(cx)
+                .read(cx)
+                .connections()
+                .iter()
+                .find(|c| c.driver == "redis-fake")
+                .unwrap()
+                .id
+                .clone()
+        });
+        cx.update(|cx| {
+            Sessions::global(cx).update(cx, |s, cx| s.open(redis.clone(), Default::default(), cx));
+        });
+        wait(&mut cx, |cx| {
+            Sessions::global(cx).read(cx).state(&redis).is_open()
+        });
+        // Selecting the database makes the navigator reveal and scan the keyspace.
+        cx.update(|cx| {
+            Workspace::global(cx).update(cx, |w, cx| {
+                w.select(Selection::Database(redis.clone(), "0".into()), cx)
+            })
+        });
+        // Expand db0 like a user (double-click toggles a tree row) and wait for the SCAN page.
+        let db0_row = format!("d:{}\u{1f}0", redis);
+        cx.update_window(handle, |_, window, cx| {
+            window.click_with_options(
+                gpui_kit::SharedString::from(db0_row),
+                gpui_kit::test::ClickOptions::new().with_count(2),
+                cx,
+            );
+        })
+        .unwrap();
+        wait(&mut cx, |cx| {
+            naviduck_navigator::keyspace::Keyspace::global(cx)
+                .read(cx)
+                .page(&redis, "0")
+                .is_some_and(|p| !matches!(p.state, naviduck_navigator::keyspace::Load::Loading))
+        });
+        shot(&mut cx, "redis-navigator.png");
+        dispatch(
+            &mut cx,
+            Box::new(naviduck_app_state::actions::OpenKey {
+                scope: Scope::new(redis.clone(), "0", None),
+                key: "user:1001".into(),
+            }),
+        );
+        shot(&mut cx, "redis-editor.png");
+        cx.update(|cx| Theme::change(ThemeMode::Dark, None, cx));
+        shot(&mut cx, "redis-editor-dark.png");
+        cx.update(|cx| Theme::change(ThemeMode::Light, None, cx));
+        dispatch(
+            &mut cx,
+            Box::new(naviduck_app_state::actions::KeyConsole {
+                connection: redis.clone().into(),
+            }),
+        );
+        shot(&mut cx, "redis-console.png");
+        cx.update(|cx| Theme::change(ThemeMode::Dark, None, cx));
+        shot(&mut cx, "redis-console-dark.png");
+        cx.update(|cx| Theme::change(ThemeMode::Light, None, cx));
+
         let _ = std::fs::remove_dir_all(home);
     }
 

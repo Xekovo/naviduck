@@ -5350,6 +5350,7 @@ dependencies = [
  "naviduck-db",
  "naviduck-model",
  "naviduck-session",
+ "naviduck-test-support",
  "naviduck-ui",
  "rust-i18n",
  "tokio",
@@ -5547,9 +5548,11 @@ dependencies = [
 name = "naviduck-test-support"
 version = "0.0.1"
 dependencies = [
+ "futures",
  "gpui-kit",
  "naviduck-db",
  "naviduck-sqlite",
+ "tokio",
 ]
 
 [[package]]

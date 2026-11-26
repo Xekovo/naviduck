@@ -21,3 +21,4 @@ tracing.workspace = true
 
 [dev-dependencies]
 gpui-kit = { workspace = true, features = ["test-support"] }
+naviduck-test-support = { path = "../naviduck-test-support" }

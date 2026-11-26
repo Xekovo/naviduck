@@ -6,6 +6,18 @@ keyval:
   refresh:
     en: Refresh
     zh-CN: 刷新
+  console_title:
+    en: Console
+    zh-CN: 命令列界面
+  console_empty:
+    en: Type a command and press Enter. "//" starts a comment.
+    zh-CN: 输入命令后按回车执行；以 // 开头的行是注释。
+  cmd_hint:
+    en: Command, e.g. GET key
+    zh-CN: 命令，例如 GET key
+  run:
+    en: Run
+    zh-CN: 执行
   connection_closed:
     en: The connection is closed.
     zh-CN: 连接已关闭。

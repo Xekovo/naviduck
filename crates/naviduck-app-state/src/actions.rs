@@ -271,6 +271,13 @@ pub struct OpenKey {
 // Deletes the selected keys, after confirming.
 gpui_kit::actions!(keyval, [DeleteKeys, NewKey, RenameKey]);
 
+/// Opens the command console of a key-value connection.
+#[derive(Clone, PartialEq, Debug, Action)]
+#[action(namespace = keyval, no_json)]
+pub struct KeyConsole {
+    pub connection: SharedString,
+}
+
 /// Creates a key in the selected database; the name is asked in a prompt dialog.
 #[derive(Clone, PartialEq, Debug, Action)]
 #[action(namespace = keyval, no_json)]

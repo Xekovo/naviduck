@@ -14,6 +14,7 @@ use gpui_kit::{
     App, Context, Entity, FocusHandle, InteractiveElement as _, IntoElement, ParentElement as _,
     Render, Styled as _, Subscription, Window, div,
 };
+use naviduck_app_state::actions::KeyConsole;
 use naviduck_app_state::actions::{
     DesignField, DesignTable, InsertText, NewQuery, NewQueryText, NewTable, OpenConnection,
     OpenConsole, OpenDefinition, OpenExternalQuery, OpenHistoryLog, OpenKey, OpenObject, OpenTool,
@@ -869,6 +870,11 @@ impl Render for MainWindow {
                     window,
                     cx,
                 );
+                this.add_editor(editor, window, cx);
+            }))
+            .on_action(cx.listener(|this, a: &KeyConsole, window, cx| {
+                let editor =
+                    naviduck_keyval::open_command_console(a.connection.to_string(), window, cx);
                 this.add_editor(editor, window, cx);
             }))
             .on_action(cx.listener(|this, a: &DesignTable, window, cx| {

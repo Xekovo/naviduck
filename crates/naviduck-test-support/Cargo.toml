@@ -9,4 +9,6 @@ publish = false
 [dependencies]
 gpui-kit = { workspace = true, features = ["test-support"] }
 naviduck-db = { path = "../naviduck-db" }
+futures.workspace = true
+tokio.workspace = true
 naviduck-sqlite = { path = "../naviduck-sqlite" }

@@ -200,10 +200,10 @@ GPUI feature crate，依赖 `naviduck-grid` 复用 DataTable 渲染成员表（�
 
 ### 7.2 验收清单
 
-- [ ] 连接表单：常规页显示数据库编号输入；SSL/SSH 页正常；错误密码报干净消息（实库）。
-- [ ] 连接打开：导航树 db0..dbN 带键数量；键分批加载与搜索；⌘R 刷新。
-- [ ] 键数据编辑器：五种类型读写往返（实库）、TTL 修改/持久化、新增/删除/重命名键、成员增删。
-- [ ] 命令面板：逐行执行、表格化结果、错误命令标出；历史日志记录。
-- [ ] 能力字段 `database_number` 驱动表单；无产品名分支；`check-dialect-branches.sh` 过。
-- [ ] 第 5 节全部检查通过（fmt/clippy/check-deps/check-i18n/check-raw-px/全量测试）。
-- [ ] progress.md 更新（M14 行、任务表、偏差表）；验收记录 `pr/acceptance-redis.md`。
+- [x] 连接表单：常规页显示数据库编号输入；SSL/SSH 页正常；错误密码报干净消息（实库）。
+- [x] 连接打开：导航树 db0..dbN 带键数量；键分批加载与搜索；⌘R 刷新。（搜索为本地过滤，见偏差）
+- [x] 键数据编辑器：五种类型读写往返（实库）、TTL 修改/持久化、新增/删除/重命名键、成员增删。
+- [x] 命令面板：逐行执行、表格化结果、错误命令标出；历史日志记录。
+- [x] 能力字段 `database_number` 驱动表单；无产品名分支；`check-dialect-branches.sh` 过。
+- [x] 第 5 节全部检查通过（fmt/clippy/check-deps/check-i18n/check-raw-px/全量测试）。
+- [x] progress.md 更新（M14 行、任务表、偏差表）；验收记录 `pr/acceptance-redis.md`。

@@ -129,6 +129,14 @@ impl KeyEditor {
             .map(|c| c.name.clone())
     }
 
+    /// Test/inspection hook: the loaded key type and TTL, `None` while not Ready.
+    pub fn loaded(&self) -> Option<(String, i64)> {
+        match &self.state {
+            State::Ready { key_type, ttl, .. } => Some((key_type.clone(), *ttl)),
+            _ => None,
+        }
+    }
+
     /// Reads type, TTL and value once more.
     pub(crate) fn reload(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(session) = self.session.clone() else {
@@ -256,7 +264,12 @@ impl KeyEditor {
         );
     }
 
-    fn set_string(&mut self, value: String, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn set_string(
+        &mut self,
+        value: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let (key, db) = (self.key.clone(), self.db);
         self.write(
             move |kv| async move { kv.set_string(db, &key, &value).await }.boxed(),
@@ -470,9 +483,13 @@ fn member_columns(data: &KeyValueData) -> (&'static str, &'static str) {
 }
 
 impl KeyEditor {
-    fn render_toolbar(&mut self, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
+    fn render_toolbar(
+        &mut self,
+        key_type: Option<&str>,
+        cx: &mut Context<Self>,
+    ) -> gpui_kit::AnyElement {
         let p = palette(cx);
-        h_flex()
+        let mut bar = h_flex()
             .gap_2()
             .px_2()
             .py_1()
@@ -492,16 +509,28 @@ impl KeyEditor {
                     .flex_1()
                     .min_w_0()
                     .child(truncated("key-editor-name", self.key.clone())),
-            )
-            .child(
-                Button::new("key-delete")
-                    .ghost()
-                    .small()
-                    .icon(lucide("trash"))
-                    .tooltip(t!("keyval.delete_key").to_string())
-                    .on_click(cx.listener(|this, _, window, cx| this.delete_key(window, cx))),
-            )
-            .into_any_element()
+            );
+        if let Some(key_type) = key_type {
+            bar = bar.child(
+                div()
+                    .px_2()
+                    .py_0p5()
+                    .rounded_md()
+                    .bg(p.fill)
+                    .text_color(p.label_secondary)
+                    .text_size(tokens::font::SIZE_SMALL.rems())
+                    .child(key_type_label(key_type)),
+            );
+        }
+        bar.child(
+            Button::new("key-delete")
+                .ghost()
+                .small()
+                .icon(lucide("trash"))
+                .tooltip(t!("keyval.delete_key").to_string())
+                .on_click(cx.listener(|this, _, window, cx| this.delete_key(window, cx))),
+        )
+        .into_any_element()
     }
 
     fn render_ttl(&mut self, ttl: i64, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
@@ -707,7 +736,7 @@ impl Render for KeyEditor {
                 let key_type = key_type.clone();
                 let ttl = *ttl;
                 let data = data.clone();
-                body = body.child(self.render_toolbar(cx));
+                body = body.child(self.render_toolbar(Some(&key_type), cx));
                 if key_type == "none" {
                     body = body
                         .flex_1()

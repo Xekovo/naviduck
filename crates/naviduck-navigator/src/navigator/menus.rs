@@ -98,13 +98,23 @@ impl NavigatorPanel {
                     menu
                 };
                 let menu = if open {
-                    menu.menu_with_disabled(
+                    let menu = menu.menu_with_disabled(
                         t!("nav.new_database").to_string(),
                         true,
                         Box::new(Refresh),
-                    )
-                    .menu(t!("nav.new_query").to_string(), Box::new(NewQuery))
-                    .menu(t!("nav.console").to_string(), Box::new(OpenConsole))
+                    );
+                    if super::is_key_value(id, cx) {
+                        // Redis has no SQL query editor; the command console replaces both entries.
+                        menu.menu(
+                            t!("nav.console").to_string(),
+                            Box::new(KeyConsole {
+                                connection: id.clone().into(),
+                            }),
+                        )
+                    } else {
+                        menu.menu(t!("nav.new_query").to_string(), Box::new(NewQuery))
+                            .menu(t!("nav.console").to_string(), Box::new(OpenConsole))
+                    }
                 } else {
                     menu.submenu(t!("nav.new_connection").to_string(), new_conn)
                         .menu(

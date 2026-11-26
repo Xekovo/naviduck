@@ -10,7 +10,7 @@ mod ddl;
 mod errors;
 mod identifiers;
 mod info;
-pub(crate) mod keyspace;
+pub mod keyspace;
 mod navigator;
 mod objects;
 mod ops;
