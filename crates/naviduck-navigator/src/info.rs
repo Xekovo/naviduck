@@ -555,6 +555,31 @@ impl InfoPanel {
                 f.extend(conn_fields(&o.scope.connection).into_iter().take(1));
                 f
             }
+            Selection::Collection(scope, name) => {
+                let mut f = vec![
+                    (t!("info.object").to_string(), name.clone().into()),
+                    (
+                        t!("info.type").to_string(),
+                        t!("kind.collection").to_string().into(),
+                    ),
+                    (
+                        t!("info.database").to_string(),
+                        scope.database.clone().into(),
+                    ),
+                ];
+                if let Some(info) = crate::docspace::DocCatalog::global(cx).read(cx).collection(
+                    &scope.connection,
+                    &scope.database,
+                    name,
+                ) {
+                    f.push((t!("col.type").to_string(), info.kind.clone().into()));
+                    if let Some(count) = info.document_count {
+                        f.push((t!("col.rows").to_string(), count.to_string().into()));
+                    }
+                }
+                f.extend(conn_fields(&scope.connection).into_iter().take(1));
+                f
+            }
             other => {
                 let scope = other
                     .scope()

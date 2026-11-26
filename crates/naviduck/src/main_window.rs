@@ -14,13 +14,13 @@ use gpui_kit::{
     App, Context, Entity, FocusHandle, InteractiveElement as _, IntoElement, ParentElement as _,
     Render, Styled as _, Subscription, Window, div,
 };
-use naviduck_app_state::actions::KeyConsole;
 use naviduck_app_state::actions::{
     DesignField, DesignTable, InsertText, NewQuery, NewQueryText, NewTable, OpenConnection,
     OpenConsole, OpenDefinition, OpenExternalQuery, OpenHistoryLog, OpenKey, OpenObject, OpenTool,
     RunQuery, ToggleFocusMode, ToggleHideObjectGroups, ToggleOnlyActive, ToggleShowHidden,
     ToggleShowTableProfile,
 };
+use naviduck_app_state::actions::{DocConsole, KeyConsole, OpenCollection};
 use naviduck_app_state::favorites::Favorites;
 use naviduck_app_state::registry::CommandRegistry;
 use naviduck_app_state::settings::Settings;
@@ -875,6 +875,24 @@ impl Render for MainWindow {
             .on_action(cx.listener(|this, a: &KeyConsole, window, cx| {
                 let editor =
                     naviduck_keyval::open_command_console(a.connection.to_string(), window, cx);
+                this.add_editor(editor, window, cx);
+            }))
+            .on_action(cx.listener(|this, a: &OpenCollection, window, cx| {
+                let editor = naviduck_doc::open_collection_viewer(
+                    a.scope.clone(),
+                    a.collection.to_string(),
+                    window,
+                    cx,
+                );
+                this.add_editor(editor, window, cx);
+            }))
+            .on_action(cx.listener(|this, a: &DocConsole, window, cx| {
+                let editor = naviduck_doc::open_doc_console(
+                    a.connection.to_string(),
+                    a.database.as_ref().map(|d| d.to_string()),
+                    window,
+                    cx,
+                );
                 this.add_editor(editor, window, cx);
             }))
             .on_action(cx.listener(|this, a: &DesignTable, window, cx| {

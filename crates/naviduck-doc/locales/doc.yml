@@ -1,0 +1,89 @@
+_version: 2
+doc:
+  loading:
+    en: Loading…
+    zh-CN: 加载中…
+  refresh:
+    en: Refresh
+    zh-CN: 刷新
+  view_table:
+    en: Table
+    zh-CN: 网格
+  view_tree:
+    en: Tree
+    zh-CN: 树
+  view_json:
+    en: JSON
+    zh-CN: JSON
+  filter_hint:
+    en: "Filter, e.g. {\"active\": true}"
+    zh-CN: "筛选，例如 {\"active\": true}"
+  sort_hint:
+    en: "Sort, e.g. {\"_id\": -1}"
+    zh-CN: "排序，例如 {\"_id\": -1}"
+  apply:
+    en: Apply
+    zh-CN: 应用
+  add_doc:
+    en: New Document
+    zh-CN: 新建文档
+  edit_doc:
+    en: Edit Document
+    zh-CN: 编辑文档
+  delete_doc:
+    en: Delete Document
+    zh-CN: 删除文档
+  confirm_delete_doc:
+    en: Delete the selected document?
+    zh-CN: 确定要删除选中的文档吗？
+  save:
+    en: Save
+    zh-CN: 保存
+  cancel:
+    en: Cancel
+    zh-CN: 取消
+  ok:
+    en: OK
+    zh-CN: 确定
+  prev_page:
+    en: Previous Page
+    zh-CN: 上一页
+  next_page:
+    en: Next Page
+    zh-CN: 下一页
+  page_range:
+    en: "%{from}–%{to} of %{total}"
+    zh-CN: "第 %{from}–%{to} 条，共 %{total} 条"
+  page_range_open:
+    en: "%{from}–%{to}"
+    zh-CN: "第 %{from}–%{to} 条"
+  empty_collection:
+    en: No documents match the filter.
+    zh-CN: 没有匹配的文档。
+  connection_closed:
+    en: The connection is closed.
+    zh-CN: 连接已关闭。
+  invalid_json:
+    en: "Invalid JSON: %{err}"
+    zh-CN: "JSON 格式无效：%{err}"
+  must_be_object:
+    en: Document must be a JSON object ({...}).
+    zh-CN: 文档必须是 JSON 对象（{...}）。
+  console_title:
+    en: MongoDB Console
+    zh-CN: MongoDB 命令列界面
+  console_empty:
+    en: "Type a command and press Enter (e.g. show collections, {\"ping\": 1}, db.users.find({}))."
+    zh-CN: "输入命令后按回车执行（例如 show collections、{\"ping\": 1}、db.users.find({})）。"
+  cmd_hint:
+    en: "Command, e.g. db.users.find({})"
+    zh-CN: "命令，例如 db.users.find({})"
+  db_hint:
+    en: Database
+    zh-CN: 数据库
+  switched_db:
+    en: "switched to db %{db}"
+    zh-CN: "已切换到数据库 %{db}"
+  run:
+    en: Run
+    zh-CN: 执行

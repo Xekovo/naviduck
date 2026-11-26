@@ -18,6 +18,18 @@ nav:
   confirm_delete_keys:
     en: Delete %{n} keys?
     zh-CN: 删除 %{n} 个键？
+  new_collection:
+    en: New Collection…
+    zh-CN: 新建集合…
+  collection_name:
+    en: Collection name
+    zh-CN: 集合名
+  confirm_delete_collection:
+    en: Delete collection "%{name}"?
+    zh-CN: 删除集合 "%{name}"？
+  confirm_delete_collections:
+    en: Delete %{n} collections?
+    zh-CN: 删除 %{n} 个集合？
   reopen_connection:
     en: Reopen connection…
     zh-CN: 重新打开连接…
@@ -220,6 +232,9 @@ kind:
   key:
     en: Keys
     zh-CN: 键
+  collection:
+    en: Collections
+    zh-CN: 集合
   user:
     en: User
     zh-CN: 用户

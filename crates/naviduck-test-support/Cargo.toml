@@ -11,4 +11,5 @@ gpui-kit = { workspace = true, features = ["test-support"] }
 naviduck-db = { path = "../naviduck-db" }
 futures.workspace = true
 tokio.workspace = true
+serde_json.workspace = true
 naviduck-sqlite = { path = "../naviduck-sqlite" }

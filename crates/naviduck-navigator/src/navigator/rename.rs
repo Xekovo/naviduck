@@ -109,6 +109,22 @@ impl NavigatorPanel {
         self.start_rename_target(RenameTarget::Key(scope, old.clone()), old, window, cx);
     }
 
+    /// Edits a MongoDB collection's name in place; Enter runs `renameCollection`.
+    pub(crate) fn start_rename_collection(
+        &mut self,
+        scope: Scope,
+        old: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.start_rename_target(
+            RenameTarget::Collection(scope, old.clone()),
+            old,
+            window,
+            cx,
+        );
+    }
+
     pub(super) fn start_rename_target(
         &mut self,
         target: RenameTarget,
@@ -188,6 +204,10 @@ impl NavigatorPanel {
                 super::keyops::rename(scope, &old, name, window, cx);
             }
             RenameTarget::Key(_, _) => {}
+            RenameTarget::Collection(scope, old) if old != name => {
+                super::docops::rename(scope, &old, name, window, cx);
+            }
+            RenameTarget::Collection(_, _) => {}
             RenameTarget::Field(table, old) if old != name => {
                 let sql = Sessions::global(cx)
                     .read(cx)

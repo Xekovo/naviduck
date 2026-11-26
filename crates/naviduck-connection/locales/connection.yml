@@ -37,8 +37,8 @@ conn:
     en: New Connection from URI
     zh-CN: 通过 URI 新建连接
   uri_hint:
-    en: "mysql://, postgres:// or naviduck:// URI"
-    zh-CN: "mysql://、postgres:// 或 naviduck:// URI"
+    en: "mysql://, postgres://, mongodb:// or naviduck:// URI"
+    zh-CN: "mysql://、postgres://、mongodb:// 或 naviduck:// URI"
   uri_invalid:
     en: Not a database URI Naviduck understands
     zh-CN: 无法识别的数据库 URI

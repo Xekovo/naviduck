@@ -55,6 +55,17 @@ services:
       interval: 3s
       retries: 40
 
+  mongo:
+    image: mongo:8
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: naviduck
+      MONGO_INITDB_ROOT_PASSWORD: naviduck
+    ports: ["17017:27017"]
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet -u naviduck -p naviduck --authenticationDatabase admin --eval 'db.adminCommand({ ping: 1 }).ok' | grep 1"]
+      interval: 3s
+      retries: 40
+
   # SSH 跳板机：隧道内通过服务名 mysql、postgres 访问数据库
   ssh:
     image: lscr.io/linuxserver/openssh-server:latest

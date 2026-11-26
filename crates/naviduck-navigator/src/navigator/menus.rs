@@ -111,6 +111,15 @@ impl NavigatorPanel {
                                 connection: id.clone().into(),
                             }),
                         )
+                    } else if super::is_document(id, cx) {
+                        // Document connections use the MongoDB command console.
+                        menu.menu(
+                            t!("nav.console").to_string(),
+                            Box::new(DocConsole {
+                                connection: id.clone().into(),
+                                database: None,
+                            }),
+                        )
                     } else {
                         menu.menu(t!("nav.new_query").to_string(), Box::new(NewQuery))
                             .menu(t!("nav.console").to_string(), Box::new(OpenConsole))
@@ -178,6 +187,26 @@ impl NavigatorPanel {
                     )
                     .separator()
                     .menu(t!("nav.new_key").to_string(), Box::new(NewKey)),
+            ),
+            Some(Node::Database(conn, db)) if super::is_document(conn, cx) => refresh(
+                NativeMenu::new()
+                    .menu(t!("nav.open_database").to_string(), Box::new(OpenDatabase))
+                    .menu(
+                        t!("nav.close_database").to_string(),
+                        Box::new(CloseDatabase),
+                    )
+                    .separator()
+                    .menu(
+                        t!("nav.new_collection").to_string(),
+                        Box::new(NewCollection),
+                    )
+                    .menu(
+                        t!("nav.console").to_string(),
+                        Box::new(DocConsole {
+                            connection: conn.clone().into(),
+                            database: Some(db.clone().into()),
+                        }),
+                    ),
             ),
             Some(Node::Database(conn, db)) => {
                 let dialect = Sessions::global(cx).read(cx).dialect(conn);
@@ -334,6 +363,26 @@ impl NavigatorPanel {
                     .menu(
                         t!("obj.delete_kind", kind = t!("kind.key").to_string()).to_string(),
                         Box::new(DeleteKeys),
+                    )
+                    .menu(t!("obj.copy_name").to_string(), Box::new(CopyObjectNames)),
+            ),
+            Some(Node::Collection(scope, name)) => refresh(
+                NativeMenu::new()
+                    .menu(
+                        t!("obj.open_kind", kind = t!("kind.collection").to_string()).to_string(),
+                        Box::new(OpenCollection {
+                            scope: scope.clone(),
+                            collection: name.clone().into(),
+                        }),
+                    )
+                    .menu(
+                        t!("nav.new_collection").to_string(),
+                        Box::new(NewCollection),
+                    )
+                    .menu(t!("obj.rename").to_string(), Box::new(RenameCollection))
+                    .menu(
+                        t!("obj.delete_kind", kind = t!("kind.collection").to_string()).to_string(),
+                        Box::new(DeleteCollections),
                     )
                     .menu(t!("obj.copy_name").to_string(), Box::new(CopyObjectNames)),
             ),

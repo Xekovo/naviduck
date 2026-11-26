@@ -254,6 +254,14 @@ pub fn driver_defaults(driver: &str) -> DriverDefaults {
             file_based: false,
             supports_network: true,
         },
+        "mongodb" => DriverDefaults {
+            host: "localhost",
+            port: Some(27017),
+            user: "",
+            database: None,
+            file_based: false,
+            supports_network: true,
+        },
         "sqlite" => DriverDefaults {
             host: "",
             port: None,
@@ -726,6 +734,13 @@ mod tests {
         lite.general.file = Some("/tmp/app.db".into());
         assert_eq!(lite.suggested_name(), "app");
         assert!(!lite.supports_network());
+        let mongo = Connection::new("mongodb");
+        assert_eq!(
+            (mongo.general.port, mongo.general.user.as_str()),
+            (Some(27017), "")
+        );
+        assert_eq!(mongo.general.database, None);
+        assert!(mongo.supports_network());
     }
 
     #[test]

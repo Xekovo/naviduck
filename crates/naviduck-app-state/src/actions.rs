@@ -285,3 +285,32 @@ pub struct CreateKey {
     pub scope: naviduck_model::object::Scope,
     pub name: SharedString,
 }
+
+// Document databases (MongoDB).
+
+/// Opens one collection in the document data viewer/editor.
+#[derive(Clone, PartialEq, Debug, Action)]
+#[action(namespace = doc, no_json)]
+pub struct OpenCollection {
+    pub scope: naviduck_model::object::Scope,
+    pub collection: SharedString,
+}
+
+// Collection actions in the navigator (confirm delete, prompt new collection, inline rename).
+gpui_kit::actions!(doc, [DeleteCollections, NewCollection, RenameCollection]);
+
+/// Opens the command console of a document connection.
+#[derive(Clone, PartialEq, Debug, Action)]
+#[action(namespace = doc, no_json)]
+pub struct DocConsole {
+    pub connection: SharedString,
+    pub database: Option<SharedString>,
+}
+
+/// Creates a collection in the selected database.
+#[derive(Clone, PartialEq, Debug, Action)]
+#[action(namespace = doc, no_json)]
+pub struct CreateCollection {
+    pub scope: naviduck_model::object::Scope,
+    pub name: SharedString,
+}

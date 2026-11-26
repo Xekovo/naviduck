@@ -15,7 +15,8 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
 use naviduck_db::{
-    ConnectParams, DbError, DbResult, Driver, KeyValue, Relational, Secrets, Session, runtime,
+    ConnectParams, DbError, DbResult, Document, Driver, KeyValue, Relational, Secrets, Session,
+    runtime,
 };
 use naviduck_sql::dialect::Dialect;
 
@@ -122,6 +123,13 @@ fn not_key_value() -> DbError {
     )
 }
 
+fn not_document() -> DbError {
+    DbError::coded(
+        "naviduck.not_document",
+        "This connection is not a document database.",
+    )
+}
+
 impl Sessions {
     pub fn global(cx: &App) -> Entity<Self> {
         cx.global::<GlobalSessions>().0.clone()
@@ -203,6 +211,8 @@ impl Sessions {
                 let mut session = operation::connect_after_drain(retiring, driver, params).await?;
                 let (dialect, databases) = if let Some(rel) = session.relational() {
                     (Some(rel.dialect()), rel.list_databases().await?)
+                } else if let Some(doc) = session.document() {
+                    (None, doc.list_databases().await?)
                 } else if let Some(kv) = session.key_value() {
                     (
                         None,
@@ -293,7 +303,24 @@ impl Sessions {
 
     /// Lists the databases again.
     pub fn refresh(&mut self, id: &str, cx: &mut Context<Self>) {
-        let Some(job) = self.run_rel(id, None, |r| r.list_databases()) else {
+        let Some(live) = self.live.get(id) else {
+            return;
+        };
+        let job = match live.driver.info().family {
+            naviduck_db::Family::Relational => self.run_rel(id, None, |r| r.list_databases()),
+            naviduck_db::Family::Document => self.run_doc(id, |d| d.list_databases()),
+            naviduck_db::Family::KeyValue => self.run_kv(id, |kv| {
+                Box::pin(async move {
+                    Ok(kv
+                        .databases()
+                        .await?
+                        .into_iter()
+                        .map(|n| n.to_string())
+                        .collect())
+                })
+            }),
+        };
+        let Some(job) = job else {
             return;
         };
         let task_id = id.to_string();
@@ -401,6 +428,16 @@ impl Sessions {
         let primary = self.live.get(id)?.primary.clone();
         Some(run_on_kv(primary, f))
     }
+
+    /// Runs document operations on the connection's shared session.
+    pub fn run_doc<T: Send + 'static>(
+        &self,
+        id: &str,
+        f: impl for<'a> FnOnce(&'a mut dyn Document) -> BoxFuture<'a, DbResult<T>> + Send + 'static,
+    ) -> Option<JoinHandle<DbResult<T>>> {
+        let primary = self.live.get(id)?.primary.clone();
+        Some(run_on_doc(primary, f))
+    }
 }
 
 /// MySQL sessions start in the server's default database. Point one at `database` before an
@@ -430,6 +467,24 @@ pub fn run_on_kv<T: Send + 'static>(
     f: impl for<'a> FnOnce(&'a mut dyn KeyValue) -> BoxFuture<'a, DbResult<T>> + Send + 'static,
 ) -> JoinHandle<DbResult<T>> {
     runtime::spawn(async move { with_kv(&shared, f).await })
+}
+
+/// Runs document work on a session the caller holds (collection viewer, doc console).
+pub fn run_on_doc<T: Send + 'static>(
+    shared: SharedSession,
+    f: impl for<'a> FnOnce(&'a mut dyn Document) -> BoxFuture<'a, DbResult<T>> + Send + 'static,
+) -> JoinHandle<DbResult<T>> {
+    runtime::spawn(async move { with_doc(&shared, f).await })
+}
+
+async fn with_doc<T>(
+    shared: &SharedSession,
+    f: impl for<'a> FnOnce(&'a mut dyn Document) -> BoxFuture<'a, DbResult<T>>,
+) -> DbResult<T> {
+    let mut guard = shared.lock().await;
+    let session = guard.as_mut().ok_or_else(closed)?;
+    let doc = session.document().ok_or_else(not_document)?;
+    f(doc).await
 }
 
 async fn with_kv<T>(

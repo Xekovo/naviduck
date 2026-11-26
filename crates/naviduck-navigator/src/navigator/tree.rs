@@ -9,8 +9,11 @@ pub(super) struct TreeBuilder<'a> {
     pub(super) sessions: &'a Sessions,
     pub(super) catalog: &'a Catalog,
     pub(super) keyspace: &'a Keyspace,
+    pub(super) docspace: &'a DocCatalog,
     /// Connections whose driver is key-value (Redis); their databases list keys.
     pub(super) key_value: &'a HashSet<String>,
+    /// Connections whose driver is document (MongoDB); their databases list collections.
+    pub(super) document: &'a HashSet<String>,
     pub(super) vgroups: &'a VirtualGroups,
     pub(super) query: &'a str,
     pub(super) filtering: bool,
@@ -210,6 +213,9 @@ impl TreeBuilder<'_> {
         if self.key_value.contains(conn) {
             return self.key_database(&node, conn, db, conn_name);
         }
+        if self.document.contains(conn) {
+            return self.doc_database(&node, conn, db, conn_name);
+        }
         let Some(dialect) = dialect else {
             return Some(self.item(node, db.to_string(), Vec::new()));
         };
@@ -289,6 +295,45 @@ impl TreeBuilder<'_> {
             || self.matches(conn_name)
             || children.iter().any(|c| !c.children.is_empty());
         any_match.then(|| self.item(node.clone(), label, children))
+    }
+
+    /// A document database: lists its collections (142-mongodb.md §5.1).
+    pub(super) fn doc_database(
+        &self,
+        node: &Node,
+        conn: &str,
+        db: &str,
+        conn_name: &str,
+    ) -> Option<TreeItem> {
+        let view = &self.panel.view;
+        if (!self.show_system && crate::docspace::is_system_database(db))
+            || (view.only_active && !self.panel.expanded.contains(&node.id()))
+        {
+            return None;
+        }
+        let page = self.docspace.page(conn, db);
+        let children = match page {
+            Some(p) => match &p.state {
+                crate::keyspace::Load::Failed(e) => Self::placeholder(node, Some(e.clone())),
+                crate::keyspace::Load::Loading => Self::placeholder(node, None),
+                crate::keyspace::Load::Ready(()) => {
+                    let scope = Scope::new(conn, db, None);
+                    p.collections
+                        .iter()
+                        .filter(|c| self.matches(&c.name))
+                        .map(|c| {
+                            TreeItem::new(
+                                Node::Collection(scope.clone(), c.name.clone()).id(),
+                                c.name.clone(),
+                            )
+                        })
+                        .collect()
+                }
+            },
+            None => Self::placeholder(node, None),
+        };
+        let any_match = self.matches(db) || self.matches(conn_name) || !children.is_empty();
+        any_match.then(|| self.item(node.clone(), db.to_string(), children))
     }
 
     pub(super) fn categories(&self, scope: &Scope, dialect: &dyn Dialect) -> Vec<TreeItem> {

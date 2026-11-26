@@ -7,6 +7,7 @@ rust_i18n::i18n!("locales", fallback = "en");
 
 pub mod catalog;
 mod ddl;
+pub mod docspace;
 mod errors;
 mod identifiers;
 mod info;
@@ -56,6 +57,7 @@ pub struct ShowCategory {
 
 pub fn init(cx: &mut App) {
     catalog::init(cx);
+    docspace::init(cx);
     keyspace::init(cx);
     navigator::init(cx);
     objects::init(cx);

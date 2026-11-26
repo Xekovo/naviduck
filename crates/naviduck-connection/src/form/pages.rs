@@ -89,10 +89,10 @@ impl ConnectionForm {
                     .into_any_element(),
                 );
             }
-            // PostgreSQL takes an initial database name; Redis a numeric index. Both share
-            // the `database` input (141-redis.md §2).
+            // PostgreSQL takes an initial database name; Redis a numeric index; MongoDB an
+            // initial/authentication database. All three share the `database` input.
             let database_flag = super::driver_flag(cx, &self.draft.driver, |info| {
-                info.multi_host || info.database_number
+                info.multi_host || info.database_number || info.initial_database
             });
             if database_flag {
                 rows.push(

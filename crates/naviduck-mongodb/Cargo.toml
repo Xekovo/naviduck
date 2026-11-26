@@ -1,0 +1,19 @@
+[package]
+name = "naviduck-mongodb"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "MongoDB driver for naviduck."
+
+[dependencies]
+naviduck-model.workspace = true
+naviduck-db = { path = "../naviduck-db" }
+tokio.workspace = true
+futures.workspace = true
+tracing.workspace = true
+serde_json.workspace = true
+# Official MongoDB async driver using rustls-tls (ring crypto provider, matching mysql_async
+# and fred so rustls never hits an ambiguous CryptoProvider at runtime).
+mongodb = "3.9"

@@ -211,9 +211,10 @@ GPUI feature crate，遵守依赖方向规则（仅依赖 `naviduck-session`、`
 
 ### 7.2 验收清单
 
-- [ ] 连接表单：常规页显示初始数据库输入；SSL/SSH 页正常；`mongodb://` URI 解析正常；错误密码报干净消息（实库）。
-- [ ] 连接打开：导航树列出数据库（隐藏系统库开关生效）与集合；支持新建/重命名/删除集合与 ⌘R 刷新；对象选项卡展示集合与属性。
-- [ ] 集合数据编辑器：网格/树/JSON 三视图切换正常；Filter/Sort/分页工作；文档新增/编辑保存/删除往返正常（实库与 headless）。
-- [ ] 命令面板：支持 `show`、`db.runCommand` 与 `db.<coll>.*` 语句、切换数据库、结果渲染与错误标红；历史日志记录。
-- [ ] 能力字段 `initial_database` 驱动表单；无产品名分支；`check-dialect-branches.sh`、`check-deps.sh`、`check-i18n.sh`、`check-raw-px.sh` 全过。
-- [ ] 第 5 节全部检查通过（fmt/clippy/全工作区测试）；`progress.md` 更新；验收记录 `pr/acceptance-mongodb.md`。
+- [x] 连接表单：常规页显示初始数据库输入；SSL/SSH 页正常；`mongodb://` URI 解析正常；错误密码处理（驱动错误映射与离线校验；`NAVIDUCK_MONGO_LIVE=1` 实库复测待启动 Docker 守护进程）。
+- [x] 连接打开：导航树列出数据库（隐藏系统库开关生效）与集合；支持新建/重命名/删除集合与 ⌘R 刷新；对象选项卡展示集合与属性（`FakeDocDriver` 截图与 `naviduck-navigator` 单测通过；实库待测）。
+- [x] 集合数据编辑器：网格/树/JSON 三视图切换正常；Filter/Sort/分页工作；文档新增/编辑保存/删除往返正常（headless UI 测试与浅深色截图通过；实库待测）。
+- [x] 命令面板：支持 `show`、`db.runCommand` 与 `db.<coll>.*` 语句、切换数据库、结果渲染与错误标红；历史日志记录（`FakeDocDriver` 截图与命令解析/执行单测通过）。
+- [x] 能力字段 `initial_database` 驱动表单；无产品名分支；`check-dialect-branches.sh`、`check-deps.sh`、`check-i18n.sh`、`check-raw-px.sh` 全过。
+- [x] 第 5 节离线检查全过（fmt/clippy/全工作区测试）；`progress.md` 更新；验收记录 `../pr/acceptance-mongodb.md`。
+- [ ] `NAVIDUCK_MONGO_LIVE=1` 实库测试（10 项：连接/认证失败、系统库过滤、集合增删改名、find 过滤排序分页、文档增改删、索引只读、命令执行、URI 连入）待本机 Docker/OrbStack 启动后执行。

@@ -24,6 +24,7 @@ naviduck-grid = { version = "0.0.1", path = "crates/naviduck-grid" }
 naviduck-designer = { version = "0.0.1", path = "crates/naviduck-designer" }
 naviduck-query = { version = "0.0.1", path = "crates/naviduck-query" }
 naviduck-keyval = { version = "0.0.1", path = "crates/naviduck-keyval" }
+naviduck-doc = { version = "0.0.1", path = "crates/naviduck-doc" }
 
 gpui-kit = { version = "0.8", features = ["gpui-fast"] }
 rust-i18n = "4"

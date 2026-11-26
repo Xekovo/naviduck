@@ -17,6 +17,7 @@ naviduck-postgres = { path = "../naviduck-postgres" }
 naviduck-sqlite = { path = "../naviduck-sqlite" }
 naviduck-dameng = { path = "../naviduck-dameng" }
 naviduck-redis = { path = "../naviduck-redis" }
+naviduck-mongodb = { path = "../naviduck-mongodb" }
 gpui-kit.workspace = true
 tokio.workspace = true
 futures.workspace = true

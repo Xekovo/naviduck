@@ -85,6 +85,10 @@ pub fn of_selection(
             uri.kind = Some(o.kind);
             uri.name = Some(o.name.clone());
         }
+        Selection::Collection(s, name) => {
+            uri.database = Some(s.database.clone());
+            uri.name = Some(name.clone());
+        }
         _ => {}
     }
     uri.build()
@@ -124,6 +128,7 @@ impl DatabaseUri {
             "mysql" => "mysql",
             "mariadb" => "mariadb",
             "postgres" | "postgresql" => "postgres",
+            "mongodb" => "mongodb",
             _ => return None,
         };
         let rest = rest.split(['?', '#']).next().unwrap_or_default();
@@ -240,6 +245,20 @@ mod tests {
         );
         let m = DatabaseUri::parse("mysql://root@[::1]/").unwrap();
         assert_eq!((m.host.as_str(), m.port, m.database), ("::1", None, None));
+        let mg =
+            DatabaseUri::parse("mongodb://alice:s%40cret@mongo.local:27017/app?authSource=admin")
+                .unwrap();
+        assert_eq!(
+            mg,
+            DatabaseUri {
+                driver: "mongodb".into(),
+                user: "alice".into(),
+                password: Some("s@cret".into()),
+                host: "mongo.local".into(),
+                port: Some(27017),
+                database: Some("app".into()),
+            }
+        );
         assert!(DatabaseUri::parse("redis://x").is_none());
         // RFC 3986: `+` is a literal in a URI; only form bodies mean space.
         let plus = DatabaseUri::parse("mysql://u:p+q@h/db").unwrap();
