@@ -5185,6 +5185,7 @@ dependencies = [
  "naviduck-db",
  "naviduck-designer",
  "naviduck-grid",
+ "naviduck-keyval",
  "naviduck-model",
  "naviduck-navigator",
  "naviduck-query",
@@ -5337,6 +5338,22 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
+]
+
+[[package]]
+name = "naviduck-keyval"
+version = "0.0.1"
+dependencies = [
+ "futures",
+ "gpui-kit",
+ "naviduck-app-state",
+ "naviduck-db",
+ "naviduck-model",
+ "naviduck-session",
+ "naviduck-ui",
+ "rust-i18n",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

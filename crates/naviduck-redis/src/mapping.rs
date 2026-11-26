@@ -45,10 +45,10 @@ fn double_text(f: f64) -> String {
 #[allow(dead_code)]
 pub(crate) fn text_to_bytes(s: &str) -> Vec<u8> {
     let trimmed = s.trim();
-    if let Some(hex_text) = trimmed.strip_prefix("0x") {
-        if let Ok(bytes) = hex::decode(hex_text) {
-            return bytes;
-        }
+    if let Some(hex_text) = trimmed.strip_prefix("0x")
+        && let Ok(bytes) = hex::decode(hex_text)
+    {
+        return bytes;
     }
     s.as_bytes().to_vec()
 }
@@ -63,11 +63,11 @@ pub(crate) fn value_pairs(v: &Value) -> Option<Vec<(String, String)>> {
                 .collect(),
         ),
         Value::Array(items) => {
-            if items.iter().all(|v| scalar(v)) && items.len() % 2 == 0 {
+            if items.iter().all(scalar) && items.len().is_multiple_of(2) {
                 Some(
                     items
                         .chunks(2)
-                        .filter_map(|pair| Some((value_text(&pair[0])?, value_text(&pair[1])?)))
+                        .map_while(|pair| Some((value_text(&pair[0])?, value_text(&pair[1])?)))
                         .collect(),
                 )
             } else {
@@ -128,11 +128,11 @@ fn stream_entries(v: &Value) -> Vec<(String, Vec<(String, String)>)> {
             .collect(),
         Value::Map(m) => m
             .iter()
-            .filter_map(|(id, fields)| {
-                Some((
+            .map(|(id, fields)| {
+                (
                     bytes_to_text(id.as_bytes()),
                     value_pairs(fields).unwrap_or_default(),
-                ))
+                )
             })
             .collect(),
         _ => Vec::new(),
@@ -153,15 +153,15 @@ pub(crate) fn reply_to_result_sets(v: Value) -> Vec<ResultSet> {
     }
 }
 fn reply_array(items: Vec<Value>) -> Vec<ResultSet> {
-    let all_pairs = items.iter().all(|v| is_pair(v));
-    let all_scalars = items.iter().all(|v| scalar(v));
+    let all_pairs = items.iter().all(is_pair);
+    let all_scalars = items.iter().all(scalar);
     if all_scalars {
         // HGETALL / CONFIG GET / ZRANGE WITHSCORES ship as one flat array.
-        if items.len() % 2 == 0 {
+        if items.len().is_multiple_of(2) {
             return pairs_set(
                 items
                     .chunks(2)
-                    .filter_map(|pair| Some((value_text(&pair[0])?, value_text(&pair[1])?)))
+                    .map_while(|pair| Some((value_text(&pair[0])?, value_text(&pair[1])?)))
                     .collect(),
             );
         }

@@ -37,3 +37,6 @@ crates/naviduck/src/main_window.rs	*label
 crates/naviduck/src/menu_catalog.rs	key
 crates/naviduck-connection/src/lib.rs	key
 crates/naviduck-navigator/src/lib.rs	key
+crates/naviduck-keyval/src/editor.rs	format!("keyval.type_{}", key_type)
+crates/naviduck-keyval/src/editor.rs	first_col
+crates/naviduck-keyval/src/editor.rs	second_col

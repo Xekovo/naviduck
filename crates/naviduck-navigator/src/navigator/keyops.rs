@@ -6,8 +6,7 @@ use futures::FutureExt as _;
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::input::InputState;
 use gpui_kit::{
-    App, AppContext as _, InteractiveElement, IntoElement as _, ParentElement as _, Styled as _,
-    Window,
+    App, AppContext as _, InteractiveElement, IntoElement as _, ParentElement as _, Window,
 };
 use naviduck_app_state::actions::{CreateKey, DeleteKeys, NewKey};
 use naviduck_app_state::workspace::{Selection, Workspace};
@@ -191,7 +190,6 @@ fn create(scope: &Scope, name: &str, window: &mut Window, cx: &mut App) {
         return;
     };
     let selected = Selection::Key(scope.clone(), name.to_string());
-    let name = name.to_string();
     window
         .spawn(cx, async move |cx| {
             let result = match job.await {

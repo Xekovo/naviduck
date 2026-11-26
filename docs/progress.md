@@ -127,7 +127,9 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | `naviduck-redis` crate | 完成 | 独立/SSL（rustls-ring，与 mysql_async 同一 crypto provider）/SSH 隧道复用 `naviduck_db::connect`；读命令断连重试一次，写命令不重放报 outcome_unknown；lazy SELECT 切库 |
 | 会话接线 | 完成 | `Sessions::open` 按 `key_value()` 取数据库列表；`run_kv`/`run_on_kv`；`driver_defaults("redis")`；`naviduck-session` 注册（第 6 个内置驱动）；picker 的 NoSql 分类自动出现 |
 | 实库测试 | 完成 | docker compose 加 `redis` 服务（ACL 文件挂载）；`NAVIDUCK_REDIS_LIVE=1` 10 项通过：连接/错误密码/ACL 用户、CONFIG databases 探测、SCAN 分批与 pattern、五种键类型往返、TTL/持久化、改名删除、命令执行与 WRONGTYPE 错误码、SELECT 切库、初始数据库 |
-| 静态检查 | 完成 | fmt/clippy/check-deps/check-i18n/check-dialect-branches、全工作区测试通过；headless 加 redis 编译回归 |
+| 键空间导航（批次 2a） | 完成 | `Selection::Key`、`Node::Key`/`Node::LoadMore`、keyspace 分页模块（SCAN 250 键/批、⌘R 重扫、连接失效）；键右键菜单打开/新建/重命名/删除；keyspace 3 项单元测试 |
+| 键数据编辑器（批次 2b） | 完成 | 新 `naviduck-keyval` crate（GPUI）：按键类型渲染 String/List/Hash/Set/ZSet 值区、成员增删、TTL 设置与持久化、删除键；会话经 `new_session` 自持、`on_removed` 归还；i18n en/zh-CN；`naviduck-ui` 的 tree-sitter-sql 特性补进自身依赖（暴露的既有问题） |
+| 静态检查 | 完成 | fmt/clippy（-D warnings 等价清零，含批次 1 潜伏的 clippy::field_reassign_with_default 等）/check-deps/check-i18n/check-dialect-branches/check-raw-px、全工作区测试 74 套件通过；实库测试 10 项复跑通过 |
 
 ### chrono → jiff（RUSTSEC-2026-0543）
 
@@ -323,6 +325,9 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 
 | 项目 | 引入于 | 计划处理 |
 | --- | --- | --- |
+| Redis 键编辑器成员区是简单行列表（无 DataTable 列宽/单元格编辑器），String 用单行输入；命令面板（批次 3）、浅深色截图、headless UI 测试未做 | M14 | 批次 3 补命令面板与截图；DataTable 化与分页读值按 Navicat 并排实测后决定 |
+| 键编辑器成员列表最多渲染 500 行，大键的分页读值（read 的 offset/count）未接界面 | M14 | 编辑器接 `read` 分页与「加载更多」时一并处理 |
+| Redis 键空间搜索框是本地过滤已加载键，服务端 pattern 重扫（keyspace.search 已移除待复用） | M14 | 与批次 3 的命令面板一起决定交互形态 |
 | Redis 首版只有独立连接：哨兵/集群、Pub/Sub、ACL 用户管理、.nbr 备份、命令监控、Stream/JSON 编辑、键前缀分组均未做（141-redis.md 第 6 节偏差 D1–D4） | M14 | 按 F-REDIS 编号各自独立任务推进；fred 的哨兵/集群 API 已具备 |
 | Redis SSL 始终校验服务器证书，`verify_server_cert=false`（自签证书跳过校验）不支持；CA/客户端证书未接入 | M14 | 需要 rustls 自定义 verifier 时再加 |
 | Redis `cancel_handle=None`（首版命令均为快速命令）；`session_id=None`（CLIENT ID 未接） | M14 | 命令监控/MONITOR 类长任务时接 CLIENT KILL 与 CLIENT ID |

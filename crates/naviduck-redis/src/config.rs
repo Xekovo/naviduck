@@ -30,8 +30,10 @@ pub(crate) fn database_index(params: &ConnectParams) -> DbResult<u8> {
 
 pub(crate) fn redis_config(params: &ConnectParams) -> DbResult<RedisConfig> {
     let database = database_index(params)?;
-    let mut config = Config::default();
-    config.server = ServerConfig::new_centralized(params.host.clone(), params.port);
+    let mut config = Config {
+        server: ServerConfig::new_centralized(params.host.clone(), params.port),
+        ..Config::default()
+    };
     if !params.user.is_empty() {
         config.username = Some(params.user.clone());
     }

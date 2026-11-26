@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use naviduck_db::driver::KeyValueData;
 use naviduck_db::params::ConnectParams;
-use naviduck_db::{Driver, KeyValue as _, Session, connect, runtime, test_connection};
+use naviduck_db::{Driver, connect, runtime, test_connection};
 use naviduck_redis::RedisDriver;
 
 fn live() -> bool {

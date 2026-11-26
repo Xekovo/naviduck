@@ -323,7 +323,7 @@ impl NavigatorPanel {
                     .menu(t!("obj.rename").to_string(), Box::new(RenameKey))
                     .menu(
                         t!("obj.delete_kind", kind = t!("kind.key").to_string()).to_string(),
-                        { Box::new(DeleteKeys) },
+                        Box::new(DeleteKeys),
                     )
                     .menu(t!("obj.copy_name").to_string(), Box::new(CopyObjectNames)),
             ),

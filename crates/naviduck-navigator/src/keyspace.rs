@@ -70,10 +70,6 @@ impl Keyspace {
         cx.global::<GlobalKeyspace>().0.clone()
     }
 
-    pub(crate) fn revision(&self) -> u64 {
-        self.revision
-    }
-
     pub(crate) fn page(&self, connection: &str, db: &str) -> Option<&KeyPage> {
         self.pages.get(&(connection.to_string(), db.to_string()))
     }
@@ -92,23 +88,6 @@ impl Keyspace {
         {
             *page = KeyPage::empty(page.pattern.clone());
         }
-        self.require(connection, db, cx);
-    }
-
-    /// Re-scans from the start with `pattern` (the search field).
-    pub(crate) fn search(
-        &mut self,
-        connection: &str,
-        db: &str,
-        pattern: String,
-        cx: &mut Context<Self>,
-    ) {
-        let page = self.page_mut(connection, db);
-        page.pattern = pattern;
-        page.cursor = 0;
-        page.keys.clear();
-        page.count = None;
-        page.state = Load::Loading;
         self.require(connection, db, cx);
     }
 

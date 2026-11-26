@@ -689,8 +689,9 @@ impl NavigatorPanel {
         let builder = TreeBuilder {
             panel: self,
             key_value: &key_value,
-            keyspace: &Keyspace::global(cx).read(cx),
-            store: &store,
+            keyspace: Keyspace::global(cx).read(cx),
+            // `store` is the local read guard binding; the field type is `&'a ConnectionStore`.
+            store,
             sessions: Sessions::global(cx).read(cx),
             catalog: Catalog::global(cx).read(cx),
             vgroups: VirtualGroups::global(cx).read(cx),

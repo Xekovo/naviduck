@@ -20,6 +20,7 @@ naviduck-navigator.workspace = true
 naviduck-grid.workspace = true
 naviduck-query.workspace = true
 naviduck-designer.workspace = true
+naviduck-keyval.workspace = true
 naviduck-util.workspace = true
 serde.workspace = true
 serde_json.workspace = true

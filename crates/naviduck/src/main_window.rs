@@ -16,8 +16,8 @@ use gpui_kit::{
 };
 use naviduck_app_state::actions::{
     DesignField, DesignTable, InsertText, NewQuery, NewQueryText, NewTable, OpenConnection,
-    OpenConsole, OpenDefinition, OpenExternalQuery, OpenHistoryLog, OpenObject, OpenTool, RunQuery,
-    ToggleFocusMode, ToggleHideObjectGroups, ToggleOnlyActive, ToggleShowHidden,
+    OpenConsole, OpenDefinition, OpenExternalQuery, OpenHistoryLog, OpenKey, OpenObject, OpenTool,
+    RunQuery, ToggleFocusMode, ToggleHideObjectGroups, ToggleOnlyActive, ToggleShowHidden,
     ToggleShowTableProfile,
 };
 use naviduck_app_state::favorites::Favorites;
@@ -861,6 +861,15 @@ impl Render for MainWindow {
             .text_color(p.label)
             .on_action(cx.listener(|this, a: &OpenObject, window, cx| {
                 this.open_object(&a.object, window, cx)
+            }))
+            .on_action(cx.listener(|this, a: &OpenKey, window, cx| {
+                let editor = naviduck_keyval::open_key_editor(
+                    a.scope.clone(),
+                    a.key.to_string(),
+                    window,
+                    cx,
+                );
+                this.add_editor(editor, window, cx);
             }))
             .on_action(cx.listener(|this, a: &DesignTable, window, cx| {
                 if let Some(object) = a.object.as_ref().filter(|o| o.kind == ObjectKind::Table) {
