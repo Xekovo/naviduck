@@ -15,7 +15,7 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
 use naviduck_db::{
-    ConnectParams, DbError, DbResult, Driver, Relational, Secrets, Session, runtime,
+    ConnectParams, DbError, DbResult, Driver, KeyValue, Relational, Secrets, Session, runtime,
 };
 use naviduck_sql::dialect::Dialect;
 
@@ -115,6 +115,13 @@ fn not_relational() -> DbError {
     )
 }
 
+fn not_key_value() -> DbError {
+    DbError::coded(
+        "naviduck.not_key_value",
+        "This connection is not a key-value database.",
+    )
+}
+
 impl Sessions {
     pub fn global(cx: &App) -> Entity<Self> {
         cx.global::<GlobalSessions>().0.clone()
@@ -194,9 +201,19 @@ impl Sessions {
             let params = params.clone();
             async move {
                 let mut session = operation::connect_after_drain(retiring, driver, params).await?;
-                let (dialect, databases) = match session.relational() {
-                    Some(rel) => (Some(rel.dialect()), rel.list_databases().await?),
-                    None => (None, Vec::new()),
+                let (dialect, databases) = if let Some(rel) = session.relational() {
+                    (Some(rel.dialect()), rel.list_databases().await?)
+                } else if let Some(kv) = session.key_value() {
+                    (
+                        None,
+                        kv.databases()
+                            .await?
+                            .into_iter()
+                            .map(|n| n.to_string())
+                            .collect(),
+                    )
+                } else {
+                    (None, Vec::new())
                 };
                 Ok::<_, DbError>((session, dialect, databases))
             }
@@ -373,6 +390,17 @@ impl Sessions {
         }
         Some((live.driver.clone(), params))
     }
+
+    /// Runs key-value reads/writes on the connection's shared session. Redis commands carry the
+    /// target database in their arguments, so unlike `run_rel` there is no per-database session.
+    pub fn run_kv<T: Send + 'static>(
+        &self,
+        id: &str,
+        f: impl for<'a> FnOnce(&'a mut dyn KeyValue) -> BoxFuture<'a, DbResult<T>> + Send + 'static,
+    ) -> Option<JoinHandle<DbResult<T>>> {
+        let primary = self.live.get(id)?.primary.clone();
+        Some(run_on_kv(primary, f))
+    }
 }
 
 /// MySQL sessions start in the server's default database. Point one at `database` before an
@@ -394,6 +422,24 @@ pub fn run_on<T: Send + 'static>(
     f: impl for<'a> FnOnce(&'a mut dyn Relational) -> BoxFuture<'a, DbResult<T>> + Send + 'static,
 ) -> JoinHandle<DbResult<T>> {
     runtime::spawn(async move { with_rel(&shared, f).await })
+}
+
+/// Runs key-value work on a session the caller holds (key editor, query console).
+pub fn run_on_kv<T: Send + 'static>(
+    shared: SharedSession,
+    f: impl for<'a> FnOnce(&'a mut dyn KeyValue) -> BoxFuture<'a, DbResult<T>> + Send + 'static,
+) -> JoinHandle<DbResult<T>> {
+    runtime::spawn(async move { with_kv(&shared, f).await })
+}
+
+async fn with_kv<T>(
+    shared: &SharedSession,
+    f: impl for<'a> FnOnce(&'a mut dyn KeyValue) -> BoxFuture<'a, DbResult<T>>,
+) -> DbResult<T> {
+    let mut guard = shared.lock().await;
+    let session = guard.as_mut().ok_or_else(closed)?;
+    let kv = session.key_value().ok_or_else(not_key_value)?;
+    f(kv).await
 }
 
 async fn with_rel<T>(

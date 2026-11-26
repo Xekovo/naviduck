@@ -98,6 +98,17 @@ impl NavigatorPanel {
         }
     }
 
+    /// Edits a Redis key's name in place; Enter runs `RENAME` on the shared session.
+    pub(crate) fn start_rename_key(
+        &mut self,
+        scope: Scope,
+        old: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.start_rename_target(RenameTarget::Key(scope, old.clone()), old, window, cx);
+    }
+
     pub(super) fn start_rename_target(
         &mut self,
         target: RenameTarget,
@@ -173,6 +184,10 @@ impl NavigatorPanel {
                 }
             }
             RenameTarget::Object(_) => {}
+            RenameTarget::Key(scope, old) if old != name => {
+                super::keyops::rename(scope, &old, name, window, cx);
+            }
+            RenameTarget::Key(_, _) => {}
             RenameTarget::Field(table, old) if old != name => {
                 let sql = Sessions::global(cx)
                     .read(cx)

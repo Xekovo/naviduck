@@ -1,0 +1,21 @@
+[package]
+name = "naviduck-redis"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Redis driver for naviduck."
+
+[dependencies]
+naviduck-model.workspace = true
+naviduck-db = { path = "../naviduck-db" }
+tokio.workspace = true
+futures.workspace = true
+tracing.workspace = true
+hex.workspace = true
+# `custom` and the core client live in ClientLike; command interfaces and mocking
+# layers stay out. RESP2 (the default) keeps one reply shape across server versions.
+# The ring crypto provider matches mysql_async's `default-rustls-ring`: the workspace
+# pulls in both providers, so rustls would otherwise refuse to pick one at runtime.
+fred = { version = "10.1", default-features = false, features = ["enable-rustls-ring"] }

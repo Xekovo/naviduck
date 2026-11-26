@@ -10,6 +10,7 @@ mod ddl;
 mod errors;
 mod identifiers;
 mod info;
+pub mod keyspace;
 mod navigator;
 mod objects;
 mod ops;
@@ -55,6 +56,7 @@ pub struct ShowCategory {
 
 pub fn init(cx: &mut App) {
     catalog::init(cx);
+    keyspace::init(cx);
     navigator::init(cx);
     objects::init(cx);
     info::init(cx);

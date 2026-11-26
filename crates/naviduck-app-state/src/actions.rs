@@ -257,3 +257,31 @@ pub struct RunMaintenance {
     pub database: SharedString,
     pub sql: SharedString,
 }
+
+// Key-value databases (Redis). The scope's database is the numeric index.
+
+/// Opens one key in the key data editor.
+#[derive(Clone, PartialEq, Debug, Action)]
+#[action(namespace = keyval, no_json)]
+pub struct OpenKey {
+    pub scope: naviduck_model::object::Scope,
+    pub key: SharedString,
+}
+
+// Deletes the selected keys, after confirming.
+gpui_kit::actions!(keyval, [DeleteKeys, NewKey, RenameKey]);
+
+/// Opens the command console of a key-value connection.
+#[derive(Clone, PartialEq, Debug, Action)]
+#[action(namespace = keyval, no_json)]
+pub struct KeyConsole {
+    pub connection: SharedString,
+}
+
+/// Creates a key in the selected database; the name is asked in a prompt dialog.
+#[derive(Clone, PartialEq, Debug, Action)]
+#[action(namespace = keyval, no_json)]
+pub struct CreateKey {
+    pub scope: naviduck_model::object::Scope,
+    pub name: SharedString,
+}

@@ -1,0 +1,95 @@
+_version: 2
+keyval:
+  loading:
+    en: Loading…
+    zh-CN: 加载中…
+  refresh:
+    en: Refresh
+    zh-CN: 刷新
+  console_title:
+    en: Console
+    zh-CN: 命令列界面
+  console_empty:
+    en: Type a command and press Enter. "//" starts a comment.
+    zh-CN: 输入命令后按回车执行；以 // 开头的行是注释。
+  cmd_hint:
+    en: Command, e.g. GET key
+    zh-CN: 命令，例如 GET key
+  run:
+    en: Run
+    zh-CN: 执行
+  connection_closed:
+    en: The connection is closed.
+    zh-CN: 连接已关闭。
+  key_missing:
+    en: This key does not exist (deleted or expired).
+    zh-CN: 键不存在（已被删除或已过期）。
+  ttl:
+    en: TTL
+    zh-CN: 过期时间
+  ttl_forever:
+    en: Never expires
+    zh-CN: 永不过期
+  ttl_seconds:
+    en: "%{n}s"
+    zh-CN: "%{n} 秒"
+  ttl_hint:
+    en: Seconds
+    zh-CN: 秒数
+  ttl_apply:
+    en: Set
+    zh-CN: 设置
+  ttl_persist:
+    en: Persist
+    zh-CN: 持久化
+  save:
+    en: Save
+    zh-CN: 保存
+  add:
+    en: Add
+    zh-CN: 添加
+  delete_key:
+    en: Delete key
+    zh-CN: 删除键
+  value:
+    en: Value
+    zh-CN: 值
+  field:
+    en: Field
+    zh-CN: 字段
+  member:
+    en: Member
+    zh-CN: 成员
+  score:
+    en: Score
+    zh-CN: 分数
+  id:
+    en: ID
+    zh-CN: ID
+  fields:
+    en: Fields
+    zh-CN: 字段
+  type_string:
+    en: string
+    zh-CN: string
+  type_list:
+    en: list
+    zh-CN: list
+  type_hash:
+    en: hash
+    zh-CN: hash
+  type_set:
+    en: set
+    zh-CN: set
+  type_zset:
+    en: zset
+    zh-CN: zset
+  type_stream:
+    en: stream
+    zh-CN: stream
+  type_none:
+    en: none
+    zh-CN: none
+  type_other:
+    en: other
+    zh-CN: other

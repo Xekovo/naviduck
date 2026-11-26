@@ -85,7 +85,8 @@ pub struct DriverInfo {
     pub family: Family,
     pub default_port: Option<u16>,
     pub icon: &'static str,
-    pub dialect: Arc<dyn Dialect>,
+    /// Relational SQL dialect; `None` for non-SQL families (Redis, MongoDB).
+    pub dialect: Option<Arc<dyn Dialect>>,
     /// File database (SQLite): the connection is a path, not a host.
     pub file_based: bool,
     /// The general page can list several hosts (PostgreSQL).
@@ -102,6 +103,8 @@ pub struct DriverInfo {
     /// A session can access only one database (PostgreSQL); browsing another database needs
     /// a separate session
     pub per_database_sessions: bool,
+    /// The general page takes a numeric database index (Redis) instead of a name.
+    pub database_number: bool,
 }
 
 impl DriverInfo {
@@ -119,7 +122,7 @@ impl DriverInfo {
             family: Family::Relational,
             default_port: None,
             icon: "",
-            dialect,
+            dialect: Some(dialect),
             file_based: false,
             multi_host: false,
             supports_network: false,
@@ -129,6 +132,29 @@ impl DriverInfo {
             connection_params: false,
             supports_ssh: false,
             per_database_sessions: false,
+            database_number: false,
+        }
+    }
+
+    /// Baseline for a non-SQL driver: no dialect at all.
+    pub fn key_value(id: impl Into<String>, name: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            name: name.into(),
+            family: Family::KeyValue,
+            default_port: None,
+            icon: "",
+            dialect: None,
+            file_based: false,
+            multi_host: false,
+            supports_network: false,
+            supports_ssl: false,
+            chooses_ssl_mode: false,
+            protocol_timeouts: false,
+            connection_params: false,
+            supports_ssh: false,
+            per_database_sessions: false,
+            database_number: false,
         }
     }
 }
@@ -392,9 +418,34 @@ pub trait Document: Send {
     ) -> BoxFuture<'a, DbResult<Vec<String>>>;
 }
 
+/// A key's decoded value for the key-value data editor (141-redis.md §4).
+/// Text values keep the grid convention: bytes that are not UTF-8 show as `0x…` hex.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum KeyValueData {
+    Str(String),
+    List(Vec<String>),
+    Hash(Vec<(String, String)>),
+    Set(Vec<String>),
+    /// Member and score text as the server prints them.
+    ZSet(Vec<(String, String)>),
+    /// Entry ID plus field pairs.
+    Stream(Vec<(String, Vec<(String, String)>)>),
+    /// Unknown or module type; carries the type name the server reported.
+    Other(String),
+}
+
+impl Default for KeyValueData {
+    fn default() -> Self {
+        Self::Str(String::new())
+    }
+}
+
 pub trait KeyValue: Send {
+    /// Database indexes this server exposes (Redis `SELECT` targets).
     fn databases(&mut self) -> BoxFuture<'_, DbResult<Vec<u32>>>;
-    /// SCAN a batch of keys; returns the next cursor and the keys.
+    /// Number of keys in one database (`DBSIZE`).
+    fn key_count(&mut self, db: u32) -> BoxFuture<'_, DbResult<u64>>;
+    /// SCAN one batch of keys; returns the next cursor and the keys.
     fn scan<'a>(
         &'a mut self,
         db: u32,
@@ -402,5 +453,98 @@ pub trait KeyValue: Send {
         cursor: u64,
         count: u32,
     ) -> BoxFuture<'a, DbResult<(u64, Vec<String>)>>;
-    fn get<'a>(&'a mut self, db: u32, key: &'a str) -> BoxFuture<'a, DbResult<Option<String>>>;
+    /// The type of a key: string, list, hash, set, zset, stream, … or "none".
+    fn key_type<'a>(&'a mut self, db: u32, key: &'a str) -> BoxFuture<'a, DbResult<String>>;
+    /// Seconds until the key expires; -1 without expiry, -2 when the key is missing.
+    fn ttl<'a>(&'a mut self, db: u32, key: &'a str) -> BoxFuture<'a, DbResult<i64>>;
+    /// Reads one page of the key's value, dispatched by type. Strings ignore offset/count.
+    fn read<'a>(
+        &'a mut self,
+        db: u32,
+        key: &'a str,
+        offset: u64,
+        count: u32,
+    ) -> BoxFuture<'a, DbResult<KeyValueData>>;
+    fn set_string<'a>(
+        &'a mut self,
+        db: u32,
+        key: &'a str,
+        value: &'a str,
+    ) -> BoxFuture<'a, DbResult<()>>;
+    fn hash_set_field<'a>(
+        &'a mut self,
+        db: u32,
+        key: &'a str,
+        field: &'a str,
+        value: &'a str,
+    ) -> BoxFuture<'a, DbResult<()>>;
+    fn hash_delete_field<'a>(
+        &'a mut self,
+        db: u32,
+        key: &'a str,
+        field: &'a str,
+    ) -> BoxFuture<'a, DbResult<()>>;
+    /// Appends a member to the head (`tail=false`) or tail of a list.
+    fn list_push<'a>(
+        &'a mut self,
+        db: u32,
+        key: &'a str,
+        tail: bool,
+        value: &'a str,
+    ) -> BoxFuture<'a, DbResult<()>>;
+    /// Removes every occurrence of a member from a list (`LREM`).
+    fn list_delete<'a>(
+        &'a mut self,
+        db: u32,
+        key: &'a str,
+        value: &'a str,
+    ) -> BoxFuture<'a, DbResult<()>>;
+    fn set_add<'a>(
+        &'a mut self,
+        db: u32,
+        key: &'a str,
+        member: &'a str,
+    ) -> BoxFuture<'a, DbResult<()>>;
+    fn set_remove<'a>(
+        &'a mut self,
+        db: u32,
+        key: &'a str,
+        member: &'a str,
+    ) -> BoxFuture<'a, DbResult<()>>;
+    /// Adds or updates a sorted-set member with the given score text.
+    fn zset_add<'a>(
+        &'a mut self,
+        db: u32,
+        key: &'a str,
+        member: &'a str,
+        score: &'a str,
+    ) -> BoxFuture<'a, DbResult<()>>;
+    fn zset_remove<'a>(
+        &'a mut self,
+        db: u32,
+        key: &'a str,
+        member: &'a str,
+    ) -> BoxFuture<'a, DbResult<()>>;
+    /// Creates an empty string key (`SET key ""`).
+    fn create_key<'a>(&'a mut self, db: u32, key: &'a str) -> BoxFuture<'a, DbResult<()>>;
+    fn delete_keys<'a>(&'a mut self, db: u32, keys: &'a [String]) -> BoxFuture<'a, DbResult<u64>>;
+    fn rename_key<'a>(
+        &'a mut self,
+        db: u32,
+        key: &'a str,
+        new_name: &'a str,
+    ) -> BoxFuture<'a, DbResult<()>>;
+    /// Sets the expiry in seconds; `None` removes it (`PERSIST`).
+    fn set_ttl<'a>(
+        &'a mut self,
+        db: u32,
+        key: &'a str,
+        seconds: Option<i64>,
+    ) -> BoxFuture<'a, DbResult<()>>;
+    /// Runs one user command (query editor) and maps the reply to result sets.
+    fn execute_command<'a>(
+        &'a mut self,
+        db: u32,
+        args: &'a [String],
+    ) -> BoxFuture<'a, DbResult<Vec<ResultSet>>>;
 }

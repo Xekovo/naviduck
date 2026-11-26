@@ -24,7 +24,7 @@ impl DriverRegistry {
     }
 
     pub fn dialect(cx: &App, id: &str) -> Option<Arc<dyn Dialect>> {
-        Self::get(cx, id).map(|driver| driver.info().dialect.clone())
+        Self::get(cx, id).and_then(|driver| driver.info().dialect.clone())
     }
 
     pub fn name(cx: &App, id: &str) -> gpui_kit::SharedString {

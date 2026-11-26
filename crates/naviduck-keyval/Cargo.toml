@@ -1,0 +1,24 @@
+[package]
+name = "naviduck-keyval"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Key data editor and command console for key-value databases in naviduck."
+
+[dependencies]
+naviduck-session = { path = "../naviduck-session" }
+naviduck-ui.workspace = true
+naviduck-model.workspace = true
+naviduck-app-state.workspace = true
+naviduck-db.workspace = true
+gpui-kit.workspace = true
+rust-i18n.workspace = true
+tokio.workspace = true
+futures.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+gpui-kit = { workspace = true, features = ["test-support"] }
+naviduck-test-support = { path = "../naviduck-test-support" }

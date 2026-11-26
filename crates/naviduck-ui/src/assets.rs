@@ -39,6 +39,12 @@ const OWN: &[(&str, &[u8])] = &[
         "icons/db/dameng.svg",
         include_bytes!("../assets/icons/db/dameng.svg"),
     ),
+    // The official Redis logo (user-supplied, background removed); a raster like the
+    // connection icons, not a tinted lucide glyph.
+    (
+        "icons/db/redis.png",
+        include_bytes!("../assets/icons/db/redis.png"),
+    ),
 ];
 
 /// App assets: our own icons, then the picked Lucide icons, then gpui-kit's defaults.
@@ -86,7 +92,7 @@ mod tests {
         assert!(a.load("icons/db/sqlite.svg").unwrap().is_some());
         assert!(a.load("icons/plug.svg").unwrap().is_some());
         assert!(a.load("icons/check.svg").unwrap().is_some());
-        assert!(a.list("icons/db/").unwrap().len() == 5);
+        assert!(a.list("icons/db/").unwrap().len() == 6);
     }
 
     /// A missing icon only logs an error and draws nothing, so check every name the sources use.
