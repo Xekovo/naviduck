@@ -69,4 +69,5 @@ pub fn sql(file: &Path, statements: &str) -> Vec<Vec<Option<String>>> {
     })
 }
 
+pub mod doc;
 pub mod kv;

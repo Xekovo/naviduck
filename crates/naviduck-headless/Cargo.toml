@@ -13,6 +13,7 @@ naviduck-db = { path = "../naviduck-db" }
 naviduck-sqlite = { path = "../naviduck-sqlite" }
 naviduck-dameng = { path = "../naviduck-dameng" }
 naviduck-redis = { path = "../naviduck-redis" }
+naviduck-mongodb = { path = "../naviduck-mongodb" }
 tokio.workspace = true
 
 [dev-dependencies]

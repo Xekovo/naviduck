@@ -38,10 +38,12 @@ use naviduck_ui::{palette, tabs, tokens};
 use rust_i18n::t;
 
 use crate::catalog::{Catalog, Load, Requirement};
+use crate::docspace::DocCatalog;
 use crate::keyspace::Keyspace;
 use crate::objects::ObjectsPanel;
 use crate::selection::{self, Click};
 
+mod docops;
 mod keyops;
 mod keys;
 mod menus;
@@ -100,6 +102,8 @@ pub(crate) enum Node {
     Key(Scope, String),
     /// The "load more keys" row under a key-value database
     LoadMore(Scope),
+    /// A collection of a document database (142-mongodb.md §5.1)
+    Collection(Scope, String),
     /// A virtual group of objects in a category (F-NAV-007)
     VGroup(Scope, ObjectKind, String),
     /// A folder under a table (fields, indexes, …) when "Show objects under tables" is on
@@ -173,6 +177,16 @@ pub(crate) fn is_key_value(connection: &str, cx: &App) -> bool {
         .is_some_and(|d| d.info().family == naviduck_db::Family::KeyValue)
 }
 
+/// Whether `connection`'s driver belongs to the document family (MongoDB).
+pub(crate) fn is_document(connection: &str, cx: &App) -> bool {
+    ConnectionStore::global(cx)
+        .read(cx)
+        .get(connection)
+        .map(|c| c.driver.clone())
+        .and_then(|driver| naviduck_session::DriverRegistry::get(cx, &driver))
+        .is_some_and(|d| d.info().family == naviduck_db::Family::Document)
+}
+
 impl Node {
     pub(crate) fn id(&self) -> SharedString {
         match self {
@@ -189,6 +203,7 @@ impl Node {
             ),
             Self::Key(s, n) => format!("y:{}{SEP}{n}", scope_id(s)),
             Self::LoadMore(s) => format!("m:{}", scope_id(s)),
+            Self::Collection(s, n) => format!("n:{}{SEP}{n}", scope_id(s)),
             Self::VGroup(s, k, g) => format!("v:{}{SEP}{}{SEP}{g}", scope_id(s), k.key()),
             Self::TableFolder(t, c) => {
                 format!("t:{}{SEP}{}{SEP}{}", scope_id(&t.scope), t.name, c.key())
@@ -228,6 +243,10 @@ impl Node {
                 parts.get(3..)?.join(&SEP.to_string()),
             ),
             "m" => Self::LoadMore(parse_scope(parts.get(..3)?)?),
+            "n" => Self::Collection(
+                parse_scope(parts.get(..3)?)?,
+                parts.get(3..)?.join(&SEP.to_string()),
+            ),
             "v" => Self::VGroup(
                 parse_scope(parts.get(..3)?)?,
                 ObjectKind::from_key(parts.get(3)?)?,
@@ -262,6 +281,7 @@ impl Node {
                 Selection::Object(o)
             }
             Self::Key(s, n) => Selection::Key(s.clone(), n.clone()),
+            Self::Collection(s, n) => Selection::Collection(s.clone(), n.clone()),
             Self::VGroup(s, k, _) => Selection::Category(s, k),
             Self::Placeholder(_) => return None,
         })
@@ -276,6 +296,7 @@ impl Node {
             Selection::Category(s, k) => Self::Category(s, k),
             Selection::Object(o) => Self::Object(o),
             Selection::Key(s, n) => Self::Key(s, n),
+            Selection::Collection(s, n) => Self::Collection(s, n),
             Selection::None => return None,
         })
     }
@@ -374,6 +395,8 @@ enum RenameTarget {
     Field(ObjectRef, String),
     /// A Redis key: the scope's database is the numeric index
     Key(Scope, String),
+    /// A MongoDB collection
+    Collection(Scope, String),
 }
 
 /// Objects being dragged onto a virtual group (or onto their category, meaning no group).
@@ -528,6 +551,10 @@ impl NavigatorPanel {
                     this.ensure_expanded(cx);
                     this.rebuild(cx);
                 }),
+                cx.observe(&DocCatalog::global(cx), |this, _, cx| {
+                    this.ensure_expanded(cx);
+                    this.rebuild(cx);
+                }),
                 cx.subscribe(&Sessions::global(cx), |this, _, e: &SessionsEvent, cx| {
                     match e {
                         SessionsEvent::Opened(id) => {
@@ -537,10 +564,13 @@ impl NavigatorPanel {
                             this.ensure_expanded(cx);
                             this.rebuild(cx);
                         }
-                        // The keyspace pages of a closed or reopening connection go as well.
+                        // The keyspace and document pages of a closed or reopening connection go as well.
                         SessionsEvent::Closed(id) | SessionsEvent::Reopening(id) => {
                             Keyspace::global(cx).update(cx, |ks, _| {
                                 ks.invalidate_connection(id);
+                            });
+                            DocCatalog::global(cx).update(cx, |dc, _| {
+                                dc.invalidate_connection(id);
                             });
                         }
                         SessionsEvent::Failed(_, _) => {}
@@ -616,6 +646,16 @@ impl NavigatorPanel {
                 });
                 return;
             }
+            Node::Database(c, d) if is_document(c, cx) => {
+                DocCatalog::global(cx).update(cx, |dc, cx| {
+                    if force {
+                        dc.reload(c, d, cx)
+                    } else {
+                        dc.require(c, d, cx)
+                    }
+                });
+                return;
+            }
             _ => {}
         }
         let mut requirements = Vec::new();
@@ -686,10 +726,18 @@ impl NavigatorPanel {
             .filter(|c| is_key_value(&c.id, cx))
             .map(|c| c.id.clone())
             .collect();
+        let document: HashSet<String> = store
+            .connections()
+            .iter()
+            .filter(|c| is_document(&c.id, cx))
+            .map(|c| c.id.clone())
+            .collect();
         let builder = TreeBuilder {
             panel: self,
             key_value: &key_value,
+            document: &document,
             keyspace: Keyspace::global(cx).read(cx),
+            docspace: DocCatalog::global(cx).read(cx),
             // `store` is the local read guard binding; the field type is `&'a ConnectionStore`.
             store,
             sessions: Sessions::global(cx).read(cx),
@@ -740,6 +788,15 @@ impl NavigatorPanel {
                     Box::new(OpenKey {
                         scope: scope.clone(),
                         key: name.clone().into(),
+                    }),
+                    cx,
+                );
+            }
+            Node::Collection(scope, name) => {
+                window.dispatch_action(
+                    Box::new(OpenCollection {
+                        scope: scope.clone(),
+                        collection: name.clone().into(),
                     }),
                     cx,
                 );
@@ -844,6 +901,18 @@ impl NavigatorPanel {
         if let Some(scope) = kv_scope {
             let (c, d) = (scope.connection.clone(), scope.database.clone());
             Keyspace::global(cx).update(cx, |ks, cx| ks.reload(&c, &d, cx));
+            return;
+        }
+        let doc_scope = match &selection {
+            Selection::Collection(scope, _) => Some(scope.clone()),
+            Selection::Database(c, d) if is_document(c, cx) => {
+                Some(Scope::new(c.clone(), d.clone(), None))
+            }
+            _ => None,
+        };
+        if let Some(scope) = doc_scope {
+            let (c, d) = (scope.connection.clone(), scope.database.clone());
+            DocCatalog::global(cx).update(cx, |dc, cx| dc.reload(&c, &d, cx));
             return;
         }
         if let Some(scope) = selection.scope() {
@@ -1028,7 +1097,7 @@ impl Render for NavigatorPanel {
                     .selections()
                     .filter_map(|s| match s {
                         Selection::Object(o) => Some(o.name.clone()),
-                        Selection::Key(_, n) => Some(n.clone()),
+                        Selection::Key(_, n) | Selection::Collection(_, n) => Some(n.clone()),
                         _ => None,
                     })
                     .collect();
@@ -1042,6 +1111,7 @@ impl Render for NavigatorPanel {
                         Selection::Connection(_) => Box::new(DeleteConnection),
                         Selection::Object(_) => Box::new(DeleteObjects),
                         Selection::Key(_, _) => Box::new(DeleteKeys),
+                        Selection::Collection(_, _) => Box::new(DeleteCollections),
                         _ => return,
                     };
                 window.dispatch_action(action, cx);
@@ -1144,6 +1214,15 @@ pub fn bind_actions<E: gpui_kit::InteractiveElement>(el: E) -> E {
                 });
             }
         })
+        .on_action(|_: &RenameCollection, window, cx| {
+            if let Selection::Collection(scope, name) =
+                Workspace::global(cx).read(cx).selection().clone()
+            {
+                with_navigator(cx, |this, cx| {
+                    this.start_rename_collection(scope, name, window, cx)
+                });
+            }
+        })
         .on_action(|a: &RenameColumn, window, cx| {
             let object = a.object.clone();
             let column = a.column.to_string();
@@ -1167,7 +1246,7 @@ pub fn bind_actions<E: gpui_kit::InteractiveElement>(el: E) -> E {
             let objects = crate::ops::selected_objects(cx);
             move_objects(&objects, None, cx);
         });
-    let el = keyops::bind(el);
+    let el = docops::bind(keyops::bind(el));
     crate::ops::bind(el)
 }
 
@@ -1210,6 +1289,7 @@ mod tests {
             Node::TableItem(table, Child::Indexes, "idx:name".into()),
             Node::Key(Scope::new("c-1", "0", None), "live:scan:a".into()),
             Node::LoadMore(Scope::new("c-1", "0", None)),
+            Node::Collection(Scope::new("c-2", "shop", None), "orders".into()),
         ]);
         for n in nodes {
             assert_eq!(Node::parse(&n.id()), Some(n.clone()), "{}", n.id());

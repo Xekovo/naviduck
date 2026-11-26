@@ -7,10 +7,28 @@
 pub use naviduck_dameng as dameng;
 pub use naviduck_db as db;
 pub use naviduck_model as model;
+pub use naviduck_mongodb as mongodb;
 pub use naviduck_redis as redis;
 
 #[cfg(test)]
 mod tests {
+    /// The MongoDB driver stack compiles and links without GPUI, and its DriverInfo
+    /// flags match the spec (142-mongodb.md §2): network, SSL, SSH and initial_database,
+    /// no dialect at all.
+    #[test]
+    fn mongodb_driver_flags_stay_capability_only() {
+        use naviduck_db::Driver as _;
+        use naviduck_db::Family;
+        let info = crate::mongodb::MongoDriver::default().info().clone();
+        assert_eq!(info.id, "mongodb");
+        assert_eq!(info.default_port, Some(27017));
+        assert!(info.supports_network && info.supports_ssl && info.supports_ssh);
+        assert!(info.initial_database);
+        assert!(!info.database_number);
+        assert_eq!(info.family, Family::Document);
+        assert!(info.dialect.is_none());
+        assert!(!info.file_based && !info.multi_host);
+    }
     /// The Redis driver stack compiles and links without GPUI, and the DriverInfo
     /// flags match the spec (141-redis.md §2): network, SSL, SSH and the numeric
     /// database index, no dialect at all.

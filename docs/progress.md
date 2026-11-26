@@ -26,7 +26,7 @@
 | M11 AI 助手 | 未开始 | | | |
 | M12 同步（替代 Cloud） | 未开始 | | | |
 | M13 HTTP 隧道 | 未开始 | | | |
-| M14 其他数据库 | 进行中 | `feat/dameng`、`feat/redis` | db/、140-dameng、141-redis | 达梦 DM8 已接入（`naviduck-dameng`，dm-pure 驱动）：连接/导航/表查看器/查询编辑器/表设计器迁移/用户只读列表，实库测试 10 项本地通过。dm-pure 1.2.4 的四处协议补丁待接自建镜像仓库（第 4 节），接上后 LOB/EXPLAIN/SET SCHEMA/取消响应的守卫自动转正。见 [验收记录](pr/acceptance-dameng.md)。Redis 已接入首版（`naviduck-redis` + `naviduck-keyval`，fred 驱动）：连接/键空间导航/键数据编辑器/命令面板，实库测试 10 项通过（规格 [141-redis.md](design/141-redis.md)，验收记录 [pr/acceptance-redis.md](pr/acceptance-redis.md)）；哨兵/集群/Pub/Sub 等见第 4 节偏差 |
+| M14 其他数据库 | 进行中 | `feat/dameng`、`feat/redis`、`feat/mongodb` | db/、140-dameng、141-redis、142-mongodb | 达梦 DM8 已接入（`naviduck-dameng`，dm-pure 驱动）：连接/导航/表查看器/查询编辑器/表设计器迁移/用户只读列表，实库测试 10 项本地通过。dm-pure 1.2.4 的四处协议补丁待接自建镜像仓库（第 4 节），接上后 LOB/EXPLAIN/SET SCHEMA/取消响应的守卫自动转正。见 [验收记录](pr/acceptance-dameng.md)。Redis 已接入首版（`naviduck-redis` + `naviduck-keyval`，fred 驱动）：连接/键空间导航/键数据编辑器/命令面板，实库测试 10 项通过（规格 [141-redis.md](design/141-redis.md)，验收记录 [pr/acceptance-redis.md](pr/acceptance-redis.md)）；哨兵/集群/Pub/Sub 等见第 4 节偏差。MongoDB 已接入首版（`naviduck-mongodb` + `naviduck-doc`，官方 `mongodb` 驱动）：连接/文档库与集合导航/集合数据编辑器（网格/树/JSON）/命令列界面；`FakeDocDriver` headless UI 测试与浅深色截图 7 张通过，Docker `mongo` 实库测试 `tests/live.rs` 已就绪待启动容器运行（规格 [142-mongodb.md](design/142-mongodb.md)，验收记录 [pr/acceptance-mongodb.md](pr/acceptance-mongodb.md)） |
 | M15 发布 | 部分 | `codex/macos-adhoc-signing` | 150-macos-distribution | 工作流、安装包、`latest.json`、应用内更新已在仓库里；无证书时免费临时签名与验签已接入并经本机验证。正式公证仍需证书与凭据（第 4 节），配置迁移（F-REL-004）未做 |
 
 ## 2. 当前里程碑：M4（表设计器）
@@ -133,6 +133,20 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | 命令列界面（批次 3） | 完成 | 逐行命令、引号分词、编号输入、文本表结果、错误标红；入口在键值连接右键；历史日志走驱动侧 logged |
 | 截图与 headless 测试（批次 3） | 完成 | fake KV 驱动（naviduck-test-support::kv）支撑离线 UI 测试：键树/编辑器/命令面板浅深色截图 5 张目测通过；headless 编辑器测试（加载/写入往返/选择发布）；截图流程抓出并修复 keyspace 状态机 bug（首扫永不启动） |
 | 验收记录 | 完成 | [pr/acceptance-redis.md](pr/acceptance-redis.md)；141-redis.md §7.2 验收清单前六项勾选，哨兵/集群等清单项随偏差后续 |
+
+### M14 MongoDB 接入
+
+规格与选型见 [142-mongodb.md](design/142-mongodb.md)。驱动选用官方 `mongodb` 3.9（Apache-2.0，rustls-tls + ring + dns-resolver）。
+
+| 任务 | 状态 | 验证与说明 |
+| --- | --- | --- |
+| 规格与选型 | 完成 | 官方 `mongodb` 驱动选型与能力边界见 [142-mongodb.md](design/142-mongodb.md)，规格先单独提交（`d7fdd75`） |
+| `Document` 能力层与驱动 | 完成 | `DriverInfo.initial_database` 标志（无产品名分支）+ `Document` 12 方法；`naviduck-mongodb` 纯 Rust 实现（URI/TLS/SSH/Extended JSON `_id`/日志记录），8 项单测通过 |
+| 会话、URI 与导航树 | 完成 | `naviduck-session` 注册第 7 个驱动；`mongodb://` URI 与 `driver_defaults("mongodb")`；`naviduck-navigator` `docspace.rs`/`docops.rs` 集合浏览、新建/重命名/删除、⌘R 刷新、系统库过滤、对象选项卡与信息窗格 |
+| 集合数据编辑器与命令面板 | 完成 | 新 `naviduck-doc` crate：`CollectionViewer`（网格/树/JSON 三视图、Filter/Sort、分页、文档增改删对话框）与 `DocConsole`（`show`/`db.runCommand`/`db.<coll>.*`）；i18n en/zh-CN |
+| 截图与 headless 测试 | 完成 | `naviduck-test-support::doc`（`FakeDocDriver`）支撑 `naviduck-doc` headless 往返测试与 `naviduck` 快照测试；`picker` + `mongo-*` 共 8 张浅深色截图目测通过 |
+| 实库与静态检查 | 部分完成 | 静态检查（check-raw-px/check-i18n/check-dialect-branches/check-deps/fmt/clippy）与全工作区离线测试通过；Docker `mongo:8` 实库测试 `tests/live.rs` 已编译就绪，因当前机器未启动 Docker/OrbStack 守护进程暂未实跑 |
+| 验收记录 | 完成 | [pr/acceptance-mongodb.md](pr/acceptance-mongodb.md)；[142-mongodb.md](design/142-mongodb.md) §7.2 离线检查与视觉验收全部勾选，实库条目随 Docker 环境补测 |
 
 ### chrono → jiff（RUSTSEC-2026-0543）
 

@@ -1252,6 +1252,126 @@ mod macos {
         shot(&mut cx, "redis-console-dark.png");
         cx.update(|cx| Theme::change(ThemeMode::Light, None, cx));
 
+        // M14 MongoDB: fake Document driver drives the navigator tree, collection viewer (Tree/Table/JSON) and console.
+        let doc_data = naviduck_test_support::doc::new_data();
+        {
+            let mut root = doc_data.lock().unwrap();
+            let shop = root.entry("shop".to_string()).or_default();
+            shop.insert(
+                "orders".to_string(),
+                vec![
+                    serde_json::json!({
+                        "_id": {"$oid": "65f1a2b3c4d5e6f708192a3b"},
+                        "orderNo": "ORD-1001",
+                        "customer": "Alice",
+                        "total": 128.5,
+                        "paid": true,
+                        "items": [{"sku": "SKU-1", "qty": 2}]
+                    }),
+                    serde_json::json!({
+                        "_id": {"$oid": "65f1a2b3c4d5e6f708192a3c"},
+                        "orderNo": "ORD-1002",
+                        "customer": "Bob",
+                        "total": 64.0,
+                        "paid": false,
+                        "items": [{"sku": "SKU-2", "qty": 1}]
+                    }),
+                ],
+            );
+            shop.insert(
+                "users".to_string(),
+                vec![serde_json::json!({"_id": "u1", "name": "Alice", "role": "admin"})],
+            );
+        }
+        cx.update(|cx| {
+            cx.global_mut::<naviduck_session::DriverRegistry>()
+                .0
+                .register(
+                    "mongo-fake",
+                    naviduck_app_state::registry::Source::Builtin,
+                    Arc::new(naviduck_test_support::doc::FakeDocDriver::new(
+                        doc_data.clone(),
+                    )),
+                )
+                .unwrap();
+            ConnectionStore::global(cx).update(cx, |s, cx| {
+                let mut c = Connection::new("mongo-fake");
+                c.name = "本地 MongoDB".into();
+                s.upsert(c, &[], cx).unwrap();
+            });
+        });
+        let mongo = cx.update(|cx| {
+            ConnectionStore::global(cx)
+                .read(cx)
+                .connections()
+                .iter()
+                .find(|c| c.driver == "mongo-fake")
+                .unwrap()
+                .id
+                .clone()
+        });
+        cx.update(|cx| {
+            Sessions::global(cx).update(cx, |s, cx| s.open(mongo.clone(), Default::default(), cx));
+        });
+        wait(&mut cx, |cx| {
+            Sessions::global(cx).read(cx).state(&mongo).is_open()
+        });
+        cx.update(|cx| {
+            Workspace::global(cx).update(cx, |w, cx| {
+                w.select(Selection::Database(mongo.clone(), "shop".into()), cx)
+            })
+        });
+        let shop_row = format!("d:{}\u{1f}shop", mongo);
+        cx.update_window(handle, |_, window, cx| {
+            window.click_with_options(
+                gpui_kit::SharedString::from(shop_row),
+                gpui_kit::test::ClickOptions::new().with_count(2),
+                cx,
+            );
+        })
+        .unwrap();
+        wait(&mut cx, |cx| {
+            naviduck_navigator::docspace::DocCatalog::global(cx)
+                .read(cx)
+                .page(&mongo, "shop")
+                .is_some_and(|p| !matches!(p.state, naviduck_navigator::docspace::Load::Loading))
+        });
+        shot(&mut cx, "mongo-navigator.png");
+        dispatch(
+            &mut cx,
+            Box::new(naviduck_app_state::actions::OpenCollection {
+                scope: Scope::new(mongo.clone(), "shop", None),
+                collection: "orders".into(),
+            }),
+        );
+        shot(&mut cx, "mongo-viewer-tree.png");
+        cx.update_window(handle, |_, window, cx| {
+            window.render_frame(cx);
+            window.click("doc-mode-table", cx);
+        })
+        .unwrap();
+        shot(&mut cx, "mongo-viewer-table.png");
+        cx.update_window(handle, |_, window, cx| {
+            window.render_frame(cx);
+            window.click("doc-mode-json", cx);
+        })
+        .unwrap();
+        shot(&mut cx, "mongo-viewer-json.png");
+        cx.update(|cx| Theme::change(ThemeMode::Dark, None, cx));
+        shot(&mut cx, "mongo-viewer-dark.png");
+        cx.update(|cx| Theme::change(ThemeMode::Light, None, cx));
+        dispatch(
+            &mut cx,
+            Box::new(naviduck_app_state::actions::DocConsole {
+                connection: mongo.clone().into(),
+                database: Some("shop".into()),
+            }),
+        );
+        shot(&mut cx, "mongo-console.png");
+        cx.update(|cx| Theme::change(ThemeMode::Dark, None, cx));
+        shot(&mut cx, "mongo-console-dark.png");
+        cx.update(|cx| Theme::change(ThemeMode::Light, None, cx));
+
         let _ = std::fs::remove_dir_all(home);
     }
 

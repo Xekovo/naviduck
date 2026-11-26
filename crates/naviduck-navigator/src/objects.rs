@@ -17,8 +17,8 @@ use gpui_kit::{
     Styled as _, Subscription, UniformListScrollHandle, WeakEntity, Window, div, img, uniform_list,
 };
 use naviduck_app_state::actions::{
-    DeleteObjects, DesignTable, EmptyTables, NewQuery, NewTable, OpenConnection, OpenDefinition,
-    OpenObject, RunQuery, TruncateTables,
+    DeleteObjects, DesignTable, EmptyTables, NewQuery, NewTable, OpenCollection, OpenConnection,
+    OpenDefinition, OpenObject, RunQuery, TruncateTables,
 };
 use naviduck_app_state::settings::Settings;
 use naviduck_app_state::store::ConnectionStore;
@@ -187,6 +187,10 @@ impl ObjectsPanel {
                     cx.notify();
                 }),
                 cx.observe(&Catalog::global(cx), |_, _, cx| {
+                    Self::defer_recount(cx);
+                    cx.notify();
+                }),
+                cx.observe(&crate::docspace::DocCatalog::global(cx), |_, _, cx| {
                     Self::defer_recount(cx);
                     cx.notify();
                 }),
@@ -442,6 +446,38 @@ impl ObjectsPanel {
         if Self::hidden_selection(&selection, sessions, show_system) {
             return Content::Empty;
         }
+        let doc_collections = |conn: &str, db: &str| {
+            let scope = Scope::new(conn, db, None);
+            match crate::docspace::DocCatalog::global(cx)
+                .read(cx)
+                .page(conn, db)
+            {
+                Some(p) => match &p.state {
+                    crate::keyspace::Load::Ready(()) => Content::Rows(
+                        p.collections
+                            .iter()
+                            .map(|c| {
+                                let mut properties = vec![("type".into(), c.kind.clone())];
+                                if let Some(n) = c.document_count {
+                                    properties.push(("rows".into(), n.to_string()));
+                                }
+                                Row {
+                                    icon: RowIcon::Lucide("braces"),
+                                    label: c.name.clone().into(),
+                                    target: Selection::Collection(scope.clone(), c.name.clone()),
+                                    properties,
+                                    depth: 0,
+                                }
+                            })
+                            .collect(),
+                        None,
+                    ),
+                    crate::keyspace::Load::Failed(e) => Content::Message(e.clone().into()),
+                    crate::keyspace::Load::Loading => Content::Loading,
+                },
+                None => Content::Loading,
+            }
+        };
         match &selection {
             Selection::None => connections(None),
             Selection::Group(g) => connections(Some(g)),
@@ -451,9 +487,11 @@ impl ObjectsPanel {
                         .iter()
                         .filter(|d| {
                             show_system
-                                || !sessions
+                                || !(sessions
                                     .dialect(c)
                                     .is_some_and(|dialect| dialect.is_system_database(d))
+                                    || (crate::navigator::is_document(c, cx)
+                                        && crate::docspace::is_system_database(d)))
                         })
                         .map(|d| {
                             row(
@@ -467,6 +505,10 @@ impl ObjectsPanel {
                 ),
                 _ => Content::Empty,
             },
+            Selection::Database(c, d) if crate::navigator::is_document(c, cx) => {
+                doc_collections(c, d)
+            }
+            Selection::Collection(s, _) => doc_collections(&s.connection, &s.database),
             Selection::Database(c, d) => match sessions.dialect(c) {
                 Some(dialect) if dialect.features().has_schemas => match catalog.schemas(c, d) {
                     Some(Load::Ready(list)) => Content::Rows(
@@ -514,6 +556,13 @@ impl ObjectsPanel {
             Selection::Object(object) => {
                 window.dispatch_action(Box::new(OpenObject { object }), cx)
             }
+            Selection::Collection(scope, collection) => window.dispatch_action(
+                Box::new(OpenCollection {
+                    scope,
+                    collection: collection.into(),
+                }),
+                cx,
+            ),
             Selection::Connection(_) => window.dispatch_action(Box::new(OpenConnection), cx),
             _ => {}
         }

@@ -19,6 +19,8 @@ pub enum Selection {
     Object(ObjectRef),
     /// A key of a key-value database (Redis); the scope's database is the numeric index
     Key(Scope, String),
+    /// A collection of a document database (MongoDB)
+    Collection(Scope, String),
 }
 
 impl Selection {
@@ -27,7 +29,7 @@ impl Selection {
             Self::Connection(id) | Self::Database(id, _) => Some(id),
             Self::Schema(s) | Self::Category(s, _) => Some(&s.connection),
             Self::Object(o) => Some(&o.scope.connection),
-            Self::Key(s, _) => Some(&s.connection),
+            Self::Key(s, _) | Self::Collection(s, _) => Some(&s.connection),
             Self::None | Self::Group(_) => None,
         }
     }
@@ -38,7 +40,7 @@ impl Selection {
             Self::Database(c, d) => Some(Scope::new(c.clone(), d.clone(), None)),
             Self::Schema(s) | Self::Category(s, _) => Some(s.clone()),
             Self::Object(o) => Some(o.scope.clone()),
-            Self::Key(s, _) => Some(s.clone()),
+            Self::Key(s, _) | Self::Collection(s, _) => Some(s.clone()),
             _ => None,
         }
     }

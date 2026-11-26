@@ -471,7 +471,9 @@ pub fn icon_color(icon: &str, cx: &App) -> Option<Hsla> {
         "plug" | "table" | "workflow" | "search" | "list-ordered" | "columns-3" | "database" => {
             p.icon_blue
         }
-        "square-terminal" | "database-backup" | "arrow-up-down" | "check" => p.icon_green,
+        "square-terminal" | "database-backup" | "arrow-up-down" | "check" | "braces" => {
+            p.icon_green
+        }
         "funnel" | "square-function" | "file-code" | "key-round" | "rotate-ccw" => p.icon_orange,
         "eye" | "layers" | "git-commit-horizontal" => p.icon_teal,
         "user" | "zap" | "folder" | "folder-open" | "key" => p.icon_yellow,

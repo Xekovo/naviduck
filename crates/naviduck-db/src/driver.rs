@@ -105,6 +105,8 @@ pub struct DriverInfo {
     pub per_database_sessions: bool,
     /// The general page takes a numeric database index (Redis) instead of a name.
     pub database_number: bool,
+    /// The general page shows the optional initial/auth database name (MongoDB).
+    pub initial_database: bool,
 }
 
 impl DriverInfo {
@@ -133,10 +135,11 @@ impl DriverInfo {
             supports_ssh: false,
             per_database_sessions: false,
             database_number: false,
+            initial_database: false,
         }
     }
 
-    /// Baseline for a non-SQL driver: no dialect at all.
+    /// Baseline for a non-SQL key-value driver: no dialect at all.
     pub fn key_value(id: impl Into<String>, name: impl Into<String>) -> Self {
         Self {
             id: id.into(),
@@ -155,6 +158,30 @@ impl DriverInfo {
             supports_ssh: false,
             per_database_sessions: false,
             database_number: false,
+            initial_database: false,
+        }
+    }
+
+    /// Baseline for a non-SQL document driver: no dialect at all.
+    pub fn document(id: impl Into<String>, name: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            name: name.into(),
+            family: Family::Document,
+            default_port: None,
+            icon: "",
+            dialect: None,
+            file_based: false,
+            multi_host: false,
+            supports_network: false,
+            supports_ssl: false,
+            chooses_ssl_mode: false,
+            protocol_timeouts: false,
+            connection_params: false,
+            supports_ssh: false,
+            per_database_sessions: false,
+            database_number: false,
+            initial_database: false,
         }
     }
 }
@@ -402,20 +429,99 @@ pub trait Relational: Send {
     ) -> BoxFuture<'a, DbResult<crate::outline::Outline>>;
 }
 
+/// Metadata of one collection or view inside a document database (142-mongodb.md §4).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CollectionInfo {
+    pub name: String,
+    /// `"collection"`, `"view"`, `"timeseries"`, …
+    pub kind: String,
+    pub document_count: Option<u64>,
+}
+
+/// Filter, sort, projection and pagination for [`Document::find`].
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct FindQuery {
+    pub filter_json: String,
+    pub sort_json: String,
+    pub projection_json: String,
+    pub skip: u64,
+    pub limit: u64,
+}
+
+/// One page of documents serialized as Relaxed Extended JSON strings.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct DocumentPage {
+    pub documents: Vec<String>,
+    pub total: Option<u64>,
+}
+
 pub trait Document: Send {
     fn list_databases(&mut self) -> BoxFuture<'_, DbResult<Vec<String>>>;
     fn list_collections<'a>(
         &'a mut self,
         database: &'a str,
-    ) -> BoxFuture<'a, DbResult<Vec<String>>>;
-    /// Query with a JSON filter; returns documents as JSON text.
+    ) -> BoxFuture<'a, DbResult<Vec<CollectionInfo>>>;
+    /// Collection properties for the Objects detail view and Info pane.
+    fn collection_stats<'a>(
+        &'a mut self,
+        database: &'a str,
+        collection: &'a str,
+    ) -> BoxFuture<'a, DbResult<Vec<(String, String)>>>;
     fn find<'a>(
         &'a mut self,
         database: &'a str,
         collection: &'a str,
-        filter_json: &'a str,
-        limit: u64,
+        query: &'a FindQuery,
+    ) -> BoxFuture<'a, DbResult<DocumentPage>>;
+    /// Inserts one Extended JSON document; returns the assigned `_id` as Extended JSON.
+    fn insert_document<'a>(
+        &'a mut self,
+        database: &'a str,
+        collection: &'a str,
+        doc_json: &'a str,
+    ) -> BoxFuture<'a, DbResult<String>>;
+    /// Replaces the document matching `_id == id_json` (Extended JSON); returns matched count.
+    fn replace_document<'a>(
+        &'a mut self,
+        database: &'a str,
+        collection: &'a str,
+        id_json: &'a str,
+        doc_json: &'a str,
+    ) -> BoxFuture<'a, DbResult<u64>>;
+    /// Deletes every document whose `_id` matches one entry in `ids_json`.
+    fn delete_documents<'a>(
+        &'a mut self,
+        database: &'a str,
+        collection: &'a str,
+        ids_json: &'a [String],
+    ) -> BoxFuture<'a, DbResult<u64>>;
+    fn create_collection<'a>(
+        &'a mut self,
+        database: &'a str,
+        name: &'a str,
+    ) -> BoxFuture<'a, DbResult<()>>;
+    fn drop_collection<'a>(
+        &'a mut self,
+        database: &'a str,
+        name: &'a str,
+    ) -> BoxFuture<'a, DbResult<()>>;
+    fn rename_collection<'a>(
+        &'a mut self,
+        database: &'a str,
+        old_name: &'a str,
+        new_name: &'a str,
+    ) -> BoxFuture<'a, DbResult<()>>;
+    fn list_indexes<'a>(
+        &'a mut self,
+        database: &'a str,
+        collection: &'a str,
     ) -> BoxFuture<'a, DbResult<Vec<String>>>;
+    /// Executes one user command (JSON `runCommand` or shell helper) and maps replies to result sets.
+    fn execute_command<'a>(
+        &'a mut self,
+        database: &'a str,
+        command: &'a str,
+    ) -> BoxFuture<'a, DbResult<Vec<ResultSet>>>;
 }
 
 /// A key's decoded value for the key-value data editor (141-redis.md §4).
