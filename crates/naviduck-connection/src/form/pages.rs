@@ -89,7 +89,12 @@ impl ConnectionForm {
                     .into_any_element(),
                 );
             }
-            if postgres {
+            // PostgreSQL takes an initial database name; Redis a numeric index. Both share
+            // the `database` input (141-redis.md §2).
+            let database_flag = super::driver_flag(cx, &self.draft.driver, |info| {
+                info.multi_host || info.database_number
+            });
+            if database_flag {
                 rows.push(
                     FormRow::new(
                         t!("conn.initial_database").to_string(),

@@ -223,7 +223,7 @@ fn catalog_methods_cover_every_object_kind() {
 
         // The designer's enrich path: identity text carries the seed and increment.
         let metadata = rel
-            .execute_read(&DamengDriver::default().info().dialect.column_metadata_sql(&scope, "ND_CAT_T").unwrap())
+            .execute_read(&DamengDriver::default().info().dialect.as_deref().unwrap().column_metadata_sql(&scope, "ND_CAT_T").unwrap())
             .await
             .unwrap();
         let identity: Vec<_> = metadata

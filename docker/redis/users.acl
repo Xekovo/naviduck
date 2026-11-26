@@ -1,0 +1,2 @@
+user default on >naviduck ~* &* +@all
+user alice on >alice123 ~* &* +@all

@@ -245,6 +245,15 @@ pub fn driver_defaults(driver: &str) -> DriverDefaults {
             file_based: false,
             supports_network: true,
         },
+        "redis" => DriverDefaults {
+            host: "localhost",
+            port: Some(6379),
+            user: "",
+            // The database field holds the numeric index ("0".."15").
+            database: Some("0"),
+            file_based: false,
+            supports_network: true,
+        },
         "sqlite" => DriverDefaults {
             host: "",
             port: None,

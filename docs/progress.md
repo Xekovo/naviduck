@@ -26,7 +26,7 @@
 | M11 AI 助手 | 未开始 | | | |
 | M12 同步（替代 Cloud） | 未开始 | | | |
 | M13 HTTP 隧道 | 未开始 | | | |
-| M14 其他数据库 | 进行中 | `feat/dameng` | db/、140-dameng | 达梦 DM8 已接入（`naviduck-dameng`，dm-pure 驱动）：连接/导航/表查看器/查询编辑器/表设计器迁移/用户只读列表，实库测试 10 项本地通过。dm-pure 1.2.4 的四处协议补丁待接自建镜像仓库（第 4 节），接上后 LOB/EXPLAIN/SET SCHEMA/取消响应的守卫自动转正。见 [验收记录](pr/acceptance-dameng.md) |
+| M14 其他数据库 | 进行中 | `feat/dameng`、`feat/redis` | db/、140-dameng、141-redis | 达梦 DM8 已接入（`naviduck-dameng`，dm-pure 驱动）：连接/导航/表查看器/查询编辑器/表设计器迁移/用户只读列表，实库测试 10 项本地通过。dm-pure 1.2.4 的四处协议补丁待接自建镜像仓库（第 4 节），接上后 LOB/EXPLAIN/SET SCHEMA/取消响应的守卫自动转正。见 [验收记录](pr/acceptance-dameng.md)。Redis 驱动已接入（`naviduck-redis`，fred 驱动）：能力层（`KeyValue` 扩展）、驱动 crate、会话接线、连接表单编号输入完成，实库测试 10 项通过（规格 [141-redis.md](design/141-redis.md)）；键导航树、键数据编辑器、命令面板是下一批 |
 | M15 发布 | 部分 | `codex/macos-adhoc-signing` | 150-macos-distribution | 工作流、安装包、`latest.json`、应用内更新已在仓库里；无证书时免费临时签名与验签已接入并经本机验证。正式公证仍需证书与凭据（第 4 节），配置迁移（F-REL-004）未做 |
 
 ## 2. 当前里程碑：M4（表设计器）
@@ -114,6 +114,20 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | 迁移不可回滚提示 | 完成 | 预览页在 `transactional_ddl=false` 时显示固定提示（达梦与 MySQL 同样适用，能力驱动不按产品分支） |
 | 实库测试 | 完成 | `NAVIDUCK_DM_LIVE=1` 10 项本地通过（2026-11-25 补丁接线后单线程与并行各跑一次）：连接/错误密码、目录八方法、中文、LOB、事务与 DDL 隐式提交、取消杀会话、SET SCHEMA、分页、EXPLAIN、lazy fetch、设计器迁移语法；DM 镜像不进 CI（许可）。LOB/EXPLAIN/SET SCHEMA 三项守卫已随补丁接线转正 |
 | dm-pure 补丁接线 | 完成 | 四补丁按验收记录并对照 Go 驱动（`gitee.com/chunanyong/dm`）重建，推送到自建镜像 `github.com/ekovovo/dm-rs`（分支 `fix/protocol-lob-explain-error-status`，仅改 `src/client.rs`）；根 Cargo.toml `[patch.crates-io]` git 依赖接线，Cargo.lock 已提交；实库测试 10 项全通过，三个守卫转正。上游恢复后提 PR，发修复版后切回 crates.io |
+
+### M14 Redis 接入（第一批）
+
+规格与选型见 [141-redis.md](design/141-redis.md)。驱动 fred 10.1.0（MIT，异步；redis-rs 2.0 仍在 RC 落选）。
+
+| 任务 | 状态 | 验证与说明 |
+| --- | --- | --- |
+| 阶段 0 规格与选型 | 完成 | fred/redis-rs 对比、API 核对见规格；规格先单独提交 |
+| `KeyValue` 能力层扩展 | 完成 | `KeyValueData` 五种键类型 + `Other`；scan/type/ttl/读写/删改名/TTL/execute_command 共 19 个方法（`naviduck-db`）；`get` 并入 `read` 后删除 |
+| `DriverInfo.dialect` 改 Option + `database_number` 标志 | 完成 | 非 SQL 家族无方言（Redis `dialect=None`）；连接表单对 `multi_host \|\| database_number` 显示数据库输入 |
+| `naviduck-redis` crate | 完成 | 独立/SSL（rustls-ring，与 mysql_async 同一 crypto provider）/SSH 隧道复用 `naviduck_db::connect`；读命令断连重试一次，写命令不重放报 outcome_unknown；lazy SELECT 切库 |
+| 会话接线 | 完成 | `Sessions::open` 按 `key_value()` 取数据库列表；`run_kv`/`run_on_kv`；`driver_defaults("redis")`；`naviduck-session` 注册（第 6 个内置驱动）；picker 的 NoSql 分类自动出现 |
+| 实库测试 | 完成 | docker compose 加 `redis` 服务（ACL 文件挂载）；`NAVIDUCK_REDIS_LIVE=1` 10 项通过：连接/错误密码/ACL 用户、CONFIG databases 探测、SCAN 分批与 pattern、五种键类型往返、TTL/持久化、改名删除、命令执行与 WRONGTYPE 错误码、SELECT 切库、初始数据库 |
+| 静态检查 | 完成 | fmt/clippy/check-deps/check-i18n/check-dialect-branches、全工作区测试通过；headless 加 redis 编译回归 |
 
 ### chrono → jiff（RUSTSEC-2026-0543）
 
@@ -309,6 +323,10 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 
 | 项目 | 引入于 | 计划处理 |
 | --- | --- | --- |
+| Redis 首版只有独立连接：哨兵/集群、Pub/Sub、ACL 用户管理、.nbr 备份、命令监控、Stream/JSON 编辑、键前缀分组均未做（141-redis.md 第 6 节偏差 D1–D4） | M14 | 按 F-REDIS 编号各自独立任务推进；fred 的哨兵/集群 API 已具备 |
+| Redis SSL 始终校验服务器证书，`verify_server_cert=false`（自签证书跳过校验）不支持；CA/客户端证书未接入 | M14 | 需要 rustls 自定义 verifier 时再加 |
+| Redis `cancel_handle=None`（首版命令均为快速命令）；`session_id=None`（CLIENT ID 未接） | M14 | 命令监控/MONITOR 类长任务时接 CLIENT KILL 与 CLIENT ID |
+| Redis 数据库编号 fred 上限 255，超过报错而不是静默取模 | M14 | 无（服务器实际配置极少超过 16） |
 | DM 实库测试为本地可选，不进 CI（DM 开发版许可仅限学习/测试/开发，1 年试用） | M14 | `NAVIDUCK_DM_LIVE=1` + `DM_PORT` 手动执行；起容器命令见 live.rs 文件头 |
 | 迁移预览的不可回滚提示按 `transactional_ddl=false` 能力显示，MySQL 预览页也因此新增同一提示（此前没有） | M14 | 能力驱动、文案事实正确；与 Navicat 并排实测后如需收敛再按能力细分 |
 | 连接表单/导航树/表查看器/查询编辑器对 DM 的整体界面目测未做（需要本机连 DM 实例走查） | M14 | 下一轮连同 CS=0 与 mode 2/4 实例一起验收 |

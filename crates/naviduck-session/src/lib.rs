@@ -16,16 +16,18 @@ use naviduck_dameng::DamengDriver;
 use naviduck_db::Driver;
 use naviduck_mysql::MySqlDriver;
 use naviduck_postgres::PostgresDriver;
+use naviduck_redis::RedisDriver;
 use naviduck_sqlite::SqliteDriver;
 
 pub fn init(cx: &mut App) {
     let mut registry = DriverRegistry::default();
-    let builtin: [Arc<dyn Driver>; 5] = [
+    let builtin: [Arc<dyn Driver>; 6] = [
         Arc::new(MySqlDriver::mysql()),
         Arc::new(MySqlDriver::mariadb()),
         Arc::new(PostgresDriver::default()),
         Arc::new(SqliteDriver::default()),
         Arc::new(DamengDriver::default()),
+        Arc::new(RedisDriver::default()),
     ];
     for driver in builtin {
         let id = driver.info().id.clone();

@@ -43,6 +43,18 @@ services:
       interval: 3s
       retries: 40
 
+  redis:
+    image: redis:8
+    # ACL 用户写在文件里：redis-server 的 --user 命令行参数解析不可靠
+    command: redis-server --databases 16 --aclfile /usr/local/etc/redis/users.acl
+    ports: ["16379:6379"]
+    volumes:
+      - ./docker/redis/users.acl:/usr/local/etc/redis/users.acl:ro
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a naviduck ping | grep PONG"]
+      interval: 3s
+      retries: 40
+
   # SSH 跳板机：隧道内通过服务名 mysql、postgres 访问数据库
   ssh:
     image: lscr.io/linuxserver/openssh-server:latest
