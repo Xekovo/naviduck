@@ -13,6 +13,7 @@ naviduck-ui.workspace = true
 naviduck-model.workspace = true
 naviduck-sql = { path = "../naviduck-sql" }
 naviduck-app-state.workspace = true
+futures.workspace = true
 naviduck-db.workspace = true
 naviduck-util.workspace = true
 gpui-kit = { workspace = true, features = ["tree-sitter-sql"] }

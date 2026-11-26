@@ -56,6 +56,8 @@ impl NavigatorPanel {
                 )
             }
             Some(Node::Database(..)) => (tinted("database"), None),
+            Some(Node::Key(..)) => (tinted("key"), None),
+            Some(Node::LoadMore(_)) => (tinted("chevron-down"), None),
             Some(Node::Schema(_)) => (tinted("layers"), None),
             Some(Node::Category(_, k)) | Some(Node::Object(ObjectRef { kind: k, .. })) => {
                 (tinted(kind_icon(*k)), None)
@@ -134,6 +136,9 @@ impl NavigatorPanel {
             (Some(Node::Group(g)), Some(r)) => r.target == RenameTarget::Group(g.clone()),
             (Some(Node::VGroup(_, _, g)), Some(r)) => r.target == RenameTarget::VGroup(g.clone()),
             (Some(Node::Object(o)), Some(r)) => r.target == RenameTarget::Object(o.clone()),
+            (Some(Node::Key(scope, name)), Some(r)) => {
+                r.target == RenameTarget::Key(scope.clone(), name.clone())
+            }
             (Some(Node::TableItem(table, Child::Fields, name)), Some(r)) => {
                 r.target == RenameTarget::Field(table.clone(), name.clone())
             }

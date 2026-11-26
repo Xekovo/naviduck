@@ -5376,6 +5376,7 @@ name = "naviduck-navigator"
 version = "0.0.1"
 dependencies = [
  "anyhow",
+ "futures",
  "gpui-kit",
  "jiff",
  "lsp-types",

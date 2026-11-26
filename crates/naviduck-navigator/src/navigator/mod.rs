@@ -38,9 +38,11 @@ use naviduck_ui::{palette, tabs, tokens};
 use rust_i18n::t;
 
 use crate::catalog::{Catalog, Load, Requirement};
+use crate::keyspace::Keyspace;
 use crate::objects::ObjectsPanel;
 use crate::selection::{self, Click};
 
+mod keyops;
 mod keys;
 mod menus;
 mod rename;
@@ -94,6 +96,10 @@ pub(crate) enum Node {
     Schema(Scope),
     Category(Scope, ObjectKind),
     Object(ObjectRef),
+    /// A key of a key-value database (141-redis.md §5.1)
+    Key(Scope, String),
+    /// The "load more keys" row under a key-value database
+    LoadMore(Scope),
     /// A virtual group of objects in a category (F-NAV-007)
     VGroup(Scope, ObjectKind, String),
     /// A folder under a table (fields, indexes, …) when "Show objects under tables" is on
@@ -157,6 +163,16 @@ fn parse_scope(parts: &[&str]) -> Option<Scope> {
     Some(Scope::new(*c, *d, (!s.is_empty()).then(|| s.to_string())))
 }
 
+/// Whether `connection`'s driver belongs to the key-value family (Redis).
+pub(crate) fn is_key_value(connection: &str, cx: &App) -> bool {
+    ConnectionStore::global(cx)
+        .read(cx)
+        .get(connection)
+        .map(|c| c.driver.clone())
+        .and_then(|driver| naviduck_session::DriverRegistry::get(cx, &driver))
+        .is_some_and(|d| d.info().family == naviduck_db::Family::KeyValue)
+}
+
 impl Node {
     pub(crate) fn id(&self) -> SharedString {
         match self {
@@ -171,6 +187,8 @@ impl Node {
                 o.kind.key(),
                 o.name
             ),
+            Self::Key(s, n) => format!("y:{}{SEP}{n}", scope_id(s)),
+            Self::LoadMore(s) => format!("m:{}", scope_id(s)),
             Self::VGroup(s, k, g) => format!("v:{}{SEP}{}{SEP}{g}", scope_id(s), k.key()),
             Self::TableFolder(t, c) => {
                 format!("t:{}{SEP}{}{SEP}{}", scope_id(&t.scope), t.name, c.key())
@@ -205,6 +223,11 @@ impl Node {
                 kind: ObjectKind::from_key(parts.get(3)?)?,
                 name: parts.get(4..)?.join(&SEP.to_string()),
             }),
+            "y" => Self::Key(
+                parse_scope(parts.get(..3)?)?,
+                parts.get(3..)?.join(&SEP.to_string()),
+            ),
+            "m" => Self::LoadMore(parse_scope(parts.get(..3)?)?),
             "v" => Self::VGroup(
                 parse_scope(parts.get(..3)?)?,
                 ObjectKind::from_key(parts.get(3)?)?,
@@ -229,6 +252,7 @@ impl Node {
 
     fn selection(&self) -> Option<Selection> {
         Some(match self.clone() {
+            Self::LoadMore(_) => return None,
             Self::Group(g) => Selection::Group(g),
             Self::Connection(c) => Selection::Connection(c),
             Self::Database(c, d) => Selection::Database(c, d),
@@ -237,6 +261,7 @@ impl Node {
             Self::Object(o) | Self::TableFolder(o, _) | Self::TableItem(o, _, _) => {
                 Selection::Object(o)
             }
+            Self::Key(s, n) => Selection::Key(s.clone(), n.clone()),
             Self::VGroup(s, k, _) => Selection::Category(s, k),
             Self::Placeholder(_) => return None,
         })
@@ -250,6 +275,7 @@ impl Node {
             Selection::Schema(s) => Self::Schema(s),
             Selection::Category(s, k) => Self::Category(s, k),
             Selection::Object(o) => Self::Object(o),
+            Selection::Key(s, n) => Self::Key(s, n),
             Selection::None => return None,
         })
     }
@@ -346,6 +372,8 @@ enum RenameTarget {
     VGroup(String),
     Object(ObjectRef),
     Field(ObjectRef, String),
+    /// A Redis key: the scope's database is the numeric index
+    Key(Scope, String),
 }
 
 /// Objects being dragged onto a virtual group (or onto their category, meaning no group).
@@ -496,13 +524,26 @@ impl NavigatorPanel {
                     this.ensure_expanded(cx);
                     this.rebuild(cx);
                 }),
+                cx.observe(&Keyspace::global(cx), |this, _, cx| {
+                    this.ensure_expanded(cx);
+                    this.rebuild(cx);
+                }),
                 cx.subscribe(&Sessions::global(cx), |this, _, e: &SessionsEvent, cx| {
-                    if let SessionsEvent::Opened(id) = e {
-                        this.expanded.insert(Node::Connection(id.clone()).id());
-                        // Opening drops the catalog. Nodes that were already
-                        // expanded do not emit Expanded again, so restart them.
-                        this.ensure_expanded(cx);
-                        this.rebuild(cx);
+                    match e {
+                        SessionsEvent::Opened(id) => {
+                            this.expanded.insert(Node::Connection(id.clone()).id());
+                            // Opening drops the catalog. Nodes that were already
+                            // expanded do not emit Expanded again, so restart them.
+                            this.ensure_expanded(cx);
+                            this.rebuild(cx);
+                        }
+                        // The keyspace pages of a closed or reopening connection go as well.
+                        SessionsEvent::Closed(id) | SessionsEvent::Reopening(id) => {
+                            Keyspace::global(cx).update(cx, |ks, _| {
+                                ks.invalidate_connection(id);
+                            });
+                        }
+                        SessionsEvent::Failed(_, _) => {}
                     }
                 }),
                 cx.observe(&filter, |this, _, cx| this.rebuild(cx)),
@@ -564,6 +605,19 @@ impl NavigatorPanel {
     /// Loads children on demand when a node expands: only the entries are named here, the
     /// catalog decides whether they start a query.
     fn require_children(node: &Node, force: bool, cx: &mut App) {
+        match node {
+            Node::Database(c, d) if is_key_value(c, cx) => {
+                Keyspace::global(cx).update(cx, |ks, cx| {
+                    if force {
+                        ks.reload(c, d, cx)
+                    } else {
+                        ks.require(c, d, cx)
+                    }
+                });
+                return;
+            }
+            _ => {}
+        }
         let mut requirements = Vec::new();
         match node {
             Node::Database(c, d) => {
@@ -625,9 +679,18 @@ impl NavigatorPanel {
         self.built_revision = Catalog::global(cx).read(cx).revision();
         let query = self.filter.read(cx).value().trim().to_lowercase();
         let filtering = !query.is_empty();
+        let store = ConnectionStore::global(cx).read(cx);
+        let key_value: HashSet<String> = store
+            .connections()
+            .iter()
+            .filter(|c| is_key_value(&c.id, cx))
+            .map(|c| c.id.clone())
+            .collect();
         let builder = TreeBuilder {
             panel: self,
-            store: ConnectionStore::global(cx).read(cx),
+            key_value: &key_value,
+            keyspace: &Keyspace::global(cx).read(cx),
+            store: &store,
             sessions: Sessions::global(cx).read(cx),
             catalog: Catalog::global(cx).read(cx),
             vgroups: VirtualGroups::global(cx).read(cx),
@@ -661,7 +724,7 @@ impl NavigatorPanel {
         cx.notify();
     }
 
-    /// Double-click and Return. A closed connection opens; an object opens; anything else
+    /// Double-click and Return. A closed connection opens; an object or key opens; anything else
     /// expands or collapses.
     fn toggle(&mut self, node: &Node, window: &mut Window, cx: &mut Context<Self>) {
         match node {
@@ -670,6 +733,19 @@ impl NavigatorPanel {
             }
             Node::Object(o) => {
                 window.dispatch_action(Box::new(OpenObject { object: o.clone() }), cx);
+            }
+            Node::Key(scope, name) => {
+                window.dispatch_action(
+                    Box::new(OpenKey {
+                        scope: scope.clone(),
+                        key: name.clone().into(),
+                    }),
+                    cx,
+                );
+            }
+            Node::LoadMore(scope) => {
+                let (c, d) = (scope.connection.clone(), scope.database.clone());
+                Keyspace::global(cx).update(cx, |ks, cx| ks.require(&c, &d, cx));
             }
             Node::TableItem(object, Child::Fields, name) => {
                 window.dispatch_action(
@@ -756,6 +832,19 @@ impl NavigatorPanel {
     /// Refresh reloads metadata of the selected scope; connection-level refresh is handled by the connection commands.
     fn on_refresh(&mut self, _: &Refresh, _: &mut Window, cx: &mut Context<Self>) {
         let selection = Workspace::global(cx).read(cx).selection().clone();
+        // A key-value database refreshes by re-scanning its page from cursor 0.
+        let kv_scope = match &selection {
+            Selection::Key(scope, _) => Some(scope.clone()),
+            Selection::Database(c, d) if is_key_value(c, cx) => {
+                Some(Scope::new(c.clone(), d.clone(), None))
+            }
+            _ => None,
+        };
+        if let Some(scope) = kv_scope {
+            let (c, d) = (scope.connection.clone(), scope.database.clone());
+            Keyspace::global(cx).update(cx, |ks, cx| ks.reload(&c, &d, cx));
+            return;
+        }
         if let Some(scope) = selection.scope() {
             Catalog::global(cx).update(cx, |cat, cx| cat.refresh_scope(&scope, cx));
         } else if let Some(c) = selection.connection_id() {
@@ -933,9 +1022,14 @@ impl Render for NavigatorPanel {
                 VirtualGroups::global(cx).update(cx, |g, cx| g.delete_group(&a.group, cx))
             })
             .on_action(|_: &CopyObjectNames, _, cx| {
-                let names: Vec<String> = crate::ops::selected_objects(cx)
-                    .into_iter()
-                    .map(|o| o.name)
+                let names: Vec<String> = Workspace::global(cx)
+                    .read(cx)
+                    .selections()
+                    .filter_map(|s| match s {
+                        Selection::Object(o) => Some(o.name.clone()),
+                        Selection::Key(_, n) => Some(n.clone()),
+                        _ => None,
+                    })
                     .collect();
                 cx.write_to_clipboard(gpui_kit::ClipboardItem::new_string(names.join("\n")));
             })
@@ -946,6 +1040,7 @@ impl Render for NavigatorPanel {
                         Selection::Group(_) => Box::new(DeleteGroup),
                         Selection::Connection(_) => Box::new(DeleteConnection),
                         Selection::Object(_) => Box::new(DeleteObjects),
+                        Selection::Key(_, _) => Box::new(DeleteKeys),
                         _ => return,
                     };
                 window.dispatch_action(action, cx);
@@ -1040,6 +1135,14 @@ pub fn bind_actions<E: gpui_kit::InteractiveElement>(el: E) -> E {
                 with_navigator(cx, |this, cx| this.start_rename_object(o, window, cx));
             }
         })
+        .on_action(|_: &RenameKey, window, cx| {
+            if let Selection::Key(scope, name) = Workspace::global(cx).read(cx).selection().clone()
+            {
+                with_navigator(cx, |this, cx| {
+                    this.start_rename_key(scope, name, window, cx)
+                });
+            }
+        })
         .on_action(|a: &RenameColumn, window, cx| {
             let object = a.object.clone();
             let column = a.column.to_string();
@@ -1063,6 +1166,7 @@ pub fn bind_actions<E: gpui_kit::InteractiveElement>(el: E) -> E {
             let objects = crate::ops::selected_objects(cx);
             move_objects(&objects, None, cx);
         });
+    let el = keyops::bind(el);
     crate::ops::bind(el)
 }
 
@@ -1103,10 +1207,14 @@ mod tests {
         let nodes = nodes.into_iter().chain([
             Node::TableFolder(table.clone(), Child::ForeignKeys),
             Node::TableItem(table, Child::Indexes, "idx:name".into()),
+            Node::Key(Scope::new("c-1", "0", None), "live:scan:a".into()),
+            Node::LoadMore(Scope::new("c-1", "0", None)),
         ]);
         for n in nodes {
             assert_eq!(Node::parse(&n.id()), Some(n.clone()), "{}", n.id());
         }
+        // The load-more row stands for nothing in the workspace selection.
+        assert_eq!(Node::LoadMore(Scope::new("c", "0", None)).selection(), None);
     }
 
     #[test]

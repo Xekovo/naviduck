@@ -8,6 +8,9 @@ pub(super) struct TreeBuilder<'a> {
     pub(super) store: &'a ConnectionStore,
     pub(super) sessions: &'a Sessions,
     pub(super) catalog: &'a Catalog,
+    pub(super) keyspace: &'a Keyspace,
+    /// Connections whose driver is key-value (Redis); their databases list keys.
+    pub(super) key_value: &'a HashSet<String>,
     pub(super) vgroups: &'a VirtualGroups,
     pub(super) query: &'a str,
     pub(super) filtering: bool,
@@ -204,6 +207,9 @@ impl TreeBuilder<'_> {
         conn_name: &str,
     ) -> Option<TreeItem> {
         let node = Node::Database(conn.to_string(), db.to_string());
+        if self.key_value.contains(conn) {
+            return self.key_database(&node, conn, db, conn_name);
+        }
         let Some(dialect) = dialect else {
             return Some(self.item(node, db.to_string(), Vec::new()));
         };
@@ -237,6 +243,52 @@ impl TreeBuilder<'_> {
             || self.matches(conn_name)
             || children.iter().any(|c| !c.children.is_empty());
         any_match.then(|| self.item(node, db.to_string(), children))
+    }
+
+    /// A key-value database: one flat page of SCAN keys, a load-more row while the cursor runs
+    /// (141-redis.md §5.1).
+    pub(super) fn key_database(
+        &self,
+        node: &Node,
+        conn: &str,
+        db: &str,
+        conn_name: &str,
+    ) -> Option<TreeItem> {
+        let page = self.keyspace.page(conn, db);
+        let count_label = match page.and_then(|p| p.count.clone()) {
+            Some(crate::keyspace::Load::Ready(n)) => format!(" ({n})"),
+            _ => String::new(),
+        };
+        let label = format!("{db}{count_label}");
+        let children = match page {
+            Some(p) => match &p.state {
+                crate::keyspace::Load::Failed(e) => Self::placeholder(node, Some(e.clone())),
+                _ if p.keys.is_empty() && matches!(p.state, crate::keyspace::Load::Loading) => {
+                    Self::placeholder(node, None)
+                }
+                _ => {
+                    let scope = Scope::new(conn, db, None);
+                    let mut items: Vec<TreeItem> = p
+                        .keys
+                        .iter()
+                        .filter(|k| self.matches(k))
+                        .map(|k| TreeItem::new(Node::Key(scope.clone(), k.clone()).id(), k.clone()))
+                        .collect();
+                    if p.cursor != 0 {
+                        items.push(TreeItem::new(
+                            Node::LoadMore(scope).id(),
+                            t!("nav.load_more_keys").to_string(),
+                        ));
+                    }
+                    items
+                }
+            },
+            None => Self::placeholder(node, None),
+        };
+        let any_match = self.matches(db)
+            || self.matches(conn_name)
+            || children.iter().any(|c| !c.children.is_empty());
+        any_match.then(|| self.item(node.clone(), label, children))
     }
 
     pub(super) fn categories(&self, scope: &Scope, dialect: &dyn Dialect) -> Vec<TreeItem> {

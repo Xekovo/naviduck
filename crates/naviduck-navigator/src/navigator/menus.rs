@@ -159,6 +159,16 @@ impl NavigatorPanel {
                 refresh(menu)
             }
             // Items of later milestones (designers M4, queries M3, SQL files M6) are disabled
+            Some(Node::Database(conn, db)) if super::is_key_value(conn, cx) => refresh(
+                NativeMenu::new()
+                    .menu(t!("nav.open_database").to_string(), Box::new(OpenDatabase))
+                    .menu(
+                        t!("nav.close_database").to_string(),
+                        Box::new(CloseDatabase),
+                    )
+                    .separator()
+                    .menu(t!("nav.new_key").to_string(), Box::new(NewKey)),
+            ),
             Some(Node::Database(conn, db)) => {
                 let dialect = Sessions::global(cx).read(cx).dialect(conn);
                 let features = dialect.as_ref().map(|d| d.features());
@@ -300,6 +310,23 @@ impl NavigatorPanel {
                     ),
             ),
             Some(Node::Object(o)) => refresh(Self::object_menu(o, cx)),
+            Some(Node::Key(scope, name)) => refresh(
+                NativeMenu::new()
+                    .menu(
+                        t!("obj.open_kind", kind = t!("kind.key").to_string()).to_string(),
+                        Box::new(OpenKey {
+                            scope: scope.clone(),
+                            key: name.clone().into(),
+                        }),
+                    )
+                    .menu(t!("nav.new_key").to_string(), Box::new(NewKey))
+                    .menu(t!("obj.rename").to_string(), Box::new(RenameKey))
+                    .menu(
+                        t!("obj.delete_kind", kind = t!("kind.key").to_string()).to_string(),
+                        { Box::new(DeleteKeys) },
+                    )
+                    .menu(t!("obj.copy_name").to_string(), Box::new(CopyObjectNames)),
+            ),
             Some(Node::TableItem(table, Child::Fields, name)) => refresh(
                 NativeMenu::new()
                     .menu(

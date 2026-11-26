@@ -389,7 +389,7 @@ fn show_maintenance(text: String, window: &mut Window, cx: &mut App) {
     });
 }
 
-fn show_error(message: String, window: &mut Window, cx: &mut App) {
+pub(crate) fn show_error(message: String, window: &mut Window, cx: &mut App) {
     window.open_alert_dialog(cx, move |alert, _, _| {
         alert
             .icon(lucide("circle-x"))

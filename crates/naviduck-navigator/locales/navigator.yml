@@ -3,6 +3,21 @@ nav:
   title:
     en: Navigator
     zh-CN: 导航器
+  load_more_keys:
+    en: Load more keys…
+    zh-CN: 加载更多键…
+  new_key:
+    en: New Key…
+    zh-CN: 新建键…
+  key_name:
+    en: Key name
+    zh-CN: 键名
+  confirm_delete_key:
+    en: Delete key "%{name}"?
+    zh-CN: 删除键 "%{name}"？
+  confirm_delete_keys:
+    en: Delete %{n} keys?
+    zh-CN: 删除 %{n} 个键？
   reopen_connection:
     en: Reopen connection…
     zh-CN: 重新打开连接…
@@ -202,6 +217,9 @@ kind:
   table:
     en: Tables
     zh-CN: 表
+  key:
+    en: Keys
+    zh-CN: 键
   user:
     en: User
     zh-CN: 用户
