@@ -87,6 +87,12 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | 阶段 4：快捷键投影 | 未开始 | 替换手写 `bind_keys` 前必须先覆盖上下文谓词与同一 Action 的多绑定 |
 | 阶段 5：静态菜单投影 | 未开始 | 收藏夹、最近对象、checked 状态和数据库类型子菜单保持手写 |
 
+### Linux / Windows 偏好设置入口修复
+
+| 任务 | 状态 | 验证与说明 |
+| --- | --- | --- |
+| 窗口内菜单与设置快捷键 | 完成 | `m4-cross-platform-settings`；非 macOS 主窗口显示 `AppMenuBar`，设置使用 Ctrl+,；复用原菜单、Action 与单例设置窗口。Linux 菜单点击、工具栏隐藏、快捷键、窗口复用与关闭重开、语言切换及浅深色截图已验证；Windows/macOS 原生运行态待验。见 [验收记录](pr/acceptance-cross-platform-settings.md) |
+
 ### 整体审查遗留工作（`refactor/remaining-work`）
 
 来源：[2026-10-26 遗留清单](cr/2026-10-26-remaining-work.md)。该清单建议按主题拆成多个 PR；本次按用户要求放在同一个分支/PR，逐项纯迁移。验收记录见 [pr/acceptance-remaining-work.md](pr/acceptance-remaining-work.md)。
@@ -182,7 +188,7 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | --- | --- | --- | --- |
 | F-APP-001 主窗口布局 | 完成 | snapshot、目测 | |
 | F-APP-002 主工具栏 | 部分 | snapshot | 按钮尺寸是暂定值；除“连接”外的按钮在后续里程碑启用 |
-| F-APP-003 菜单栏 | 部分 | 目测 | 菜单随对象窗格的当前选项卡切换：查询编辑器有查询和格式，表查看器有表，其余没有这两项。未实现的菜单项仍随各里程碑加入 |
+| F-APP-003 菜单栏 | 部分 | `preferences_entry` headless UI、Linux 浅深色截图；[验收记录](pr/acceptance-cross-platform-settings.md) | macOS 保留系统菜单，Linux/Windows 增加窗口内菜单（Linux 已验，Windows 待原生验证）。菜单随对象窗格的当前选项卡切换：查询编辑器有查询和格式，表查看器有表，其余没有这两项。未实现的菜单项仍随各里程碑加入 |
 | F-APP-004 状态栏 | 完成 | snapshot | |
 | F-APP-005 编辑器选项卡 | 部分 | snapshot | M2 加入表查看器和 DDL 选项卡；弹出为新窗口未做 |
 | F-APP-006 显示或隐藏窗格 | 完成 | 目测 | |
@@ -193,7 +199,7 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | F-APP-017 日志文件 | 部分 | | 应用日志已完成；SQL 日志在 M3 |
 | F-APP-018 关于与检查更新 | 完成 | update 单元测试、目测 | 两个渠道都读 nightly 上的 `latest.json`（没有则试最新稳定版；`releases` 是各版本列表），不含预发布时跳过预发布和 nightly。摘要为空则拒绝安装。下载校验 SHA-256，对话框显示下载进度，下载中可取消。nightly 用清单里的 `built_at` 和本构建时间严格比较，相同则已是最新。安装开始后改为不定进度，文案是挂载、复制、验证签名、替换或打开安装包。没有本机安装包时按钮是打开发布页，清单读取失败记 warn。启动检查最多每两天一次，失败不记检查时间。手动检查：没有活动窗口时用最前面的窗口；还没有发布版本单独提示。就地替换先把新包放到旁边，失败时删掉半成品再移回旧包。重新启动等当前进程退出后再打开。关于页：nightly 显示渠道和构建时间；tag 构建在编译前把 workspace 版本改成 tag |
 | F-APP-019 欢迎界面 | 部分 | snapshot | 有空状态提示；首次启动引导窗口未做 |
-| F-PREF-001 偏好设置窗口 | 完成 | 目测 | |
+| F-PREF-001 偏好设置窗口 | 完成 | `preferences_entry` headless UI、Linux 浅深色截图；[验收记录](pr/acceptance-cross-platform-settings.md) | 菜单或快捷键打开单例：macOS ⌘,；Linux/Windows Ctrl+,。Linux 的菜单点击、隐藏工具栏、重复打开、关闭后重开及语言切换已覆盖 |
 | F-PREF-002 常规 | 完成 | settings 单元测试、theme 单元测试 | 主题（Naviduck、Default，缺省 Default）、外观、语言、自动连接、自动检查更新、包含预发布版本、显示模式下的对象、显示表下的对象、显示系统对象（缺省开，与查看菜单「显示隐藏项目」同一项）。已经写进 settings.json 的值不会被改掉 |
 | F-PREF-010 高级 | 部分 | | 设置位置、主密码已完成；日志选项未做 |
 | F-CONN-001 新建连接：选择类型 | 完成 | snapshot | |
@@ -342,6 +348,7 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 
 | 项目 | 引入于 | 计划处理 |
 | --- | --- | --- |
+| Linux/Windows 窗口内菜单高 28pt 为暂定适配值；本轮仅在 Linux 验证，Windows 与 macOS 原生回归、窄窗口及各动态菜单组合待验 | M1 跨平台修复 | 按 [验收记录](pr/acceptance-cross-platform-settings.md) 在对应平台补验；除设置 Ctrl+, 外，其余历史 Cmd 快捷键的跨平台适配另行处理 |
 | Redis 键编辑器成员区是简单行列表（无 DataTable 列宽/单元格编辑器），String 用单行输入；命令面板（批次 3）、浅深色截图、headless UI 测试未做 | M14 | 批次 3 补命令面板与截图；DataTable 化与分页读值按 Navicat 并排实测后决定 |
 | 键编辑器成员列表最多渲染 500 行，大键的分页读值（read 的 offset/count）未接界面 | M14 | 编辑器接 `read` 分页与「加载更多」时一并处理 |
 | Redis 键空间搜索框是本地过滤已加载键，服务端 pattern 重扫（keyspace.search 已移除待复用） | M14 | 与批次 3 的命令面板一起决定交互形态 |
@@ -419,7 +426,7 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | 依赖审计 | `cargo deny --all-features check`、`cargo audit` | CI 的 security-audit 工作流执行，配置在根目录 `deny.toml` 和 `.cargo/audit.toml`；只有直接依赖的 unmaintained 会失败，无补丁的 `RUSTSEC-2023-0071`（rsa）在两边都忽略 |
 | 单元测试与 headless UI 测试 | `cargo test --workspace` | CI 执行 |
 | 实库测试 | `docker compose up -d --wait && NAVIDUCK_LIVE=1 cargo test -p naviduck-db -p naviduck-schema -p naviduck-query --lib --test live --locked` | CI 的 integration 工作流和本地都执行；`--lib` 包含操作写入完成后元数据断连恢复的三驱动回归和 `naviduck-schema` 的表设计 DDL 回归，测完执行 `docker compose down` |
-| 截图 | `cargo test -p naviduck --test snapshot` | 本地执行，输出 `target/snapshots/` |
+| 截图 | `cargo test -p naviduck --test snapshot` | 本地执行，输出 `target/snapshots/`；macOS 用 Metal 跑完整场景，Linux 用 WGPU 验证主窗口、应用菜单与偏好设置的浅深色外观 |
 | 结果网格性能 | `cargo run --release -p naviduck-grid --example spike` | 本地执行，需要 Metal |
 | 导航树性能 | `cargo run --release -p naviduck-navigator --example tree_spike` | 本地执行，需要 Metal |
 | SQL 编辑器性能 | `cargo run --release -p naviduck-query --example editor_spike` | 本地执行，需要 Metal；`NAVIDUCK_SPIKE_LINES` 改行数，截图写到 `target/editor-spike-*.png` |

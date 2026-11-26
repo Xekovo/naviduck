@@ -1,12 +1,18 @@
-//! Renders the main window to PNGs with the headless Metal renderer for side-by-side review
+//! Renders windows to PNGs with the platform headless renderer for side-by-side review
 //! (no pixel assertions). Run `cargo test -p naviduck --test snapshot`; output goes to `target/snapshots/`.
 //! AppKit requires the main thread, hence `harness = false`.
+
+#[cfg(target_os = "linux")]
+#[path = "snapshot/linux.rs"]
+mod linux;
 
 fn main() {
     #[cfg(target_os = "macos")]
     macos::run();
-    #[cfg(not(target_os = "macos"))]
-    println!("snapshot: 跳过，只有 macOS 提供 headless 渲染器");
+    #[cfg(target_os = "linux")]
+    linux::run();
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    println!("snapshot: skipped; this platform has no headless renderer");
 }
 
 #[cfg(target_os = "macos")]

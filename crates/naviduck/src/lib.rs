@@ -64,12 +64,7 @@ pub fn run() {
         init_with_settings(cx, settings);
         cx.set_app_identity("com.ekovovo.naviduck", "Naviduck");
         set_dock_icon();
-        menus::bind_keys(cx);
-        menus::set_menus(cx);
-        // Checked menu items follow the settings; the query and table menus follow the active tab
-        cx.observe_global::<Settings>(menus::set_menus).detach();
-        cx.observe_global::<naviduck_ui::tabs::ActiveMenu>(menus::set_menus)
-            .detach();
+        register_app_menus(cx);
         register_app_actions(cx);
 
         let state = cx.global::<AppState>().clone();
@@ -255,9 +250,18 @@ fn on_front_window(cx: &mut App, f: impl FnOnce(&mut gpui_kit::Window, &mut App)
     });
 }
 
-/// Wires the app-menu actions to their listeners. The menu bar itself is the platform part
-/// (`menus::set_menus`); this side needs no platform UI, so headless tests use it too. Register
-/// once per app: a second call adds a second listener for every action.
+/// Registers shortcuts before menus and keeps menu contents synchronized with settings and tabs.
+/// Call once after initialization, before opening the main window.
+pub fn register_app_menus(cx: &mut App) {
+    menus::bind_keys(cx);
+    menus::set_menus(cx);
+    cx.observe_global::<Settings>(menus::set_menus).detach();
+    cx.observe_global::<naviduck_ui::tabs::ActiveMenu>(menus::set_menus)
+        .detach();
+}
+
+/// Wires the app-menu actions to their listeners independently of menu presentation.
+/// Register once per app: a second call adds a second listener for every action.
 pub fn register_app_actions(cx: &mut App) {
     cx.on_action(
         |a: &naviduck_app_state::actions::TableStructureChanged, cx| {
