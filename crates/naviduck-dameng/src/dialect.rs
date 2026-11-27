@@ -51,6 +51,7 @@ impl Dialect for DamengDialect {
             double_quote_strings: false,
             nested_block_comments: false,
             delimiter_command: false,
+            go_batches: false,
         }
     }
     fn quote_ident(&self, name: &str) -> String {

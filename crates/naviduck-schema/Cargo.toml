@@ -21,3 +21,4 @@ naviduck-mysql = { path = "../naviduck-mysql" }
 naviduck-postgres = { path = "../naviduck-postgres" }
 naviduck-sqlite = { path = "../naviduck-sqlite" }
 naviduck-dameng = { path = "../naviduck-dameng" }
+naviduck-mssql = { path = "../naviduck-mssql" }

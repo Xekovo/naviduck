@@ -263,24 +263,7 @@ pub(super) fn plan_on(
             ));
             continue;
         }
-        out.push(format!(
-            "DROP INDEX {}{}",
-            if d.features().has_schemas {
-                format!(
-                    "{}.",
-                    d.quote_ident(
-                        scope
-                            .schema
-                            .as_deref()
-                            .or(d.default_schema())
-                            .unwrap_or_default()
-                    )
-                )
-            } else {
-                String::new()
-            },
-            d.quote_ident(&name)
-        ));
+        out.push(d.drop_index_sql(scope, &old.name, &name));
     }
     out.extend(
         after

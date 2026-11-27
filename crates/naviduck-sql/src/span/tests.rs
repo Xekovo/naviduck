@@ -279,3 +279,24 @@ fn segments_split_at_top_level_and_ahead_of_protected_text() {
         ["a", "/* x y */", "b"]
     );
 }
+
+#[test]
+fn mssql_lex_handles_brackets_nested_comments_and_go_batches() {
+    let sql = "SELECT [a]]b], 'c''d' /* outer /* inner */ outer */\nGO -- batch\nSELECT go FROM t\ngo\nSELECT 2";
+    let ends: Vec<&str> = spans(sql, Lex::MSSQL)
+        .into_iter()
+        .filter(|s| s.kind == SpanKind::StatementEnd)
+        .map(|s| s.text(sql))
+        .collect();
+    assert_eq!(ends, ["GO -- batch", "go"]);
+
+    let protected: Vec<&str> = spans(sql, Lex::MSSQL)
+        .into_iter()
+        .filter(|s| s.kind.is_protected() || s.kind.is_comment())
+        .map(|s| s.text(sql))
+        .collect();
+    assert_eq!(
+        protected,
+        ["[a]]b]", "'c''d'", "/* outer /* inner */ outer */"]
+    );
+}

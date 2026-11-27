@@ -35,6 +35,8 @@ pub struct Lex {
     pub nested_block_comments: bool,
     /// A `DELIMITER` line at the start of a statement changes the terminator.
     pub delimiter_command: bool,
+    /// A standalone `GO` line ends the current batch (T-SQL / SQL Server).
+    pub go_batches: bool,
 }
 
 impl Lex {
@@ -50,6 +52,7 @@ impl Lex {
         double_quote_strings: true,
         nested_block_comments: false,
         delimiter_command: true,
+        go_batches: false,
     };
 
     /// PostgreSQL: `$tag$` bodies, `E'…'` strings and nested block comments. Backticks and
@@ -64,6 +67,7 @@ impl Lex {
         double_quote_strings: false,
         nested_block_comments: true,
         delimiter_command: false,
+        go_batches: false,
     };
 
     /// No connection is bound: accept PostgreSQL rules plus backticks, so formatting an unbound
@@ -78,6 +82,7 @@ impl Lex {
         double_quote_strings: false,
         nested_block_comments: true,
         delimiter_command: false,
+        go_batches: false,
     };
 
     /// SQLite: `"ident"`, `` `ident` `` and `[ident]`.
@@ -91,6 +96,22 @@ impl Lex {
         double_quote_strings: false,
         nested_block_comments: false,
         delimiter_command: false,
+        go_batches: false,
+    };
+
+    /// Microsoft SQL Server (T-SQL): `[ident]`, `"ident"`, nested block comments and `GO` batch
+    /// lines. Backslashes inside `'...'` are literal characters.
+    pub const MSSQL: Self = Self {
+        backtick_idents: false,
+        hash_comments: false,
+        dollar_quotes: false,
+        bracket_idents: true,
+        backslash_strings: false,
+        escape_string_prefix: false,
+        double_quote_strings: false,
+        nested_block_comments: true,
+        delimiter_command: false,
+        go_batches: true,
     };
 }
 
@@ -339,6 +360,15 @@ impl<'a> Scanner<'a> {
                 i = end;
                 continue;
             }
+            if self.lex.go_batches
+                && at_line_start(self.bytes, i)
+                && let Some(end) = go_line(self.sql, i)
+            {
+                self.push(i..end, SpanKind::StatementEnd);
+                self.boundary(end);
+                i = end;
+                continue;
+            }
             if let Some(delimiter) = self.delimiter.as_deref()
                 && self.sql[i..].starts_with(delimiter)
             {
@@ -581,6 +611,15 @@ impl<'a> Scanner<'a> {
             if special {
                 break;
             }
+            if self.lex.go_batches
+                && at_line_start(self.bytes, i)
+                && let Some(end) = go_line(self.sql, i)
+            {
+                self.push(i..end, SpanKind::StatementEnd);
+                self.boundary(end);
+                i = end;
+                continue;
+            }
             if let Some(delimiter) = self.delimiter.as_deref()
                 && self.sql.is_char_boundary(i)
                 && self.sql[i..].starts_with(delimiter)
@@ -712,6 +751,23 @@ fn delimiter_line(sql: &str, i: usize) -> Option<(usize, Option<String>)> {
         .next()
         .map(String::from);
     Some((end, next))
+}
+
+/// A standalone `GO` batch separator line at `i` (case-insensitive, optional whitespace or `--`
+/// comment on the remainder of the line): returns the byte offset of the line end.
+fn go_line(sql: &str, i: usize) -> Option<usize> {
+    const KEYWORD: &str = "GO";
+    let rest = &sql[i..];
+    if !starts_with_ignore_ascii_case(rest, KEYWORD) {
+        return None;
+    }
+    let end = rest.find('\n').map_or(sql.len(), |n| i + n);
+    let after = sql[i + KEYWORD.len()..end].trim();
+    if after.is_empty() || after.starts_with("--") {
+        Some(end)
+    } else {
+        None
+    }
 }
 
 /// `s` starts with `prefix`, ignoring ASCII case (byte-wise, so a multi-byte character at the cut

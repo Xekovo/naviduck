@@ -16,6 +16,10 @@ pub const SQLITE_AUTH_REASON: &str =
 /// readable (140-dameng.md §6.5).
 pub const DAMENG_ACCOUNT_REASON: &str = "Dameng user and role designers are not available yet.";
 
+/// Shown when the SQL Server user/role designer is not available yet; the account list is still
+/// readable (143-mssql.md §6.5).
+pub const MSSQL_ACCOUNT_REASON: &str = "SQL Server user and role designers are not available yet.";
+
 /// Which account form to show. The panel matches this, not a product id.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AccountForm {
@@ -269,6 +273,7 @@ pub fn account_form(family: Option<DefinitionFamily>) -> AccountForm {
         Some(DefinitionFamily::Postgres) => AccountForm::Postgres,
         Some(DefinitionFamily::Sqlite) => AccountForm::Unavailable(SQLITE_AUTH_REASON),
         Some(DefinitionFamily::Dameng) => AccountForm::Unavailable(DAMENG_ACCOUNT_REASON),
+        Some(DefinitionFamily::Mssql) => AccountForm::Unavailable(MSSQL_ACCOUNT_REASON),
         None => AccountForm::Unavailable("This connection cannot manage users."),
     }
 }
@@ -283,6 +288,7 @@ pub fn account_statements(
         Some(DefinitionFamily::Postgres) => postgres_account(dialect, draft),
         Some(DefinitionFamily::Sqlite) => Err(SQLITE_AUTH_REASON.into()),
         Some(DefinitionFamily::Dameng) => Err(DAMENG_ACCOUNT_REASON.into()),
+        Some(DefinitionFamily::Mssql) => Err(MSSQL_ACCOUNT_REASON.into()),
         None => Err("This connection cannot manage users.".into()),
     }
 }
@@ -306,6 +312,12 @@ pub fn account_list_sql(family: Option<DefinitionFamily>) -> Option<&'static str
         Some(DefinitionFamily::Dameng) => {
             Some("SELECT USERNAME AS name FROM ALL_USERS ORDER BY USERNAME")
         }
+        Some(DefinitionFamily::Mssql) => Some(
+            "SELECT name, type_desc AS kind, COALESCE(default_schema_name, '') AS default_schema \
+             FROM sys.database_principals \
+             WHERE type IN ('S', 'U', 'G', 'R', 'A') AND name NOT LIKE '##%' \
+             ORDER BY name",
+        ),
         _ => None,
     }
 }
@@ -318,9 +330,10 @@ pub fn grant_statements(
     match family {
         Some(DefinitionFamily::Mysql) => mysql_grant(dialect, draft),
         Some(DefinitionFamily::Postgres) => postgres_grant(dialect, draft),
-        Some(DefinitionFamily::Sqlite) | Some(DefinitionFamily::Dameng) | None => {
-            Err("This connection has no privilege manager.".into())
-        }
+        Some(DefinitionFamily::Sqlite)
+        | Some(DefinitionFamily::Dameng)
+        | Some(DefinitionFamily::Mssql)
+        | None => Err("This connection has no privilege manager.".into()),
     }
 }
 
@@ -431,8 +444,8 @@ pub fn maintenance(
             }
             jobs
         }
-        // ANALYZE / REINDEX and other maintenance jobs come later (F-DM-007).
-        DefinitionFamily::Dameng => Vec::new(),
+        // ANALYZE / REINDEX and other maintenance jobs come later (F-DM-007 / F-MSSQL-008).
+        DefinitionFamily::Dameng | DefinitionFamily::Mssql => Vec::new(),
     }
 }
 
@@ -460,7 +473,9 @@ pub fn kill_sql(family: Option<DefinitionFamily>, id: &str) -> Result<Option<Str
     let sql = match family {
         DefinitionFamily::Mysql => format!("KILL {id}"),
         DefinitionFamily::Postgres => format!("SELECT pg_cancel_backend({id})"),
-        DefinitionFamily::Sqlite | DefinitionFamily::Dameng => return Ok(None),
+        DefinitionFamily::Sqlite | DefinitionFamily::Dameng | DefinitionFamily::Mssql => {
+            return Ok(None);
+        }
     };
     Ok(Some(sql))
 }
@@ -511,7 +526,7 @@ pub fn set_variable_sql(
         DefinitionFamily::Postgres => {
             return Err("PostgreSQL variables are read-only.".into());
         }
-        DefinitionFamily::Sqlite | DefinitionFamily::Dameng => Vec::new(),
+        DefinitionFamily::Sqlite | DefinitionFamily::Dameng | DefinitionFamily::Mssql => Vec::new(),
     };
     Ok(sql)
 }
@@ -589,8 +604,18 @@ pub fn data_probe(
             )
         })
         .collect();
+    let top = if dialect.features().top_limit {
+        "TOP 100 "
+    } else {
+        ""
+    };
+    let tail = if dialect.features().top_limit {
+        ""
+    } else {
+        " LIMIT 100"
+    };
     Ok(format!(
-        "SELECT * FROM {} WHERE {} LIMIT 100",
+        "SELECT {top}* FROM {} WHERE {}{tail}",
         dialect.qualified(scope, probe.table),
         parts?.join(" OR ")
     ))
@@ -615,7 +640,14 @@ pub fn relation_plan(
         };
     }
     let name = dialect.string_literal(&object.name);
-    let schema = dialect.string_literal(object.scope.schema.as_deref().unwrap_or("public"));
+    let schema = dialect.string_literal(
+        object
+            .scope
+            .schema
+            .as_deref()
+            .or(dialect.default_schema())
+            .unwrap_or("public"),
+    );
     let database = dialect.string_literal(&object.scope.database);
     let queries = match (family, membership) {
         (DefinitionFamily::Postgres, false) => vec![
@@ -727,6 +759,31 @@ pub fn relation_plan(
         }
         (DefinitionFamily::Sqlite, true) => Vec::new(),
         (DefinitionFamily::Dameng, _) => Vec::new(),
+        (DefinitionFamily::Mssql, false) => vec![
+            NamedSql {
+                section: Section::Uses,
+                sql: format!(
+                    "SELECT COALESCE(d.referenced_schema_name, ''), d.referenced_entity_name, \
+                     'dependency' \
+                     FROM sys.sql_expression_dependencies d \
+                     JOIN sys.objects o ON o.object_id = d.referencing_id \
+                     JOIN sys.schemas s ON s.schema_id = o.schema_id \
+                     WHERE s.name = {schema} AND o.name = {name}"
+                ),
+            },
+            NamedSql {
+                section: Section::UsedBy,
+                sql: format!(
+                    "SELECT s.name, o.name, o.type_desc \
+                     FROM sys.sql_expression_dependencies d \
+                     JOIN sys.objects o ON o.object_id = d.referencing_id \
+                     JOIN sys.schemas s ON s.schema_id = o.schema_id \
+                     WHERE COALESCE(d.referenced_schema_name, 'dbo') = {schema} \
+                     AND d.referenced_entity_name = {name}"
+                ),
+            },
+        ],
+        (DefinitionFamily::Mssql, true) => Vec::new(),
     };
     let note = if family == DefinitionFamily::Dameng {
         Some("Dependency information is not available for Dameng yet.")
@@ -1060,6 +1117,72 @@ fn structure_queries(
                 types.join(", ")
             )])
         }
+        DefinitionFamily::Mssql => {
+            let schema = dialect.string_literal(
+                scope
+                    .schema
+                    .as_deref()
+                    .or(dialect.default_schema())
+                    .unwrap_or("dbo"),
+            );
+            let pred = predicate(
+                dialect,
+                family,
+                "o.name",
+                needle,
+                mode,
+                case_sensitive,
+                false,
+            )?;
+            let mut types = Vec::new();
+            if wanted(ObjectKind::Table) {
+                types.push("'U'");
+            }
+            if wanted(ObjectKind::View) {
+                types.push("'V'");
+            }
+            if wanted(ObjectKind::Function) {
+                types.push("'FN'");
+                types.push("'IF'");
+                types.push("'TF'");
+                types.push("'P'");
+            }
+            if wanted(ObjectKind::Sequence) {
+                types.push("'SO'");
+            }
+            if wanted(ObjectKind::Trigger) {
+                types.push("'TR'");
+            }
+            let mut sql = Vec::new();
+            if !types.is_empty() {
+                sql.push(format!(
+                    "SELECT o.type_desc, o.name FROM sys.objects o \
+                     JOIN sys.schemas s ON s.schema_id = o.schema_id \
+                     WHERE s.name = {schema} AND o.is_ms_shipped = 0 \
+                     AND o.type IN ({}) AND {pred}",
+                    types.join(", ")
+                ));
+            }
+            if wanted(ObjectKind::Index) {
+                let idx_pred = predicate(
+                    dialect,
+                    family,
+                    "i.name",
+                    needle,
+                    mode,
+                    case_sensitive,
+                    false,
+                )?;
+                sql.push(format!(
+                    "SELECT 'INDEX', i.name FROM sys.indexes i \
+                     JOIN sys.objects o ON o.object_id = i.object_id \
+                     JOIN sys.schemas s ON s.schema_id = o.schema_id \
+                     WHERE s.name = {schema} AND o.is_ms_shipped = 0 \
+                     AND i.name IS NOT NULL AND {idx_pred}"
+                ));
+            }
+            Ok(sql)
+        }
     }
 }
 
@@ -1098,6 +1221,22 @@ fn text_columns_sql(dialect: &dyn Dialect, family: DefinitionFamily, scope: &Sco
                  WHERE OWNER = {schema} AND DATA_TYPE IN ('VARCHAR','VARCHAR2','CHAR','CLOB','TEXT')"
             )
         }
+        DefinitionFamily::Mssql => {
+            let schema = dialect.string_literal(
+                scope
+                    .schema
+                    .as_deref()
+                    .or(dialect.default_schema())
+                    .unwrap_or("dbo"),
+            );
+            format!(
+                "SELECT t.TABLE_NAME, c.COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS c \
+                 JOIN INFORMATION_SCHEMA.TABLES t \
+                 ON t.TABLE_SCHEMA = c.TABLE_SCHEMA AND t.TABLE_NAME = c.TABLE_NAME \
+                 WHERE t.TABLE_TYPE = 'BASE TABLE' AND c.TABLE_SCHEMA = {schema} \
+                 AND c.DATA_TYPE IN ('char','varchar','nchar','nvarchar','text','ntext','xml')"
+            )
+        }
     }
 }
 
@@ -1120,6 +1259,9 @@ fn predicate(
             }
             (DefinitionFamily::Dameng, _) => {
                 Err("Regular-expression search is not available for Dameng yet.".into())
+            }
+            (DefinitionFamily::Mssql, _) => {
+                Err("Regular-expression search is not available for SQL Server.".into())
             }
             (DefinitionFamily::Postgres, false) => Ok(format!("{column} ~* {literal}")),
             (DefinitionFamily::Postgres, true) => Ok(format!("{column} ~ {literal}")),
@@ -1195,6 +1337,9 @@ fn like_cmp(
         }
         // Dameng has no ILIKE; case sensitivity follows the server's CASE_SENSITIVE setting.
         (DefinitionFamily::Dameng, _) => format!("{column} LIKE {literal} ESCAPE {escape}"),
+        // T-SQL LIKE uses the column/database collation; explicit case sensitivity can be forced
+        // with a binary collation later if needed.
+        (DefinitionFamily::Mssql, _) => format!("{column} LIKE {literal} ESCAPE {escape}"),
     }
 }
 
@@ -1607,9 +1752,10 @@ pub fn privilege_statements(
         Some(DefinitionFamily::Postgres) => {
             postgres_privilege_statements(dialect, edit.grantee, edit.before, edit.after)
         }
-        Some(DefinitionFamily::Sqlite) | Some(DefinitionFamily::Dameng) | None => {
-            Err("This connection has no privilege manager.".into())
-        }
+        Some(DefinitionFamily::Sqlite)
+        | Some(DefinitionFamily::Dameng)
+        | Some(DefinitionFamily::Mssql)
+        | None => Err("This connection has no privilege manager.".into()),
     }
 }
 

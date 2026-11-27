@@ -110,7 +110,11 @@ pub fn referenced_values_sql(
             dialect.quote_ident(&key.table)
         )
     };
-    let mut sql = format!("SELECT DISTINCT {column} FROM {table}");
+    let top = match limit {
+        Some(limit) if dialect.features().top_limit => format!("TOP {limit} "),
+        _ => String::new(),
+    };
+    let mut sql = format!("SELECT DISTINCT {top}{column} FROM {table}");
     if !search.is_empty() {
         let escaped = search
             .replace('\\', "\\\\")
@@ -129,7 +133,9 @@ pub fn referenced_values_sql(
         ));
     }
     sql.push_str(" ORDER BY 1");
-    if let Some(limit) = limit {
+    if let Some(limit) = limit
+        && !dialect.features().top_limit
+    {
         sql.push_str(&format!(" LIMIT {limit}"));
     }
     sql

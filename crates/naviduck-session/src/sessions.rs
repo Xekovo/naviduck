@@ -245,10 +245,14 @@ impl Sessions {
                         let primary = Arc::new(Mutex::new(Some(session)));
                         let keepalive =
                             keepalive.map(|secs| start_keepalive(primary.clone(), secs));
-                        let primary_db = driver
-                            .info()
-                            .per_database_sessions
-                            .then(|| params.database.clone().unwrap_or_else(|| "postgres".into()));
+                        let primary_db = driver.info().per_database_sessions.then(|| {
+                            params.database.clone().unwrap_or_else(|| {
+                                naviduck_model::connection::driver_defaults(&driver.info().id)
+                                    .database
+                                    .unwrap_or("master")
+                                    .into()
+                            })
+                        });
                         this.live.insert(
                             task_id.clone(),
                             Live {

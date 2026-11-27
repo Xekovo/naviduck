@@ -15,6 +15,7 @@ pub enum DefinitionFamily {
     Postgres,
     Sqlite,
     Dameng,
+    Mssql,
 }
 
 /// One designer form. Database and schema are navigator nodes, not [`ObjectKind`]s.
@@ -196,6 +197,7 @@ pub fn plan(
         DefinitionFamily::Postgres => postgres(d, scope, draft),
         DefinitionFamily::Sqlite => sqlite(d, scope, draft),
         DefinitionFamily::Dameng => dameng(d, scope, draft),
+        DefinitionFamily::Mssql => mssql(d, scope, draft),
     }
 }
 
@@ -231,6 +233,10 @@ fn raw_statements(
         (DefinitionFamily::Dameng, DefinitionKind::Procedure) => {
             Ok(vec![ensure_or_replace(&body, "PROCEDURE")])
         }
+        (
+            DefinitionFamily::Mssql,
+            DefinitionKind::View | DefinitionKind::Function | DefinitionKind::Procedure,
+        ) => Ok(vec![body]),
         (DefinitionFamily::Postgres, DefinitionKind::MaterializedView) => {
             Ok(drop_then(d, scope, draft, "MATERIALIZED VIEW", &body))
         }
@@ -990,6 +996,80 @@ fn dameng(d: &dyn Dialect, scope: &Scope, draft: &DefinitionDraft) -> Result<Vec
                 "CREATE"
             };
             Ok(vec![format!("{verb} {keyword} {name}\n{body}")])
+        }
+        DefinitionKind::Sequence => {
+            let start = opt(draft, "start");
+            let increment = opt(draft, "increment");
+            if draft.previous.is_none() {
+                let mut sql = format!("CREATE SEQUENCE {name}");
+                if !start.is_empty() {
+                    sql.push_str(&format!(" START WITH {start}"));
+                }
+                if !increment.is_empty() {
+                    sql.push_str(&format!(" INCREMENT BY {increment}"));
+                }
+                return Ok(vec![sql]);
+            }
+            if draft.previous.as_deref() != Some(draft.name.as_str()) {
+                return Err("Renaming a sequence is not supported.".into());
+            }
+            let mut out = Vec::new();
+            if !increment.is_empty() {
+                out.push(format!("ALTER SEQUENCE {name} INCREMENT BY {increment}"));
+            }
+            if !start.is_empty() {
+                out.push(format!("ALTER SEQUENCE {name} RESTART WITH {start}"));
+            }
+            Ok(out)
+        }
+        _ => Err("This database cannot change that object.".into()),
+    }
+}
+
+/// Microsoft SQL Server: views, functions and procedures are edited with `CREATE` / `ALTER`;
+/// sequences use `CREATE` / `ALTER SEQUENCE` and cannot be renamed without `sp_rename`.
+fn mssql(d: &dyn Dialect, scope: &Scope, draft: &DefinitionDraft) -> Result<Vec<String>, String> {
+    let name = d.qualified(scope, &draft.name);
+    let rename = |prev: &str| {
+        format!(
+            "EXEC sp_rename {}, {}",
+            d.string_literal(&d.qualified(scope, prev)),
+            d.string_literal(&draft.name)
+        )
+    };
+    match draft.kind {
+        DefinitionKind::View => {
+            let body = require_body(draft)?;
+            let mut out = Vec::new();
+            let verb = if let Some(prev) = draft.previous.as_deref() {
+                if prev != draft.name {
+                    out.push(rename(prev));
+                }
+                "ALTER"
+            } else {
+                "CREATE"
+            };
+            out.push(format!("{verb} VIEW {name} AS\n{body}"));
+            Ok(out)
+        }
+        DefinitionKind::Function | DefinitionKind::Procedure => {
+            let body = require_body(draft)?;
+            let keyword = if draft.kind == DefinitionKind::Procedure {
+                "PROCEDURE"
+            } else {
+                "FUNCTION"
+            };
+            let mut out = Vec::new();
+            let verb = if let Some(prev) = draft.previous.as_deref() {
+                if prev != draft.name {
+                    out.push(rename(prev));
+                }
+                "ALTER"
+            } else {
+                "CREATE"
+            };
+            out.push(format!("{verb} {keyword} {name}\n{body}"));
+            Ok(out)
         }
         DefinitionKind::Sequence => {
             let start = opt(draft, "start");

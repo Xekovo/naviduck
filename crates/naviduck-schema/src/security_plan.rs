@@ -94,6 +94,31 @@ mod tests {
             security::account_statements(&dameng, dameng.definition_family(), &user).is_err(),
             "the read-only list must not enable account changes"
         );
+        let mssql = naviduck_mssql::MssqlDialect::default();
+        assert!(matches!(mssql.account_form(), AccountForm::Unavailable(_)));
+        let mssql_list = mssql.account_list_sql().unwrap();
+        assert!(
+            mssql_list.contains("sys.database_principals"),
+            "{mssql_list}"
+        );
+        assert!(
+            security::account_statements(&mssql, mssql.definition_family(), &user).is_err(),
+            "the read-only list must not enable account changes"
+        );
+        let mssql_probe = security::data_probe(
+            &mssql,
+            mssql.definition_family(),
+            &Scope::new("c", "db", Some("dbo".into())),
+            security::Probe {
+                table: "users",
+                columns: &["name".into()],
+                needle: "ada",
+                mode: security::MatchMode::Contains,
+                case_sensitive: false,
+            },
+        )
+        .unwrap();
+        assert!(mssql_probe.starts_with("SELECT TOP 100 * FROM [dbo].[users]"));
         let list = mysql.account_list_sql().unwrap();
         assert!(list.contains("AS plugin"), "{list}");
         assert!(list.contains("max_user_connections"), "{list}");

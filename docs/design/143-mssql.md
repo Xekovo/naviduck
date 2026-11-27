@@ -280,7 +280,7 @@ initial_database: true        // F-MSSQL-001：常规页显示“初始数据库
   - `naviduck-schema` / `naviduck-db`：MSSQL 建表、加改列、删索引、保存点提交、外键引用值 `TOP` SQL 单测。
   - `naviduck-headless`：`MssqlDriver` 无 GPUI 编译与标志断言。
 - **实库测试**（`crates/naviduck-mssql/tests/live.rs`，环境变量 `NAVIDUCK_MSSQL_LIVE=1` 开关，不破坏默认离线 `cargo test --workspace`）：
-  - 针对 `docker-compose.yml` 中的 `mssql` 服务（端口 `11433`、`sa` / `Naviduck!2024`），覆盖：连接/错误密码（18456）/SSL/连接参数（`ApplicationIntent`）、`SERVERPROPERTY` 探测、目录八方法（库/模式/表/视图/函数/过程/序列/触发器/索引/外键/DDL/大纲）、Unicode 中文读写、事务与 `SAVE TRANSACTION` 回滚、`KILL <spid>` 取消查询与断连恢复、分页与网格增删改提交、`GO` 多批执行、`SET SHOWPLAN_TEXT` 解释、设计器建表改列删索引。
+  - 针对 `docker-compose.yml` 中的 `mssql` 服务（端口 `11433`、`sa` / `naviduck!123A`），覆盖：连接/错误密码（18456）/SSL/连接参数（`ApplicationIntent`）、`SERVERPROPERTY` 探测、目录八方法（库/模式/表/视图/函数/过程/序列/触发器/索引/外键/DDL/大纲）、Unicode 中文读写、事务与 `SAVE TRANSACTION` 回滚、`KILL <spid>` 取消查询与断连恢复、分页与网格增删改提交、`GO` 多批执行、`SET SHOWPLAN_TEXT` 解释、设计器建表改列删索引。
 - **静态与界面检查**：
   - `cargo fmt --all --check`、`cargo clippy --workspace --all-targets -- -D warnings`
   - `scripts/check-deps.sh`、`scripts/check-dialect-branches.sh`、`scripts/check-i18n.sh`、`scripts/check-raw-px.sh`
@@ -301,12 +301,12 @@ initial_database: true        // F-MSSQL-001：常规页显示“初始数据库
 
 ## 9. 验收清单
 
-- [ ] 规格 `docs/design/143-mssql.md` 独立提交，结构完整。
-- [ ] `naviduck-mssql` 无 GPUI 依赖，通过 `scripts/check-deps.sh`。
-- [ ] `DriverInfo` 与 `driver_defaults("mssql")` 符合第 2 节；连接表单正常显示常规（含初始数据库）/高级（含连接参数）/SSL/SSH 页。
-- [ ] `Lex::MSSQL` 在 `naviduck-sql` 扫描器中扩展 `GO` 批分隔符与 `[bracket]` 引号，无单独扫描函数。
-- [ ] `DialectFeatures` 与能力方法实现无任何 `Dialect::id()` 分支，通过 `scripts/check-dialect-branches.sh`。
-- [ ] 单元测试（方言/词法/参数解析/类型映射/错误码/设计器计划/headless）全部通过。
-- [ ] Docker `mssql` 实库测试（`NAVIDUCK_MSSQL_LIVE=1`）通过，测完执行 `docker compose down`。
-- [ ] 第 5 节全套静态检查、全工作区测试及浅深色截图检查通过。
-- [ ] `docs/progress.md` 与 `docs/pr/acceptance-mssql.md` 更新完成。
+- [x] 规格 `docs/design/143-mssql.md` 独立提交，结构完整。
+- [x] `naviduck-mssql` 无 GPUI 依赖，通过 `scripts/check-deps.sh`。
+- [x] `DriverInfo` 与 `driver_defaults("mssql")` 符合第 2 节；连接表单正常显示常规（含初始数据库）/高级（含连接参数）/SSL/SSH 页。
+- [x] `Lex::MSSQL` 在 `naviduck-sql` 扫描器中扩展 `GO` 批分隔符与 `[bracket]` 引号，无单独扫描函数。
+- [x] `DialectFeatures` 与能力方法实现无任何 `Dialect::id()` 分支，通过 `scripts/check-dialect-branches.sh`。
+- [x] 单元测试（方言/词法/参数解析/类型映射/错误码/设计器计划/headless）全部通过。
+- [ ] Docker `mssql` 实库测试（`NAVIDUCK_MSSQL_LIVE=1`）通过，测完执行 `docker compose down`。（用例与 compose 服务已就绪，当前机器未启动 Docker 守护进程待补跑）
+- [x] 第 5 节全套静态检查、全工作区测试及浅深色截图检查通过。
+- [x] `docs/progress.md` 与 `docs/pr/acceptance-mssql.md` 更新完成。

@@ -10,7 +10,7 @@ fail=0
 trees="$(mktemp -d)"
 trap 'rm -rf "$trees"' EXIT
 
-for crate in naviduck-model naviduck-db naviduck-sql naviduck-schema naviduck-util naviduck-sql-log naviduck-headless naviduck-mysql naviduck-postgres naviduck-sqlite naviduck-dameng naviduck-redis naviduck-mongodb; do
+for crate in naviduck-model naviduck-db naviduck-sql naviduck-schema naviduck-util naviduck-sql-log naviduck-headless naviduck-mysql naviduck-postgres naviduck-sqlite naviduck-dameng naviduck-mssql naviduck-redis naviduck-mongodb; do
     # Read the whole tree into a file first: `grep -q` in a pipeline stops reading early, and
     # with `pipefail` a cargo tree killed by SIGPIPE would make the check pass silently.
     if ! cargo tree -p "$crate" -e normal --prefix none >"$trees/$crate"; then
@@ -33,6 +33,7 @@ for manifest in \
     crates/naviduck-postgres/Cargo.toml \
     crates/naviduck-sqlite/Cargo.toml \
     crates/naviduck-dameng/Cargo.toml \
+    crates/naviduck-mssql/Cargo.toml \
     crates/naviduck-redis/Cargo.toml \
     crates/naviduck-mongodb/Cargo.toml; do
     if grep -q 'gpui' "$manifest"; then

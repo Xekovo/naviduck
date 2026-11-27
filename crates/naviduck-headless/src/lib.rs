@@ -8,10 +8,28 @@ pub use naviduck_dameng as dameng;
 pub use naviduck_db as db;
 pub use naviduck_model as model;
 pub use naviduck_mongodb as mongodb;
+pub use naviduck_mssql as mssql;
 pub use naviduck_redis as redis;
 
 #[cfg(test)]
 mod tests {
+    /// The SQL Server driver stack compiles and links without GPUI, and its DriverInfo and
+    /// dialect flags match the spec (143-mssql.md §2, §4).
+    #[test]
+    fn mssql_driver_flags_stay_capability_only() {
+        use naviduck_db::Driver as _;
+        let info = crate::mssql::MssqlDriver::default().info().clone();
+        assert_eq!(info.id, "mssql");
+        assert_eq!(info.default_port, Some(1433));
+        assert!(info.supports_network && info.supports_ssl && info.supports_ssh);
+        assert!(info.connection_params && info.initial_database && info.per_database_sessions);
+        assert!(!info.file_based && !info.multi_host);
+        let dialect = info.dialect.expect("mssql has a SQL dialect");
+        assert!(dialect.features().has_schemas);
+        assert!(dialect.features().top_limit);
+        assert!(dialect.features().supports_identity);
+        assert_eq!(dialect.default_schema(), Some("dbo"));
+    }
     /// The MongoDB driver stack compiles and links without GPUI, and its DriverInfo
     /// flags match the spec (142-mongodb.md §2): network, SSL, SSH and initial_database,
     /// no dialect at all.

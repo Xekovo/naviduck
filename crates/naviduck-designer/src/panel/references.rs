@@ -88,14 +88,13 @@ impl TableDesigner {
         let selected_scope = self.entry_inputs[REFERENCE_SCHEMA].value(cx);
         let table = self.entry_inputs[REFERENCE_TABLE].value(cx);
         if !selected_scope.is_empty() {
-            match self.dialect.context_selection() {
-                naviduck_sql::dialect::ContextSelection::Database => {
-                    scope.database = selected_scope
-                }
-                naviduck_sql::dialect::ContextSelection::Schema => {
-                    scope.schema = Some(selected_scope)
-                }
-                naviduck_sql::dialect::ContextSelection::File => {}
+            if self.dialect.features().has_schemas {
+                scope.schema = Some(selected_scope);
+            } else if matches!(
+                self.dialect.context_selection(),
+                naviduck_sql::dialect::ContextSelection::Database
+            ) {
+                scope.database = selected_scope;
             }
         }
         let Some(job) = Sessions::global(cx).read(cx).run_rel(
@@ -103,12 +102,15 @@ impl TableDesigner {
             Some(&self.scope.database),
             move |r| {
                 Box::pin(async move {
-                    let scopes = match r.dialect().context_selection() {
-                        naviduck_sql::dialect::ContextSelection::Schema => r.list_schemas().await?,
-                        naviduck_sql::dialect::ContextSelection::Database => {
-                            r.list_databases().await?
-                        }
-                        naviduck_sql::dialect::ContextSelection::File => Vec::new(),
+                    let scopes = if r.dialect().features().has_schemas {
+                        r.list_schemas().await?
+                    } else if matches!(
+                        r.dialect().context_selection(),
+                        naviduck_sql::dialect::ContextSelection::Database
+                    ) {
+                        r.list_databases().await?
+                    } else {
+                        Vec::new()
                     };
                     let tables: Vec<_> = r
                         .list_objects(&scope, ObjectKind::Table)

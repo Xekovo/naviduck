@@ -1,0 +1,23 @@
+[package]
+name = "naviduck-mssql"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Microsoft SQL Server driver and SQL dialect for naviduck."
+
+[dependencies]
+naviduck-model.workspace = true
+naviduck-sql = { path = "../naviduck-sql" }
+naviduck-db = { path = "../naviduck-db" }
+naviduck-util.workspace = true
+rust-i18n.workspace = true
+tokio.workspace = true
+tokio-util = { version = "0.7", features = ["compat"] }
+futures.workspace = true
+tracing.workspace = true
+hex.workspace = true
+jiff.workspace = true
+connection-string = "0.2"
+tiberius = { version = "0.12", default-features = false, features = ["tds73", "rustls"] }

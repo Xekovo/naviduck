@@ -1,0 +1,11 @@
+_version: 2
+database:
+  mssql_queued_session_closed:
+    en: The SQL Server session was closed before queued work started.
+    zh-CN: 排队的操作开始前，SQL Server 会话已关闭。
+  mssql_auth_unsupported:
+    en: Only SQL Server authentication is supported in this version; Windows Integrated Authentication and Azure AD tokens are not available yet.
+    zh-CN: 首版仅支持 SQL Server 身份验证；暂不支持 Windows 集成验证和 Azure AD 令牌。
+  mssql_bad_params:
+    en: "Invalid connection parameters: %{detail}"
+    zh-CN: "连接参数无效：%{detail}"
