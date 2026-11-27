@@ -7,7 +7,7 @@
 
 - **规格先提交**：`docs/design/143-mssql.md` 单独提交（`733afec`），同步更新 `docs/design/00-overview.md` 与 `docs/design/db/README.md`。
 - **驱动 crate `crates/naviduck-mssql`**：
-  - 基于纯 Rust 异步 TDS 驱动 `tiberius` 0.12.3（`tds73` + `rustls`），不依赖 GPUI、不引入 GPL 依赖与新 `chrono` 传递依赖。
+  - 基于纯 Rust 异步 TDS 驱动 `tiberius` 0.13.0（`tds80` + `native-tls`），复用工作区 `native-tls 0.2`，不依赖 GPUI、不引入 GPL 依赖，避免旧版 `rustls 0.21` 漏洞与双 `CryptoProvider` 冲突。
   - `MssqlDriver`（`DriverInfo` 含 `default_port: 1433`、`supports_ssl`、`supports_ssh`、`connection_params`、`initial_database`、`per_database_sessions`）。
   - `ConnectParams` 到 `tiberius::Config` 映射：支持 SSL（`rustls` 系统根 / CA 证书 / 跳过校验，兼容 SSH 隧道 `tls_host` SNI）与 ADO.NET 连接参数（`ApplicationIntent=ReadOnly`、`Application Name`、`Encrypt`、`TrustServerCertificate`），明确拒绝尚未接入的 Windows 集成验证与 Azure AD 令牌配置。
   - `MssqlSession`：连接后探测 `@@VERSION`、`@@SPID`、`SERVERPROPERTY('ProductMajorVersion')` 与 `SERVERPROPERTY('Collation')` 构造会话级 `MssqlDialect`；单条无 `OUTPUT` 的 `INSERT`/`UPDATE`/`DELETE`/`MERGE` 经 `client.execute` 返回 `affected_rows`，其余批次经 `client.simple_query` 迭代 `QueryItem::Metadata`/`QueryItem::Row` 读取结果集与 TDS 类型格式化（含 `numeric`、`uniqueidentifier`、`varbinary`、`date`/`time`/`datetime`/`smalldatetime`/`datetime2`/`datetimeoffset` 等）；`cancel_handle` 经短期连接执行 `KILL <spid>`；`remember`/`replay` 复用 `USE ...` 会话重放与 `recovering_execute!` 恢复。

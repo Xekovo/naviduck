@@ -20,4 +20,4 @@ tracing.workspace = true
 hex.workspace = true
 jiff.workspace = true
 connection-string = "0.2"
-tiberius = { version = "0.12", default-features = false, features = ["tds73", "rustls"] }
+tiberius = { version = "0.13", default-features = false, features = ["tds80", "native-tls"] }

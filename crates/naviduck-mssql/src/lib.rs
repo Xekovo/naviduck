@@ -1,6 +1,6 @@
 //! Microsoft SQL Server (T-SQL) driver and SQL dialect for naviduck.
 //!
-//! Built on `tiberius` (pure Rust TDS over tokio + rustls). Shares `naviduck-sql`
+//! Built on `tiberius` (pure Rust TDS over tokio + native-tls). Shares `naviduck-sql`
 //! for lexical scanning (`GO` batch separator, `[bracket]` identifiers, nested block comments),
 //! keyword/function metadata, and query definition planning.
 

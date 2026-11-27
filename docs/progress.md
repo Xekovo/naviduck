@@ -26,7 +26,7 @@
 | M11 AI 助手 | 未开始 | | | |
 | M12 同步（替代 Cloud） | 未开始 | | | |
 | M13 HTTP 隧道 | 未开始 | | | |
-| M14 其他数据库 | 进行中 | `feat/dameng`、`feat/redis`、`feat/mongodb`、`feat/mssql` | db/、140-dameng、141-redis、142-mongodb、143-mssql | 达梦 DM8 已接入（`naviduck-dameng`，dm-pure 驱动）：连接/导航/表查看器/查询编辑器/表设计器迁移/用户只读列表，实库测试 10 项本地通过。dm-pure 1.2.4 的四处协议补丁待接自建镜像仓库（第 4 节），接上后 LOB/EXPLAIN/SET SCHEMA/取消响应的守卫自动转正。见 [验收记录](pr/acceptance-dameng.md)。Redis 已接入首版（`naviduck-redis` + `naviduck-keyval`，fred 驱动）：连接/键空间导航/键数据编辑器/命令面板，实库测试 10 项通过（规格 [141-redis.md](design/141-redis.md)，验收记录 [pr/acceptance-redis.md](pr/acceptance-redis.md)）；哨兵/集群/Pub/Sub 等见第 4 节偏差。MongoDB 已接入首版（`naviduck-mongodb` + `naviduck-doc`，官方 `mongodb` 驱动）：连接/文档库与集合导航/集合数据编辑器（网格/树/JSON）/命令列界面；`FakeDocDriver` headless UI 测试与浅深色截图 7 张通过，Docker `mongo` 实库测试 `tests/live.rs` 已就绪待启动容器运行（规格 [142-mongodb.md](design/142-mongodb.md)，验收记录 [pr/acceptance-mongodb.md](pr/acceptance-mongodb.md)）。Microsoft SQL Server 已接入首版（`naviduck-mssql`，`tiberius` 0.12.3 纯 Rust TDS + rustls）：常规/SSL/SSH/ADO.NET 连接参数/URI、导航到对象与表子项、表查看器分批与网格提交、`GO` 批切分与 `KILL` 取消/`SHOWPLAN_TEXT` 解释、基础表设计与 `DefinitionFamily::Mssql`；全量单元测试/静态检查/浅深色截图通过，Docker `mssql` 实库测试 `tests/live.rs` 已就绪待启动容器运行（规格 [143-mssql.md](design/143-mssql.md)，验收记录 [pr/acceptance-mssql.md](pr/acceptance-mssql.md)） |
+| M14 其他数据库 | 进行中 | `feat/dameng`、`feat/redis`、`feat/mongodb`、`feat/mssql` | db/、140-dameng、141-redis、142-mongodb、143-mssql | 达梦 DM8 已接入（`naviduck-dameng`，dm-pure 驱动）：连接/导航/表查看器/查询编辑器/表设计器迁移/用户只读列表，实库测试 10 项本地通过。dm-pure 1.2.4 的四处协议补丁待接自建镜像仓库（第 4 节），接上后 LOB/EXPLAIN/SET SCHEMA/取消响应的守卫自动转正。见 [验收记录](pr/acceptance-dameng.md)。Redis 已接入首版（`naviduck-redis` + `naviduck-keyval`，fred 驱动）：连接/键空间导航/键数据编辑器/命令面板，实库测试 10 项通过（规格 [141-redis.md](design/141-redis.md)，验收记录 [pr/acceptance-redis.md](pr/acceptance-redis.md)）；哨兵/集群/Pub/Sub 等见第 4 节偏差。MongoDB 已接入首版（`naviduck-mongodb` + `naviduck-doc`，官方 `mongodb` 驱动）：连接/文档库与集合导航/集合数据编辑器（网格/树/JSON）/命令列界面；`FakeDocDriver` headless UI 测试与浅深色截图 7 张通过，Docker `mongo` 实库测试 `tests/live.rs` 已就绪待启动容器运行（规格 [142-mongodb.md](design/142-mongodb.md)，验收记录 [pr/acceptance-mongodb.md](pr/acceptance-mongodb.md)）。Microsoft SQL Server 已接入首版（`naviduck-mssql`，`tiberius` 0.13.0 纯 Rust TDS + native-tls）：常规/SSL/SSH/ADO.NET 连接参数/URI、导航到对象与表子项、表查看器分批与网格提交、`GO` 批切分与 `KILL` 取消/`SHOWPLAN_TEXT` 解释、基础表设计与 `DefinitionFamily::Mssql`；全量单元测试/静态检查/浅深色截图通过，Docker `mssql` 实库测试 `tests/live.rs` 已就绪待启动容器运行（规格 [143-mssql.md](design/143-mssql.md)，验收记录 [pr/acceptance-mssql.md](pr/acceptance-mssql.md)） |
 | M15 发布 | 部分 | `codex/macos-adhoc-signing` | 150-macos-distribution | 工作流、安装包、`latest.json`、应用内更新已在仓库里；无证书时免费临时签名与验签已接入并经本机验证。正式公证仍需证书与凭据（第 4 节），配置迁移（F-REL-004）未做 |
 
 ## 2. 当前里程碑：M4（表设计器）
@@ -150,7 +150,7 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 
 ### M14 Microsoft SQL Server 接入
 
-规格与选型见 [143-mssql.md](design/143-mssql.md) 和 [验收记录](pr/acceptance-mssql.md)。驱动选用纯 Rust TDS 异步驱动 `tiberius` 0.12.3（`tds73` + `rustls`）。
+规格与选型见 [143-mssql.md](design/143-mssql.md) 和 [验收记录](pr/acceptance-mssql.md)。驱动选用纯 Rust TDS 异步驱动 `tiberius` 0.13.0（`tds80` + `native-tls`）。
 
 | 任务 | 状态 | 验证与说明 |
 | --- | --- | --- |

@@ -2,7 +2,7 @@
 
 M14 的第四个数据库（Relational 家族）。新建不依赖 GPUI 的 `naviduck-mssql` crate，实现 `Driver`/`Session`/`Relational`/`Dialect`，在 `naviduck-session::init` 注册。界面零分支：连接表单只读 `DriverInfo` 标志，grid/query/designer/schema 只问能力方法，禁止比较 `Dialect::id()`。专属功能清单见 [db/mssql/features.md](db/mssql/features.md)。
 
-驱动选用纯 Rust TDS 异步驱动 `tiberius`（0.12.3，MIT/Apache-2.0，关闭 `default-features` 后启用 `tds73`、`rustls`、`rust_decimal`、`time`，避免新引入 `chrono` 传递依赖，不引入 GPL）。
+驱动选用纯 Rust TDS 异步驱动 `tiberius`（0.13.0，MIT/Apache-2.0，关闭 `default-features` 后启用 `tds80` 与 `native-tls`，复用工作区 `native-tls 0.2`，避免旧版 `rustls 0.21` 漏洞、双 `CryptoProvider` 冲突及新 `chrono` 传递依赖，不引入 GPL）。
 
 ## 1. 范围与首版边界
 
@@ -56,7 +56,7 @@ initial_database: true        // F-MSSQL-001：常规页显示“初始数据库
   - `ssl == None` 时设置 `EncryptionLevel::Off`（仅握手登录包加密，登录完成后按明文传输；注意若连接参数显式指定 `Encrypt=DANGER_PLAINTEXT` 且未开 SSL 页，则尊重 `NotSupported`）。
   - `ssl == Some(ssl)` 时设置 `EncryptionLevel::Required`：若 `ssl.verify_server_cert == true` 且提供 `ca_cert` 则调用 `config.trust_cert_ca(ca)`，否则按系统信任根校验证书；若 `ssl.verify_server_cert == false` 则调用 `config.trust_cert()`（跳过证书校验，同时兼容 IP 地址主机名与自签证书）。
   - **SSH 隧道下的 TLS 主机名**：`naviduck_db::connect` 将 `params.host` 改为 `127.0.0.1` 并把原主机写入 `params.tls_host`。驱动在建立 TCP 连接时连 `(params.host, params.port)`，而将 `config.host(params.tls_host.as_deref().unwrap_or(&params.host))` 传给 `tiberius` 用于 SNI 与证书主机名校验。
-  - **rustls 限制（偏差 D2）**：`tiberius` 0.12.3 的 `TrustConfig` 仅支持系统根、单 CA 文件（`.pem`/`.crt`/`.der`）和跳过校验，不支持客户端证书双向 TLS（`client_cert`/`client_key`）与 CRL（`crl`）；界面若填写则记 warn 日志。
+  - **TLS 限制（偏差 D2）**：首版通过 `native-tls` 复用系统信任根与 CA 证书文件（`.pem`/`.crt`/`.der`）及跳过校验；客户端证书双向 TLS（`client_cert`/`client_key`）与 CRL（`crl`）暂未接线，界面若填写则记 warn 日志。
 
 `Sessions::open` 对 `per_database_sessions=true` 的默认库回退由硬编码 `"postgres"` 改为读取 `driver_defaults(&conn.driver).database`（PostgreSQL 仍为 `"postgres"`，SQL Server 为 `"master"`），零产品名分支。
 
@@ -101,7 +101,7 @@ initial_database: true        // F-MSSQL-001：常规页显示“初始数据库
 
 ### 3.4 取消（偏差 D1）
 
-`tiberius` 0.12.3 未暴露协议级 TDS Attention Signal 发送接口（`Client` 拥有独占连接且未拆出取消句柄）。因此照 `140-dameng.md` §3.4：`cancel_handle` 持有连接参数副本与目标 `spid`，取消时另开一个短期连接执行 `KILL <spid>`：
+`tiberius` 0.13.0 未暴露协议级 TDS Attention Signal 发送接口（`Client` 拥有独占连接且未拆出取消句柄）。因此照 `140-dameng.md` §3.4：`cancel_handle` 持有连接参数副本与目标 `spid`，取消时另开一个短期连接执行 `KILL <spid>`：
 
 - 目标会话在服务端被终止，正在执行的查询立即报错中断（`disconnected = true`）。
 - 恢复宏识别会话已断开并提示事务丢失守卫；短期取消连接用完立即关闭。
@@ -291,11 +291,11 @@ initial_database: true        // F-MSSQL-001：常规页显示“初始数据库
 
 | 编号 | 偏差 | 理由 | 计划处理 |
 | --- | --- | --- | --- |
-| D1 | 取消查询使用独立短期连接执行 `KILL <spid>` | `tiberius` 0.12.3 未暴露 TDS Attention 取消包 | 若后续升级或补充 Attention 能力可改为只中断语句；当前由 `recovering_execute` 提示会话中断与事务丢失 |
-| D2 | SSL 使用 `rustls`（`tiberius`），不支持客户端证书与 CRL | `tiberius::TrustConfig` 仅支持系统根、单 CA 文件与 `TrustAll` | 若填写客户端证书/CRL 记 warn 日志；后续评估自定义 TLS stream |
+| D1 | 取消查询使用独立短期连接执行 `KILL <spid>` | `tiberius` 0.13.0 未暴露 TDS Attention 取消包 | 若后续升级或补充 Attention 能力可改为只中断语句；当前由 `recovering_execute` 提示会话中断与事务丢失 |
+| D2 | SSL 使用 `native-tls`（`tiberius`），首版不支持客户端证书与 CRL | 首版未接入客户端证书与 CRL 映射 | 若填写客户端证书/CRL 记 warn 日志；后续补齐 `Config::client_certificate_pem` 映射 |
 | D3 | 首版仅支持 SQL Server 用户名密码验证 | Windows 集成验证（`winauth`/`gssapi`）依赖平台与域环境，Azure AD 依赖 OAuth2 令牌流 | 后续按平台条件编译与令牌获取器补齐（F-MSSQL-001） |
 | D4 | 表设计器 `IDENTITY` 参数只读、暂不支持修改已有列默认约束与列级扩展属性注释 | SQL Server 默认约束为独立命名对象，扩展属性需调用 `sp_addextendedproperty` | 后续在表设计器补齐默认约束查询/替换与扩展属性生成 |
-| D5 | 查询结果 `ColumnOrigin` 为 `None` | `tiberius` 0.12.3 未从 TDS `COLMETADATA`/`TABNAME` 暴露来源表名 | 表查看器不受影响；查询结果直接编辑依赖 `TABNAME` 解析或元数据回查（后续） |
+| D5 | 查询结果 `ColumnOrigin` 为 `None` | `tiberius` 0.13.0 未从 TDS `COLMETADATA`/`TABNAME` 暴露来源表名 | 表查看器不受影响；查询结果直接编辑依赖 `TABNAME` 解析或元数据回查（后续） |
 | D6 | F-MSSQL-003/004/008/009/010 专属设计器与备份工具首版未做 | 控制首版接入范围，对齐 140-dameng 边界 | 各自按功能编号在后续迭代补齐 |
 | D7 | 本地无 `reference/help-text/` 目录 | 未在本机导出 Navicat 帮助原文 | 后续导出时再并排核对文案与细节 |
 

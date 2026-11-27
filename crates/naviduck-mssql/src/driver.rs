@@ -1,4 +1,4 @@
-//! Microsoft SQL Server driver (`tiberius` over tokio + rustls).
+//! Microsoft SQL Server driver (`tiberius` over tokio + native-tls).
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -139,7 +139,7 @@ pub(crate) fn build_config(params: &ConnectParams) -> DbResult<Config> {
     if let Some(ssl) = &params.ssl {
         if ssl.client_cert.is_some() || ssl.client_key.is_some() || ssl.crl.is_some() {
             tracing::warn!(
-                "SQL Server driver (tiberius/rustls) ignores client certificate and CRL settings"
+                "SQL Server driver (tiberius/native-tls) ignores client certificate and CRL settings"
             );
         }
         cfg.encryption(EncryptionLevel::Required);
