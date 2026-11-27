@@ -26,7 +26,7 @@
 | M11 AI 助手 | 未开始 | | | |
 | M12 同步（替代 Cloud） | 未开始 | | | |
 | M13 HTTP 隧道 | 未开始 | | | |
-| M14 其他数据库 | 进行中 | `feat/dameng`、`feat/redis`、`feat/mongodb` | db/、140-dameng、141-redis、142-mongodb | 达梦 DM8 已接入（`naviduck-dameng`，dm-pure 驱动）：连接/导航/表查看器/查询编辑器/表设计器迁移/用户只读列表，实库测试 10 项本地通过。dm-pure 1.2.4 的四处协议补丁待接自建镜像仓库（第 4 节），接上后 LOB/EXPLAIN/SET SCHEMA/取消响应的守卫自动转正。见 [验收记录](pr/acceptance-dameng.md)。Redis 已接入首版（`naviduck-redis` + `naviduck-keyval`，fred 驱动）：连接/键空间导航/键数据编辑器/命令面板，实库测试 10 项通过（规格 [141-redis.md](design/141-redis.md)，验收记录 [pr/acceptance-redis.md](pr/acceptance-redis.md)）；哨兵/集群/Pub/Sub 等见第 4 节偏差。MongoDB 已接入首版（`naviduck-mongodb` + `naviduck-doc`，官方 `mongodb` 驱动）：连接/文档库与集合导航/集合数据编辑器（网格/树/JSON）/命令列界面；`FakeDocDriver` headless UI 测试与浅深色截图 7 张通过，Docker `mongo` 实库测试 `tests/live.rs` 已就绪待启动容器运行（规格 [142-mongodb.md](design/142-mongodb.md)，验收记录 [pr/acceptance-mongodb.md](pr/acceptance-mongodb.md)） |
+| M14 其他数据库 | 进行中 | `feat/dameng`、`feat/redis`、`feat/mongodb`、`feat/mssql` | db/、140-dameng、141-redis、142-mongodb、143-mssql | 达梦 DM8 已接入（`naviduck-dameng`，dm-pure 驱动）：连接/导航/表查看器/查询编辑器/表设计器迁移/用户只读列表，实库测试 10 项本地通过。dm-pure 1.2.4 的四处协议补丁待接自建镜像仓库（第 4 节），接上后 LOB/EXPLAIN/SET SCHEMA/取消响应的守卫自动转正。见 [验收记录](pr/acceptance-dameng.md)。Redis 已接入首版（`naviduck-redis` + `naviduck-keyval`，fred 驱动）：连接/键空间导航/键数据编辑器/命令面板，实库测试 10 项通过（规格 [141-redis.md](design/141-redis.md)，验收记录 [pr/acceptance-redis.md](pr/acceptance-redis.md)）；哨兵/集群/Pub/Sub 等见第 4 节偏差。MongoDB 已接入首版（`naviduck-mongodb` + `naviduck-doc`，官方 `mongodb` 驱动）：连接/文档库与集合导航/集合数据编辑器（网格/树/JSON）/命令列界面；`FakeDocDriver` headless UI 测试与浅深色截图 7 张通过，Docker `mongo` 实库测试 `tests/live.rs` 已就绪待启动容器运行（规格 [142-mongodb.md](design/142-mongodb.md)，验收记录 [pr/acceptance-mongodb.md](pr/acceptance-mongodb.md)）。Microsoft SQL Server 已接入首版（`naviduck-mssql`，`tiberius` 0.13.0 纯 Rust TDS + native-tls）：常规/SSL/SSH/ADO.NET 连接参数/URI、导航到对象与表子项、表查看器分批与网格提交、`GO` 批切分与 `KILL` 取消/`SHOWPLAN_TEXT` 解释、基础表设计与 `DefinitionFamily::Mssql`；全量单元测试/静态检查/浅深色截图通过，Docker `mssql` 实库测试 `tests/live.rs` 已就绪待启动容器运行（规格 [143-mssql.md](design/143-mssql.md)，验收记录 [pr/acceptance-mssql.md](pr/acceptance-mssql.md)） |
 | M15 发布 | 部分 | `codex/macos-adhoc-signing` | 150-macos-distribution | 工作流、安装包、`latest.json`、应用内更新已在仓库里；无证书时免费临时签名与验签已接入并经本机验证。正式公证仍需证书与凭据（第 4 节），配置迁移（F-REL-004）未做 |
 
 ## 2. 当前里程碑：M4（表设计器）
@@ -153,6 +153,19 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | 截图与 headless 测试 | 完成 | `naviduck-test-support::doc`（`FakeDocDriver`）支撑 `naviduck-doc` headless 往返测试与 `naviduck` 快照测试；`picker` + `mongo-*` 共 8 张浅深色截图目测通过 |
 | 实库与静态检查 | 部分完成 | 静态检查（check-raw-px/check-i18n/check-dialect-branches/check-deps/fmt/clippy）与全工作区离线测试通过；Docker `mongo:8` 实库测试 `tests/live.rs` 已编译就绪，因当前机器未启动 Docker/OrbStack 守护进程暂未实跑 |
 | 验收记录 | 完成 | [pr/acceptance-mongodb.md](pr/acceptance-mongodb.md)；[142-mongodb.md](design/142-mongodb.md) §7.2 离线检查与视觉验收全部勾选，实库条目随 Docker 环境补测 |
+
+### M14 Microsoft SQL Server 接入
+
+规格与选型见 [143-mssql.md](design/143-mssql.md) 和 [验收记录](pr/acceptance-mssql.md)。驱动选用纯 Rust TDS 异步驱动 `tiberius` 0.13.0（`tds80` + `native-tls`）。
+
+| 任务 | 状态 | 验证与说明 |
+| --- | --- | --- |
+| 规格定稿 | 完成 | [143-mssql.md](design/143-mssql.md) 独立提交（`733afec`）；覆盖边界、DriverInfo、会话/线程模型、方言能力、类型映射与偏差 D1–D7 |
+| 词法与能力层 | 完成 | `Lex::MSSQL` 在 `naviduck-sql` 扫描器中支持 `GO` 批分隔行、`[bracket]` 标识符与嵌套 `/* */` 注释；新增 `DialectFeatures::top_limit`、`ExplainStyle::ShowplanText`、`savepoint_sql`/`rollback_savepoint_sql`/`release_savepoint_sql`/`drop_index_sql`、`DefinitionFamily::Mssql` |
+| `naviduck-mssql` 纯 Rust crate | 完成 | `MssqlDriver`/`MssqlSession`/`MssqlDialect`/`metadata`/`words` + `locales/mssql.yml`（en/zh-CN）；连接探测 `SERVERPROPERTY` 构造会话级方言；ADO.NET 参数解析与非法认证拒绝；`ColumnData` 映射与错误码断连判定单测通过 |
+| 工作区接线与图标 | 完成 | `naviduck-session` 注册第 8 个内置驱动；`Sessions::open` 默认库按 `driver_defaults` 解析；`naviduck-query`/`naviduck-schema`/`naviduck-designer`/`naviduck-db`/`naviduck-util`/`naviduck-model`/`naviduck-app-state`/`naviduck-headless` 能力接线；原创 SVG 图标 `icons/db/mssql.svg` |
+| 静态检查、全量测试与截图 | 完成 | fmt/clippy（`-D warnings`）/check-deps/check-dialect-branches/check-i18n/check-raw-px 与全工作区离线测试通过；`snapshot` 输出包含 SQL Server 图标（`picker.png`）与连接表单（`form-mssql.png`）及浅深色主窗截图并通过目测 |
+| 实库测试 | 部分 | `docker-compose.yml` 新增 `mssql`（SQL Server 2022），`crates/naviduck-mssql/tests/live.rs` 已就绪待容器执行；因当前机器未启动 Docker 守护进程暂未实跑 |
 
 ### chrono → jiff（RUSTSEC-2026-0543）
 
@@ -409,6 +422,7 @@ M2 的任务都已完成，逐项记录见 git 历史；M2 的功能状态仍在
 | 命令列界面分输出区和输入区，不支持 `\d`、`.tables` 等客户端命令 | M3 | 需要时加显示宽度表 |
 | 弹出窗口里的查询编辑器没有代码段和标识符页 | M3 | 无 |
 | MySQL 的“写入超时”仍只保存 | M3 | mysql_async 提供发送超时后接上 |
+| `Reference` 本机帮助原文缺失；Windows 集成认证、Azure AD 令牌、F-MSSQL-003/004/008/009/010、客户端双向 TLS/CRL、查询结果 `ColumnOrigin`、已有列默认约束与扩展属性修改首版未做（143-mssql.md 第 8 节 D1–D7） | M14 | 按 F-MSSQL 编号在后续迭代补齐；本机启动 Docker 后补跑 `NAVIDUCK_MSSQL_LIVE=1 cargo test -p naviduck-mssql --test live` |
 | `naviduck-schema` 的表选项解析（`mysql_span`/`pg_storage`/`pg_clause`）仍在通用 crate 里，只按 `TableOptionStyle` 分派；表设计在 `enriches_from_catalog` / `rebuilds_tables` 下仍直接执行 PostgreSQL catalog SQL 和 SQLite 重建 SQL（`sqlite_schema`、`sqlite_sequence`、`PRAGMA`）；关键字表是手抄的保留字集合，不是脚本从官方文件生成 | 拆 crate | 接第四个数据库前把选项解析和上述 SQL 搬进方言方法（会形成 schema → 方言 crate 的依赖，需要在 00-overview 里先定方向），并让关键字表由脚本生成 |
 | 已有视图/函数/事件仍按整段 DDL 打开；用户面板不能改已有账号；查找结果不能双击；PostgreSQL 已有分区子表不加载；触发器表单没有事件和语句级；库/模式选项不标脏。列重排丢触发器、命名约束/`serial` 重建失败、二次保存被拒、移窗取消监控、分区名、监控语义和查找 SQL 已在 `9dccbb6` 修掉。其后补了冲突检查读失败、空基线禁止再保存、新建列不改序列归属，以及 MySQL 区分大小写正则。PostgreSQL 重建已改按真实归属转移序列，见[验收记录](pr/acceptance-postgres-sequence-ownership.md) | M4 | 按 [pr/review-pr-31.md](pr/review-pr-31.md) 第 7 节的未修清单做。相关功能行仍标「完成」，不在本轮整批改成「部分」 |
 

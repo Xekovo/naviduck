@@ -1731,3 +1731,42 @@ fn dameng_default_change_writes_an_alter_column_statement() {
         "{statements:?}"
     );
 }
+
+fn mssql_scope() -> Scope {
+    Scope::new("c", "AppDb", Some("dbo".into()))
+}
+
+#[test]
+fn mssql_add_column_drop_index_and_identity_refusal() {
+    let mssql = naviduck_mssql::MssqlDialect::default();
+    let sql = "CREATE TABLE [dbo].[T] ([ID] INT IDENTITY(1, 1) NOT NULL, [NAME] NVARCHAR(100))";
+    let mut design = super::parse::create(sql, "T", &mssql).unwrap();
+    design
+        .indexes
+        .push("CREATE INDEX [IX_NAME] ON [dbo].[T] ([NAME])".into());
+    let before = TableSnapshot {
+        design: design.clone(),
+        ddl: sql.into(),
+        triggers: Vec::new(),
+        owned_sequences: None,
+    };
+
+    let mut after = design.clone();
+    after.columns.push(DesignColumn::new(3, "AGE", "INT"));
+    after.indexes.clear();
+    let statements = plan(&mssql, &mssql_scope(), Some(&before), &after).unwrap();
+    assert!(
+        statements.contains(&"ALTER TABLE [dbo].[T] ADD [AGE] INT".to_string()),
+        "{statements:?}"
+    );
+    assert!(
+        statements.contains(&"DROP INDEX [IX_NAME] ON [dbo].[T]".to_string()),
+        "{statements:?}"
+    );
+
+    let mut id_edit = design;
+    id_edit.columns[0].definition = "INT IDENTITY(2, 1) NOT NULL".into();
+    let err = plan(&mssql, &mssql_scope(), Some(&before), &id_edit)
+        .expect_err("identity changes are refused");
+    assert!(err.to_string().contains("IDENTITY"), "{err}");
+}

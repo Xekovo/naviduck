@@ -12,6 +12,7 @@ naviduck-model = { path = "../naviduck-model" }
 naviduck-db = { path = "../naviduck-db" }
 naviduck-sqlite = { path = "../naviduck-sqlite" }
 naviduck-dameng = { path = "../naviduck-dameng" }
+naviduck-mssql = { path = "../naviduck-mssql" }
 naviduck-redis = { path = "../naviduck-redis" }
 naviduck-mongodb = { path = "../naviduck-mongodb" }
 tokio.workspace = true

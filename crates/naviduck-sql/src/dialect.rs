@@ -70,6 +70,9 @@ pub enum ExplainStyle {
     /// `EXPLAIN` returns indented text lines in a single column (Dameng). Only the text view is
     /// shown; there are no structured nodes, grid or JSON.
     TextLines,
+    /// `SET SHOWPLAN_TEXT ON` before the query and `SET SHOWPLAN_TEXT OFF` after it (SQL Server).
+    /// Produces indented text lines in the text tab.
+    ShowplanText,
 }
 
 /// What a product can do, apart from the SQL it writes. Grouped rather than one trait method per
@@ -169,6 +172,8 @@ pub struct DialectFeatures {
     pub supports_exclude: bool,
     /// `PARTITION BY` on a table (MySQL and PostgreSQL).
     pub supports_partitions: bool,
+    /// Row caps use `SELECT TOP N` rather than trailing `LIMIT N` (T-SQL / SQL Server).
+    pub top_limit: bool,
 }
 
 impl Default for DialectFeatures {
@@ -217,6 +222,7 @@ impl Default for DialectFeatures {
             fk_reference_schema: true,
             supports_exclude: false,
             supports_partitions: false,
+            top_limit: false,
         }
     }
 }
@@ -340,10 +346,44 @@ pub trait Dialect: std::fmt::Debug + Send + Sync {
             _ => String::new(),
         }
     }
-    /// One `ALTER TABLE … ADD` for a new column. `column` is already quoted; `position` is a
+    /// `ALTER TABLE … ADD` for a new column. `column` is already quoted; `position` is a
     /// `FIRST`/`AFTER` clause or empty.
     fn add_column(&self, table: &str, column: &str, definition: &str, position: &str) -> String {
         format!("ALTER TABLE {table} ADD COLUMN {column} {definition}{position}")
+    }
+    /// Statement that starts a named savepoint inside an active transaction.
+    fn savepoint_sql(&self, name: &str) -> String {
+        format!("SAVEPOINT {name}")
+    }
+    /// Statement that rolls back to `name`.
+    fn rollback_savepoint_sql(&self, name: &str) -> String {
+        format!("ROLLBACK TO SAVEPOINT {name}")
+    }
+    /// Statement that releases `name` after nested writes commit (`None` if the product has no
+    /// release statement, as in T-SQL).
+    fn release_savepoint_sql(&self, name: &str) -> Option<String> {
+        Some(format!("RELEASE SAVEPOINT {name}"))
+    }
+    /// `DROP INDEX` statement when `features().drop_index_alters_table` is false.
+    fn drop_index_sql(&self, scope: &Scope, _table: &str, index: &str) -> String {
+        format!(
+            "DROP INDEX {}{}",
+            if self.features().has_schemas {
+                format!(
+                    "{}.",
+                    self.quote_ident(
+                        scope
+                            .schema
+                            .as_deref()
+                            .or(self.default_schema())
+                            .unwrap_or_default()
+                    )
+                )
+            } else {
+                String::new()
+            },
+            self.quote_ident(index)
+        )
     }
     /// `Some` takes over the whole statement sequence for changing an existing column; `None`
     /// falls back to the shared path. `Err` refuses the change with a reason. The table and

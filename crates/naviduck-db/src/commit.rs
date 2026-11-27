@@ -38,9 +38,11 @@ pub async fn apply(
     in_tx: bool,
     end: bool,
 ) -> DbResult<()> {
-    const SAVEPOINT: &str = "SAVEPOINT naviduck_apply";
-    let (start, undo) = if in_tx {
-        (SAVEPOINT, "ROLLBACK TO SAVEPOINT naviduck_apply")
+    const SAVEPOINT_NAME: &str = "naviduck_apply";
+    let savepoint = commit.dialect.savepoint_sql(SAVEPOINT_NAME);
+    let rollback_savepoint = commit.dialect.rollback_savepoint_sql(SAVEPOINT_NAME);
+    let (start, undo): (&str, &str) = if in_tx {
+        (&savepoint, &rollback_savepoint)
     } else {
         (commit.begin, "ROLLBACK")
     };
@@ -56,8 +58,8 @@ pub async fn apply(
             return Err(error);
         }
     }
-    if in_tx {
-        rel.execute("RELEASE SAVEPOINT naviduck_apply").await?;
+    if in_tx && let Some(release) = commit.dialect.release_savepoint_sql(SAVEPOINT_NAME) {
+        rel.execute(&release).await?;
     }
     if (!in_tx || end)
         && let Err(error) = rel.execute("COMMIT").await

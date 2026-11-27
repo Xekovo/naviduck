@@ -29,6 +29,7 @@ pub fn type_kind(type_name: &str) -> TypeKind {
         "timetz",
         "datetime",
         "datetime2",
+        "datetimeoffset",
         "smalldatetime",
         "timestamp",
         "timestamptz",
@@ -117,7 +118,9 @@ pub fn type_kind(type_name: &str) -> TypeKind {
         "enum",
         "set",
         "uuid",
+        "uniqueidentifier",
         "name",
+        "sysname",
         "xml",
         "mysql_type_varchar",
         "mysql_type_var_string",
@@ -173,9 +176,8 @@ pub fn temporal_kind(type_name: &str) -> Option<Temporal> {
         .next()
         .unwrap_or("");
     match base {
-        "datetime" | "timestamp" | "timestamptz" | "datetime2" | "smalldatetime" => {
-            Some(Temporal::DateTime)
-        }
+        "datetime" | "timestamp" | "timestamptz" | "datetime2" | "datetimeoffset"
+        | "smalldatetime" => Some(Temporal::DateTime),
         "date" => Some(Temporal::Date),
         "time" | "timetz" => Some(Temporal::Time),
         _ => None,

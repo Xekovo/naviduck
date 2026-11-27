@@ -112,7 +112,7 @@ mod macos {
         shot(&mut cx, "picker.png");
         cx.update_window(handle, |_, window, cx| window.close_all_dialogs(cx))
             .unwrap();
-        for driver in ["mysql", "postgres", "sqlite"] {
+        for driver in ["mysql", "postgres", "sqlite", "mssql"] {
             dispatch(
                 &mut cx,
                 Box::new(NewConnectionOf {

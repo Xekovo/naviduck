@@ -237,6 +237,14 @@ pub fn driver_defaults(driver: &str) -> DriverDefaults {
             file_based: false,
             supports_network: true,
         },
+        "mssql" => DriverDefaults {
+            host: "localhost",
+            port: Some(1433),
+            user: "sa",
+            database: None,
+            file_based: false,
+            supports_network: true,
+        },
         "dameng" => DriverDefaults {
             host: "localhost",
             port: Some(5236),

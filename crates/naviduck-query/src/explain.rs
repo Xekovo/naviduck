@@ -116,6 +116,20 @@ pub(crate) async fn fetch_plan(
             let rows = rel.execute(&format!("EXPLAIN {sql}")).await?;
             p.text = Some(first_text(&rows));
         }
+        ExplainStyle::ShowplanText => {
+            // SQL Server estimates the plan without executing queries while SHOWPLAN_TEXT is ON.
+            rel.execute("SET SHOWPLAN_TEXT ON").await?;
+            let res = rel.execute(sql).await;
+            let off = rel.execute("SET SHOWPLAN_TEXT OFF").await;
+            let sets = res?;
+            off?;
+            let lines: Vec<String> = sets
+                .into_iter()
+                .flat_map(|s| s.rows.into_iter())
+                .filter_map(|row| row.into_iter().next().flatten())
+                .collect();
+            p.text = Some(lines.join("\n"));
+        }
     }
     Ok(p)
 }

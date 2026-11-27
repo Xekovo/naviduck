@@ -128,6 +128,7 @@ impl DatabaseUri {
             "mysql" => "mysql",
             "mariadb" => "mariadb",
             "postgres" | "postgresql" => "postgres",
+            "mssql" | "sqlserver" => "mssql",
             "mongodb" => "mongodb",
             _ => return None,
         };

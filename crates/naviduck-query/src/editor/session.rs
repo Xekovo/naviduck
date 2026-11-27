@@ -168,8 +168,12 @@ impl QueryEditor {
                     .into_iter()
                     .filter(|s| !this.dialect(cx).is_some_and(|d| d.is_system_schema(s)))
                     .collect();
-                if this.target.schema.is_none() && user.iter().any(|s| s == "public") {
-                    this.target.schema = Some("public".into());
+                let default_schema = this
+                    .dialect(cx)
+                    .and_then(|d| d.default_schema())
+                    .unwrap_or("public");
+                if this.target.schema.is_none() && user.iter().any(|s| s == default_schema) {
+                    this.target.schema = Some(default_schema.into());
                     this.ensure_outline(false, cx);
                     this.target_changed(cx);
                 }
