@@ -32,6 +32,7 @@
 | --- | --- | --- |
 | `window.default_size` | 1240 × 800（内容区） | nib:MainWindowController/NSWindowTemplate.NSWindowRect |
 | `window.toolbar_style` | Expanded（大图标加文字，位于标题下方） | nib:MainWindowController/NSWindowToolbarStyle = 1 |
+| `menubar.height` | 28 | 暂定的平台适配值：Linux/Windows 的窗口内 `AppMenuBar`，容纳 Small 菜单按钮；macOS 使用系统菜单栏 |
 | `toolbar.height` | 52 | 暂定：Expanded 样式工具栏的典型高度，待 `ax:主窗口/AXToolbar` |
 | `toolbar.item_icon` | 24 | 暂定，待 AX |
 | `toolbar.item_min_width` | 52 | 暂定，待 AX |

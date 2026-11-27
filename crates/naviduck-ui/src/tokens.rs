@@ -46,6 +46,12 @@ pub mod window {
     pub const TITLE_HEIGHT: Pt = Pt(28.);
 }
 
+pub mod menubar {
+    use super::Pt;
+    // Provisional platform adaptation: fits the Small AppMenuBar buttons.
+    pub const HEIGHT: Pt = Pt(28.);
+}
+
 pub mod toolbar {
     use super::Pt;
     // Provisional until measured with AX

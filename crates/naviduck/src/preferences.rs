@@ -30,10 +30,17 @@ impl Global for PreferencesWindow {}
 /// Opens the preferences (a single window).
 pub fn open(cx: &mut App) {
     if let Some(handle) = cx.try_global::<PreferencesWindow>().map(|w| w.0)
-        && handle
-            .update(cx, |_, window, _| window.activate_window())
-            .is_ok()
+        && cx.windows().contains(&handle)
     {
+        if handle
+            .update(cx, |_, window, _| window.activate_window())
+            .is_err()
+        {
+            // A shortcut dispatched from this window temporarily borrows its slot.
+            cx.defer(move |cx| {
+                let _ = handle.update(cx, |_, window, _| window.activate_window());
+            });
+        }
         return;
     }
     let bounds = WindowBounds::Windowed(gpui_kit::Bounds::centered(

@@ -7,6 +7,7 @@ use gpui_kit::component::dock::{
     BasePanelView, DockArea, DockAreaState, DockEvent, DockLayout, DockPlacement, DockSkin,
     PanelId, PanelInfo, panel_handle,
 };
+use gpui_kit::component::menu::AppMenuBar;
 use gpui_kit::component::status_bar::StatusBar;
 use gpui_kit::component::{TitleBar, h_flex, v_flex};
 use gpui_kit::prelude::FluentBuilder as _;
@@ -42,6 +43,7 @@ const DOCK_VERSION: usize = 1;
 
 pub struct MainWindow {
     focus_handle: FocusHandle,
+    menu_bar: Option<Entity<AppMenuBar>>,
     dock: Entity<DockArea>,
     _skin: Rc<DockSkin>,
     state: AppState,
@@ -159,7 +161,13 @@ impl MainWindow {
         });
         naviduck_navigator::set_view_options(state.view, cx);
 
+        let menu_bar = (!cfg!(target_os = "macos")).then(|| AppMenuBar::new(cx));
         let subs = vec![
+            cx.observe_global::<crate::menus::MenusChanged>(|this, cx| {
+                if let Some(menu_bar) = &this.menu_bar {
+                    menu_bar.update(cx, |bar, cx| bar.reload(cx));
+                }
+            }),
             cx.subscribe_in(&dock, window, |this, _, e: &DockEvent, window, cx| {
                 if matches!(e, DockEvent::LayoutChanged) {
                     this.save_state(window, cx);
@@ -219,6 +227,7 @@ impl MainWindow {
         });
         Self {
             focus_handle: cx.focus_handle(),
+            menu_bar,
             dock,
             _skin: skin,
             state,
@@ -1172,6 +1181,18 @@ impl Render for MainWindow {
                     .child("Naviduck"),
             ),
         )
+        .when_some(self.menu_bar.as_ref(), |r, menu_bar| {
+            r.child(
+                div()
+                    .w_full()
+                    .min_w_0()
+                    .h(tokens::menubar::HEIGHT.rems())
+                    .flex_none()
+                    .border_b_1()
+                    .border_color(p.separator)
+                    .child(menu_bar.clone()),
+            )
+        })
         .when(self.state.show_toolbar, |r| {
             r.child(self.render_toolbar(cx))
         })

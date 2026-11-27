@@ -1,7 +1,7 @@
 //! Key bindings and the menu bar. Call `bind_keys` before `set_menus`, or menus show no shortcuts.
 
 use gpui_kit::base::input::{Copy, Cut, Paste, Redo, SelectAll, Undo};
-use gpui_kit::{App, KeyBinding, Menu, MenuItem, OsAction, SystemMenuType};
+use gpui_kit::{App, Global, KeyBinding, Menu, MenuItem, OsAction, SystemMenuType};
 use naviduck_app_state::actions::{
     CloseConnection, ManageConnections, NewConnection, NewConnectionOf, NewGroup, NewQuery,
     OpenConsole, OpenExternalQuery, OpenHistoryLog, OpenTool, Refresh, ToggleFocusMode,
@@ -15,9 +15,19 @@ use rust_i18n::t;
 
 use crate::actions::*;
 
+pub(crate) const PREFERENCES_SHORTCUT: &str = if cfg!(target_os = "macos") {
+    "cmd-,"
+} else {
+    "ctrl-,"
+};
+
+/// Window menu bars reload only when the application menu model changes.
+pub(crate) struct MenusChanged;
+impl Global for MenusChanged {}
+
 pub fn bind_keys(cx: &mut App) {
     cx.bind_keys([
-        KeyBinding::new("cmd-,", Preferences, None),
+        KeyBinding::new(PREFERENCES_SHORTCUT, Preferences, None),
         KeyBinding::new("cmd-h", Hide, None),
         KeyBinding::new("alt-cmd-h", HideOthers, None),
         KeyBinding::new("cmd-q", Quit, None),
@@ -263,23 +273,30 @@ pub fn set_menus(cx: &mut App) {
                 },
             )
         }));
-    let surface = naviduck_ui::tabs::active_menu(cx);
-    let mut menus = vec![
-        Menu::new("Naviduck").items([
-            MenuItem::action(t!("menu.about").to_string(), About),
-            MenuItem::separator(),
-            MenuItem::action(t!("menu.preferences").to_string(), Preferences),
-            MenuItem::separator(),
-            MenuItem::action(t!("menu.check_updates").to_string(), CheckForUpdates),
+    let mut app_items = vec![
+        MenuItem::action(t!("menu.about").to_string(), About),
+        MenuItem::separator(),
+        MenuItem::action(t!("menu.preferences").to_string(), Preferences),
+        MenuItem::separator(),
+        MenuItem::action(t!("menu.check_updates").to_string(), CheckForUpdates),
+    ];
+    if cfg!(target_os = "macos") {
+        app_items.extend([
             MenuItem::separator(),
             MenuItem::os_submenu(t!("menu.services").to_string(), SystemMenuType::Services),
             MenuItem::separator(),
             MenuItem::action(t!("menu.hide").to_string(), Hide),
             MenuItem::action(t!("menu.hide_others").to_string(), HideOthers),
             MenuItem::action(t!("menu.show_all").to_string(), ShowAll),
-            MenuItem::separator(),
-            MenuItem::action(t!("menu.quit").to_string(), Quit),
-        ]),
+        ]);
+    }
+    app_items.extend([
+        MenuItem::separator(),
+        MenuItem::action(t!("menu.quit").to_string(), Quit),
+    ]);
+    let surface = naviduck_ui::tabs::active_menu(cx);
+    let mut menus = vec![
+        Menu::new("Naviduck").items(app_items),
         Menu::new(t!("menu.file").to_string()).items([
             MenuItem::submenu(Menu::new(t!("menu.new").to_string()).items([
                 MenuItem::submenu(new_connection),
@@ -543,5 +560,14 @@ pub fn set_menus(cx: &mut App) {
         }
         naviduck_ui::tabs::MenuSurface::Other => {}
     }
-    cx.set_menus(menus);
+    if cfg!(target_os = "macos") {
+        cx.set_menus(menus);
+    } else {
+        let menus = menus.into_iter().map(Menu::owned).collect();
+        cx.global_mut::<gpui_kit::base::GlobalState>()
+            .set_app_menus(menus);
+        // GlobalState also changes during pointer interactions. Observing it
+        // directly would rebuild the menu on each click and dismiss its popup.
+        cx.set_global(MenusChanged);
+    }
 }

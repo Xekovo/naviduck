@@ -41,7 +41,7 @@ naviduck-sqlite = { path = "../naviduck-sqlite" }
 naviduck-test-support = { path = "../naviduck-test-support" }
 gpui-kit = { workspace = true, features = ["test-support"] }
 
-# Needs Metal, so `cargo test` skips it. Run `cargo test -p naviduck --test snapshot` by hand.
+# Needs Metal or WGPU, so `cargo test` skips it. Run the snapshot target by hand.
 [[test]]
 name = "snapshot"
 harness = false

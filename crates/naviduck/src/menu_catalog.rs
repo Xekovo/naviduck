@@ -115,7 +115,7 @@ fn commands() -> Vec<Spec> {
         Spec::new("app.preferences", G::App, "menu.preferences", || {
             Box::new(Preferences)
         })
-        .shortcut("cmd-,"),
+        .shortcut(crate::menus::PREFERENCES_SHORTCUT),
         Spec::new("app.check_updates", G::App, "menu.check_updates", || {
             Box::new(CheckForUpdates)
         }),
